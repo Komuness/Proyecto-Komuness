@@ -43,10 +43,37 @@ export interface ICategoria {
     estado: boolean;
 }
 
+
+export interface IComentarioRespuesta {
+  _id: string;
+
+  autor: {
+    _id?: string;
+    nombre: string;
+    apellido: string;
+    avatar: string;
+  };
+
+  contenido: string;
+  fecha: string;
+
+  replyTo?: {
+    nombre: string,
+    apellido: string
+  };
+}
+
 export interface IComentario {
-    autor: string;
+    _id: string;
+    autor: {
+      _id?: string,
+      nombre: string,
+      apellido: string,
+      avatar: string
+    };
     contenido: string;
     fecha: string;
+    respuestas: IComentarioRespuesta;
 }
 export interface IAdjunto {
     url: string;

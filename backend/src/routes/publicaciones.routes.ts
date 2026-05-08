@@ -7,6 +7,7 @@ import {
   updatePublicacion,
   deletePublicacion,
   addComentario,
+  addRespuesta,
   getPublicacionesByTag,
   filterPublicaciones,
   createPublicacionA,
@@ -66,6 +67,13 @@ router.post('/v2', authMiddleware, validarLimitePublicaciones, (req, res, next) 
 });
 
 router.post('/:id/comentarios', authMiddleware, verificarRoles([0, 1, 2, 3]), addComentario);
+
+
+
+router.post('/:id/comentarios/:comentarioId/respuesta', authMiddleware, verificarRoles([0, 1, 2, 3]), addRespuesta);
+
+
+
 
 // ========== RUTAS DE EDICIÓN PARA AUTORES ==========
 // Ruta  para solicitar actualización
