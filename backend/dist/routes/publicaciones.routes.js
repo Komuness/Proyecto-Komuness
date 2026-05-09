@@ -41,6 +41,7 @@ router.post('/v2', auth_middleware_1.authMiddleware, limitePublicaciones_middlew
     });
 });
 router.post('/:id/comentarios', auth_middleware_1.authMiddleware, (0, roles_middleware_1.verificarRoles)([0, 1, 2, 3]), publicacion_controller_1.addComentario);
+router.post('/:id/comentarios/:comentarioId/respuesta', auth_middleware_1.authMiddleware, (0, roles_middleware_1.verificarRoles)([0, 1, 2, 3]), publicacion_controller_1.addRespuesta);
 // ========== RUTAS DE EDICIÓN PARA AUTORES ==========
 // Ruta  para solicitar actualización
 router.put('/:id/request-update', auth_middleware_1.authMiddleware, multiFields, publicacion_update_controller_1.requestUpdatePublicacion);
