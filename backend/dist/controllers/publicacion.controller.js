@@ -13,7 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.searchByTitulo = exports.searchPublicacionesAvanzada = exports.searchPublicacionesByTitulo = exports.getEventosPorFecha = exports.filterPublicaciones = exports.addComentario = exports.deletePublicacion = exports.updatePublicacion = exports.getPublicacionesByCategoria = exports.getPublicacionById = exports.getPublicacionesByTag = exports.createPublicacionA = exports.createPublicacion = void 0;
+exports.searchByTitulo = exports.searchPublicacionesAvanzada = exports.searchPublicacionesByTitulo = exports.getEventosPorFecha = exports.filterPublicaciones = exports.addRespuesta = exports.addComentario = exports.deletePublicacion = exports.updatePublicacion = exports.getPublicacionesByCategoria = exports.getPublicacionById = exports.getPublicacionesByTag = exports.createPublicacionA = exports.createPublicacion = void 0;
 const publicacion_model_1 = require("../models/publicacion.model");
 const mongoose_1 = __importDefault(require("mongoose"));
 const gridfs_1 = require("../utils/gridfs");
@@ -559,15 +559,32 @@ exports.deletePublicacion = deletePublicacion;
 // Agregar comentario
 const addComentario = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
-    const { autor, contenido, fecha } = req.body;
-    const nuevoComentario = { autor, contenido, fecha };
+    //const { autor, contenido, fecha } = req.body;
+    //const { id } = req.params;
+    const { contenido } = req.body;
+    const user = req.user;
+    if (!user) {
+        res.status(401).json({ message: "No autorizado" });
+        return;
+    }
+    const nuevoComentario = {
+        autor: {
+            _id: user._id,
+            nombre: user.nombre,
+            apellido: user.apellido,
+            avatar: user.avatar
+        },
+        contenido,
+        fecha: new Date().toISOString()
+    };
+    //const nuevoComentario: IComentario = { autor, contenido, fecha };
     try {
         const publicacionActualizada = yield publicacion_model_1.modelPublicacion.findByIdAndUpdate(id, { $push: { comentarios: nuevoComentario } }, { new: true });
         if (!publicacionActualizada) {
             res.status(404).json({ message: 'Publicación no encontrada' });
             return;
         }
-        res.status(201).json(publicacionActualizada);
+        res.status(201).json(publicacionActualizada.comentarios);
     }
     catch (error) {
         console.warn('Error al agregar comentario:', error);
@@ -576,6 +593,48 @@ const addComentario = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
 });
 exports.addComentario = addComentario;
+// Agregar Respuesta
+const addRespuesta = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const { id, comentarioId } = req.params;
+    const { contenido, replyTo } = req.body;
+    const user = req.user;
+    if (!user) {
+        res.status(401).json({ message: "No autorizado" });
+        return;
+    }
+    const nuevaRespuesta = {
+        autor: {
+            _id: user._id,
+            nombre: user.nombre,
+            apellido: user.apellido,
+            avatar: user.avatar
+        },
+        contenido,
+        fecha: new Date().toISOString(),
+        replyTo
+    };
+    try {
+        const publicacionActualizada = yield publicacion_model_1.modelPublicacion.findOneAndUpdate({
+            _id: id,
+            "comentarios._id": new mongoose_1.default.Types.ObjectId(comentarioId)
+        }, {
+            $push: {
+                "comentarios.$.respuestas": nuevaRespuesta
+            }
+        }, { new: true });
+        if (!publicacionActualizada) {
+            res.status(404).json({ message: 'Publicación no encontrada' });
+            return;
+        }
+        res.status(201).json(publicacionActualizada.comentarios);
+    }
+    catch (error) {
+        console.warn('Error al agregar respuesta:', error);
+        const err = error;
+        res.status(500).json({ message: err.message });
+    }
+});
+exports.addRespuesta = addRespuesta;
 // filtros de búsqueda
 const filterPublicaciones = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {

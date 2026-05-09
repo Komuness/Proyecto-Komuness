@@ -4,9 +4,31 @@ exports.modelPublicacion = void 0;
 const mongoose_1 = require("mongoose");
 //schema comentario
 const comentarioSchema = new mongoose_1.Schema({
-    autor: { type: String, required: true },
+    autor: {
+        _id: String,
+        nombre: String,
+        apellido: String,
+        avatar: String
+    },
     contenido: { type: String, required: true },
-    fecha: { type: String, required: true }
+    fecha: String,
+    respuestas: [
+        {
+            autor: {
+                _id: String,
+                nombre: String,
+                apellido: String,
+                avatar: String
+            },
+            contenido: String,
+            fecha: String,
+            replyTo: {
+                _id: String,
+                nombre: String,
+                apellido: String
+            }
+        }
+    ]
 });
 //schema adjunto
 const adjuntoSchema = new mongoose_1.Schema({

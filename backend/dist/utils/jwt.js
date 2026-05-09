@@ -31,6 +31,7 @@ exports.generarToken = generarToken;
 const verificarToken = (token) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const decoded = jsonwebtoken_1.default.verify(token, exports.JWT_SECRET);
+        console.log(token);
         return { usuario: decoded.usuario };
     }
     catch (error) {
