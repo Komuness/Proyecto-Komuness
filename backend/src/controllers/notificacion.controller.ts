@@ -1,179 +1,231 @@
-import { Request, Response} from "express";
+import { Request, Response } from "express";
+import mongoose from "mongoose";
 import { modelNotificacion } from "../models/notificacion.model";
+import { createNotificacion as createNotificacionService } from "../services/notificacion.service";
 
-//En caso de que se le quiera agregar una fecha "automática" para que caduquen
-const today = new Date();
-function agregarDias(fecha: Date, dias: number): Date {
-  return new Date(today.getTime() + dias * 24 * 60 * 60 * 1000);
+function getRequestUserId(req: Request): string | null {
+  const userId =
+    req.user?._id?.toString?.() ||
+    (req as any).user?._id?.toString?.() ||
+    (req as any).userId?.toString?.();
+
+  return userId || null;
 }
 
-/**
- * Crear una nueva notificación
- * @route GET /api/notificacion
- * Para filtro, usar userId, api/notificaciones?userId=...
- */
-
-export const getNotificaciones = async (req: Request, res: Response): Promise<void> => {
+export const getNotificaciones = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
-
-    const { userId } = req.query;
-
-    let filtro: any = {};
-    if (userId) {
-      filtro.vistoPor = userId;
-    }
-    const notificaciones = await modelNotificacion.find(filtro);
-
-    if(notificaciones.length === 0){
-      res.status(200).json({ data: notificaciones, message: "Este usuario no posee notificaciones" });
+    const userId = getRequestUserId(req);
+    if (!userId) {
+      res.status(401).json({ message: "No autorizado" });
       return;
     }
 
-    res.status(200).json({ data: notificaciones, message: "Notificaciones obtenidas correctamente" });
+    const { onlyUnread } = req.query;
+    const now = new Date();
 
+    const filtro: any = {
+      destinatario: userId,
+      $or: [{ fechaCaducidad: null }, { fechaCaducidad: { $gte: now } }],
+    };
 
+    if (String(onlyUnread).toLowerCase() === "true") {
+      filtro.vistoPor = { $ne: userId };
+    }
+
+    const notificaciones = await modelNotificacion
+      .find(filtro)
+      .sort({ createdAt: -1 });
+
+    res
+      .status(200)
+      .json({ data: notificaciones, message: "Notificaciones obtenidas" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error al obtener las notificaciones para el usuario" });
+    res.status(500).json({ message: "Error al obtener notificaciones" });
   }
 };
 
-/**
- * Crear una nueva notificación
- * @route POST /api/notificacion/
- */
-
-export const createNotificacion = async (req: Request, res: Response): Promise<void> => {
+export const createNotificacion = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
-    const { nombre, descripcion, fechaCaducidad} = req.body;
+    const { nombre, descripcion, destinatario, publicacionId, fechaCaducidad } =
+      req.body || {};
 
     if (!nombre?.trim()) {
-      res.status(400).json({ message: "El nombre de la notificación es obligatorio" });
+      res.status(400).json({ message: "El nombre es obligatorio" });
       return;
     }
     if (!descripcion?.trim()) {
-      res.status(400).json({ message: "La descripción de la notificación es obligatoria" });
+      res.status(400).json({ message: "La descripcion es obligatoria" });
       return;
     }
-    
+    if (!destinatario || !mongoose.Types.ObjectId.isValid(destinatario)) {
+      res.status(400).json({ message: "destinatario invalido" });
+      return;
+    }
+    if (publicacionId && !mongoose.Types.ObjectId.isValid(publicacionId)) {
+      res.status(400).json({ message: "publicacionId invalido" });
+      return;
+    }
 
-    const nuevaNotificacion = new modelNotificacion({
-      nombre: nombre.trim(),
-      descripcion: descripcion.trim(),
-      fechaCaducidad: fechaCaducidad
+    const saved = await createNotificacionService({
+      nombre,
+      descripcion,
+      destinatarioId: destinatario,
+      publicacionId,
+      fechaCaducidad: fechaCaducidad || null,
     });
 
-    const saved = await nuevaNotificacion.save();
     res.status(201).json(saved);
-
   } catch (error: any) {
     console.error(error);
-    res.status(500).json({ message: "Error al crear la notificación" });
+    res.status(500).json({ message: "Error al crear la notificacion" });
   }
 };
 
-/**
- * Crear una nueva notificación
- * @route DELETE /api/notificacion/:id
- */
-
-export const deleteNotificacion = async (req: Request, res: Response): Promise<void> => {
+export const deleteNotificacion = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
+    const userId = getRequestUserId(req);
 
-    const notificacionAEliminar = await modelNotificacion.findByIdAndDelete(id);
+    if (!userId) {
+      res.status(401).json({ message: "No autorizado" });
+      return;
+    }
+
+    const userTipo = Number((req as any).user?.tipoUsuario);
+    const isAdmin = userTipo === 0 || userTipo === 1;
+
+    const filtro: any = { _id: id };
+    if (!isAdmin) {
+      filtro.destinatario = userId;
+    }
+
+    const notificacionAEliminar = await modelNotificacion.findOneAndDelete(filtro);
 
     if (!notificacionAEliminar) {
-      res.status(404).json({ message: "No se encontró la notificación" });
+      res.status(404).json({ message: "No se encontro la notificacion" });
       return;
     }
 
-    res.status(200).json({ message: "Notificación eliminada correctamente" });
-
+    res.status(200).json({ message: "Notificacion eliminada correctamente" });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Error al eliminar la notificación" });
+    res.status(500).json({ message: "Error al eliminar la notificacion" });
   }
 };
 
-/**
- * Crear una nueva notificación
- * @route PUT /api/notificacion/:id
- */
-
-export const updateNotificacion = async (req: Request, res: Response): Promise<void> => {
+export const updateNotificacion = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, fechaCaducidad, vistoPor} = req.body;
+    const { nombre, descripcion, fechaCaducidad, vistoPor, destinatario, publicacionId } =
+      req.body || {};
 
-    if (!nombre?.trim()) {
-      res.status(400).json({ message: "El nombre de la notificación es obligatorio" });
-      return;
-    }
-    if (!descripcion?.trim()) {
-      res.status(400).json({ message: "La descripción de la notificación es obligatoria" });
-      return;
-    }
-    
-    const data : any = {};
+    const data: any = {};
 
-    //Revisa si los datos fueron enviados o vienen "vacíos"
-    if (nombre !== undefined) data.nombre = nombre?.trim();
-    if (descripcion !== undefined) data.descripcion = descripcion?.trim();
+    if (nombre !== undefined) {
+      if (!nombre?.trim()) {
+        res.status(400).json({ message: "El nombre no puede ir vacio" });
+        return;
+      }
+      data.nombre = nombre.trim();
+    }
+
+    if (descripcion !== undefined) {
+      if (!descripcion?.trim()) {
+        res.status(400).json({ message: "La descripcion no puede ir vacia" });
+        return;
+      }
+      data.descripcion = descripcion.trim();
+    }
+
     if (fechaCaducidad !== undefined) data.fechaCaducidad = fechaCaducidad;
+
+    if (destinatario !== undefined) {
+      if (!mongoose.Types.ObjectId.isValid(destinatario)) {
+        res.status(400).json({ message: "destinatario invalido" });
+        return;
+      }
+      data.destinatario = destinatario;
+    }
+
+    if (publicacionId !== undefined) {
+      if (publicacionId !== null && !mongoose.Types.ObjectId.isValid(publicacionId)) {
+        res.status(400).json({ message: "publicacionId invalido" });
+        return;
+      }
+      data.publicacionId = publicacionId;
+    }
+
     if (vistoPor) data.$addToSet = { vistoPor };
 
     const notificacionActualizada = await modelNotificacion.findByIdAndUpdate(
-      id, 
+      id,
       data,
       { new: true }
     );
- 
+
     if (!notificacionActualizada) {
-      res.status(404).json({ message: "Notificación no encontrado" });
+      res.status(404).json({ message: "Notificacion no encontrada" });
       return;
     }
- 
-    res.status(200).json({data: notificacionActualizada, message: "La notificación se actualizó correctamente" });
 
+    res.status(200).json({
+      data: notificacionActualizada,
+      message: "Notificacion actualizada correctamente",
+    });
   } catch (error: any) {
     console.error(error);
- 
-    res.status(500).json({ message: "Error al actualizar la notificación" });
+    res.status(500).json({ message: "Error al actualizar la notificacion" });
   }
 };
 
-/**
- * Crear una nueva notificación
- * @route PUT /api/notificacion/:id/visto
- * body={vistoPor: userId}
- */
-
-export const notificacionSeenBy = async (req: Request, res: Response): Promise<void> => {
+export const notificacionSeenBy = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
   try {
     const { id } = req.params;
-    const {vistoPor} = req.body;
+    const viewerId = getRequestUserId(req);
 
-    const notificacionActualizada = await modelNotificacion.findByIdAndUpdate(
-      id, 
+    if (!viewerId) {
+      res.status(401).json({ message: "No autorizado" });
+      return;
+    }
+
+    const notificacionActualizada = await modelNotificacion.findOneAndUpdate(
       {
-        $addToSet: { vistoPor: vistoPor}
+        _id: id,
+        destinatario: viewerId,
+      },
+      {
+        $addToSet: { vistoPor: viewerId },
       },
       { new: true }
     );
- 
+
     if (!notificacionActualizada) {
-      res.status(404).json({ message: "Notificación no encontrado" });
+      res.status(404).json({ message: "Notificacion no encontrada" });
       return;
     }
- 
-    res.status(200).json({ data: notificacionActualizada, message: "La notificación fue vista por el usuario"});
 
+    res.status(200).json({
+      data: notificacionActualizada,
+      message: "Notificacion marcada como vista",
+    });
   } catch (error: any) {
     console.error(error);
- 
-    res.status(500).json({ message: "Error al actualizar la notificación" });
+    res.status(500).json({ message: "Error al actualizar la notificacion" });
   }
 };
-
-

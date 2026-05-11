@@ -13,7 +13,7 @@ const router = Router();
 
 // Obtener notificaciones con o sin filtro
 //Filtro se vería algo como notificaciones?userId=...
-router.get("/", getNotificaciones);
+router.get("/", authMiddleware, getNotificaciones);
 
 // Crud
 router.post("/", authMiddleware, createNotificacion);
