@@ -1,5 +1,6 @@
 import { Request, Response} from "express";
 import { modelNotificacion } from "../models/notificacion.model";
+import { ObjectId } from "mongoose";
 
 //En caso de que se le quiera agregar una fecha "automática" para que caduquen
 const today = new Date();
@@ -16,20 +17,50 @@ function agregarDias(fecha: Date, dias: number): Date {
 export const getNotificaciones = async (req: Request, res: Response): Promise<void> => {
   try {
 
-    const { userId } = req.query;
+    const { userId }  = req.query
 
     let filtro: any = {};
     if (userId) {
-      filtro.vistoPor = userId;
+      filtro = {
+        $or: [
+          { recipientes: userId },
+          { recipientes: [] }
+        ]
+      }
     }
-    const notificaciones = await modelNotificacion.find(filtro);
+    const notificaciones = await modelNotificacion.find(filtro).lean();
 
     if(notificaciones.length === 0){
-      res.status(200).json({ data: notificaciones, message: "Este usuario no posee notificaciones" });
+      res.status(200).json({ data: [], message: "Este usuario no posee notificaciones" });
       return;
     }
 
-    res.status(200).json({ data: notificaciones, message: "Notificaciones obtenidas correctamente" });
+    //Si no tiene filtro, solo devuelve
+    if (!userId){
+      res.status(200).json({ data: notificaciones, message: "Notificaciones obtenidas correctamente" });
+      return
+    }
+
+    //Si tiene filtro, revisar por usuario el visto
+    const notificacionesConVisto = notificaciones.map((notificacion) => {
+
+    const visto = notificacion.vistoPor?.some(
+      (id) => id.toString() === userId
+    );
+
+    const {
+      vistoPor,
+      recipientes,
+      ...notificacionLimpia
+    } = notificacion;
+
+    return {
+      ...notificacionLimpia,
+      visto
+      };
+    });
+
+    res.status(200).json({ data: notificacionesConVisto, message: "Notificaciones obtenidas correctamente" });
 
 
   } catch (error) {
@@ -45,7 +76,7 @@ export const getNotificaciones = async (req: Request, res: Response): Promise<vo
 
 export const createNotificacion = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { nombre, descripcion, fechaCaducidad} = req.body;
+    const { nombre, descripcion, fechaCaducidad, recipientes} = req.body;
 
     if (!nombre?.trim()) {
       res.status(400).json({ message: "El nombre de la notificación es obligatorio" });
@@ -60,7 +91,8 @@ export const createNotificacion = async (req: Request, res: Response): Promise<v
     const nuevaNotificacion = new modelNotificacion({
       nombre: nombre.trim(),
       descripcion: descripcion.trim(),
-      fechaCaducidad: fechaCaducidad
+      fechaCaducidad: fechaCaducidad,
+      recipientes: recipientes
     });
 
     const saved = await nuevaNotificacion.save();
@@ -104,7 +136,7 @@ export const deleteNotificacion = async (req: Request, res: Response): Promise<v
 export const updateNotificacion = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, fechaCaducidad, vistoPor} = req.body;
+    const { nombre, descripcion, fechaCaducidad, recipientes, vistoPor} = req.body;
 
     if (!nombre?.trim()) {
       res.status(400).json({ message: "El nombre de la notificación es obligatorio" });
@@ -121,6 +153,7 @@ export const updateNotificacion = async (req: Request, res: Response): Promise<v
     if (nombre !== undefined) data.nombre = nombre?.trim();
     if (descripcion !== undefined) data.descripcion = descripcion?.trim();
     if (fechaCaducidad !== undefined) data.fechaCaducidad = fechaCaducidad;
+    if (recipientes) data.$addToSet = { recipientes };
     if (vistoPor) data.$addToSet = { vistoPor };
 
     const notificacionActualizada = await modelNotificacion.findByIdAndUpdate(
@@ -163,7 +196,7 @@ export const notificacionSeenBy = async (req: Request, res: Response): Promise<v
     );
  
     if (!notificacionActualizada) {
-      res.status(404).json({ message: "Notificación no encontrado" });
+      res.status(404).json({ message: "Notificación no encontrada" });
       return;
     }
  

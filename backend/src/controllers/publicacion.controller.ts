@@ -7,6 +7,7 @@ import mongoose from 'mongoose';
 import { saveMulterFileToGridFS, saveBufferToGridFS, deleteGridFSFile } from '../utils/gridfs';
 import { sendEmail } from '../utils/mail'; // usa el mismo transporter que recuperación
 import { modelUsuario } from '../models/usuario.model'; // ← Modelo de usuarios
+import { modelPerfil } from '../models/perfil.model';
 
 const LOG_ON = process.env.LOG_PUBLICACION === '1';
 
@@ -315,6 +316,25 @@ export const createPublicacionA = async (req: Request, res: Response): Promise<v
     if (!userId) {
       res.status(401).json({ ok: false, message: 'Usuario no autenticado' });
       return;
+    }
+
+    //3.5.2 - Validación de usuarios dentro del banco
+    const perfil = await modelPerfil.findOne({ usuarioId: userId });
+
+    if (!perfil) {
+        res.status(200).json({
+            success: false,
+            message: "El perfil público no existe"
+        });
+        return;
+    }
+
+    if (!perfil?.enBancoProfesionales){
+        res.status(200).json({
+            success: false,
+            message: "Este usuario no está en el banco de profesionales"
+        });
+        return; 
     }
 
     // --- Recolectar archivos desde Multer (array o fields) ---

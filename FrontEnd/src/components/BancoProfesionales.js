@@ -78,7 +78,7 @@ const BancoProfesionales = () => {
     }
 
     //Verificar si puede unirse según el perfil público
-    if (estadoUsuario?.enBancoProfesionales){
+    if (!estadoUsuario?.enBancoProfesionales && !esAdmin){
       const returnData = await cargarDatosUsuario();
 
       if(returnData === false){

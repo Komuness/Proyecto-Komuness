@@ -19,7 +19,6 @@ export const generarToken = (usuario: IUsuario): string => {
 export const verificarToken = async (token: string): Promise<{ usuario: IUsuario | null, error?: string }> => {
     try {
         const decoded = jwt.verify(token, JWT_SECRET) as { usuario: IUsuario };
-        console.log(token);
         return { usuario: decoded.usuario };
     } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {
