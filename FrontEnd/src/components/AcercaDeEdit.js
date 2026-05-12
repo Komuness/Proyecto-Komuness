@@ -179,7 +179,7 @@ const AcercaDeEdit = ({ data, onUpdate, onCancel }) => {
   }, [formData.informacionDonaciones?.donacionesEspecie, handleInputChange]);
 
 
-  const handleImageUpload = async (event, tipo) => {
+const handleImageUpload = async (event, tipo) => {
   const file = event.target.files[0];
   if (!file) return;
 

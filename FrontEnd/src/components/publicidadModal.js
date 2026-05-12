@@ -1,29 +1,71 @@
 import { use, useState } from "react";
 import { toast } from "react-hot-toast"
+import { useAuth } from './context/AuthContext';
 
 const PublicidadModal = ({
     onClose,
     onSubmit,
     publicidad = null, // si viene con datos esta editando
 }) => {
+    const { user } = useAuth();
     const [imagen, setImagen] = useState(publicidad?.imagen ?? "");
+    const [preview, setPreview] = useState(publicidad?.imagen ?? "");
     const [descripcion, setDescripcion] = useState(publicidad?.descripcion ?? "");
     const [fechaCaducidad, setFechaCaducidad] = useState(
         publicidad?.fechaCaducidad
         ? new Date(publicidad.fechaCaducidad)
         : new Date()
     );
-    const [autor, setAutor] = useState(publicidad?.autor ?? "");
+    const [autor, setAutor] = useState(publicidad?.autor ?? user?._id ?? "");
     const [activa, setActiva] = useState(publicidad?.activa ?? true);
     const [publicacionRelacionada, setPublicacionRelacionada] = useState(publicidad?.publicacionRelacionada ?? "");
     const modoCrear = (publicidad == null);
 
+    const handleImageChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setImagen(file);
+        const localPreview = URL.createObjectURL(file);
+        setPreview(localPreview);
+    };
+
     const handleSubmit = () => {
-        /*if (!nombre.trim()){
-            toast.error("El de la publicidad es obligatorio");
+        if (!descripcion.trim()) {
+            toast.error(
+                "La descripción es obligatoria"
+            );
             return;
-        }*/
-        //onSubmit({nombre: nombre.trim(), url: url.trim(), descripcion: descripcion.trim()});
+        }
+
+        if (!fechaCaducidad) {
+            toast.error(
+                "La fecha de caducidad es obligatoria"
+            );
+            return;
+        }
+
+        if (!autor.trim()) {
+            toast.error(
+                "El autor es obligatorio"
+            );
+            return;
+        }
+
+        if (modoCrear && !(imagen instanceof File)) {
+            toast.error(
+                "La imagen es obligatoria"
+            );
+            return;
+        }
+
+        onSubmit({
+            imagen,
+            descripcion: descripcion.trim(),
+            fechaCaducidad,
+            autor: autor.trim(),
+            activa,
+            publicacionRelacionada,
+        });
     };
 
     return (
@@ -32,34 +74,70 @@ const PublicidadModal = ({
             <h3 className="text-lg font-semibold mb-4 text-gray-800">
               {modoCrear ? "Nueva publicidad" : "Editar publicidad"}
             </h3>
+    
+        {/*Imagen*/}
+        <div className="campo-grupo">
+              <label className="campo-label">Imágen de la publicidad:</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="campo-input"
+              />
+            {preview && (
+                <div>
+                    <img
+                        src={preview}
+                        className = "max-h-72 rounded-lg border object-contain" 
+                    />
+                </div>
+            )}
+        </div>
      
-        {/*<p className="text-black text-sm mt-2 text-center">*Nombre del tutorial:</p>
-            <input
-              type="text"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Nombre del tutorial"
-              className="w-full px-4 py-2 mb-4 border text-black border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-     
-            <p className="text-black text-sm mt-2 text-center">Link al tutorial (opcional, YouTube recomendado):</p>
-            <input
-              type="text"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="Link al tutorial (opcional)"
-              className="w-full px-4 py-2 mb-4 border text-black border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-     
-            <p className="text-black text-sm mt-2 text-center">Descripción del tutorial (opcional):</p>
+         {/* Descripción */}
+         <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+                Descripción
+            </label>
             <textarea
-              value={descripcion}
-              onChange={(e) => setDescripcion(e.target.value)}
-              placeholder="Descripción del tutorial (opcional)"
-              rows={15}
-              className="w-full px-4 py-2 mb-4 border text-black border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                value={descripcion}
+                onChange={(e) => setDescripcion(e.target.value)}
+                rows={5}
+                placeholder="Descripción de la publicidad"
+                className="w-full px-4 py-2 border text-black border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
             />
-            */}
+         </div>
+
+        {/* Fecha */}
+        <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+                Fecha de caducidad
+            </label>
+            <input
+                type="date"
+                value={fechaCaducidad}
+                onChange={(e) => setFechaCaducidad(e.target.value)}
+                className="w-full px-4 py-2 border text-black border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+        </div>
+
+        {/*
+        <div className="mb-8 flex items-center gap-3">
+            <input
+                type="checkbox"
+                checked={activa}
+                onChange={(e) =>
+                    setActiva(e.target.checked)
+                }
+                className="w-4 h-4"
+            />
+            <label className="text-gray-700">
+                Publicidad activa
+            </label>
+        </div>*/}
+
+
+        {/*BOTONES*/}
             <div className="flex justify-end space-x-2">
               <button
                 onClick={onClose}

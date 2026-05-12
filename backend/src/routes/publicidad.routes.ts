@@ -1,4 +1,7 @@
 import { Router } from "express";
+import multer from "multer";
+
+const upload = multer();
 import {
     createPublicidad,
     deletePublicidad,
@@ -15,8 +18,8 @@ const router = Router();
 router.get("/get-publicidades", getPublicidades);
 
 // Crear, editar y eliminar, solo admin (tipoUsuario 1 o 0)
-router.post("/create-publicidad", authMiddleware, verificarRoles([0, 1]), createPublicidad);
+router.post("/create-publicidad", authMiddleware, verificarRoles([0, 1]), upload.single("imagen"), createPublicidad);
 router.delete("/delete-publicidad/:id", authMiddleware, verificarRoles([0, 1]), deletePublicidad);
-router.put("/update-publicidad/:id", authMiddleware, verificarRoles([0, 1]), updatePublicidad);
+router.put("/update-publicidad/:id", authMiddleware, verificarRoles([0, 1]), upload.single("imagen"), updatePublicidad);
 
 export default router;

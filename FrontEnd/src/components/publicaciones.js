@@ -191,12 +191,14 @@ const obtenerPublicaciones = async (tag, page = 1, limit = limite, categoriaId =
         setPublicidadEditando(null);
         setMostrarModalPublicidad(false);
     }
-    const handleSubmitPublicidad = async ({ imagen,
+    const handleSubmitPublicidad = async ({ 
+                imagen,
                 descripcion,
                 fechaCaducidad,
                 autor, 
                 activa,
-    publicacionRelacionada }) => {
+                publicacionRelacionada 
+    }) => {
         try {
             const modoCrear = (publicidadEditando == null);
             const petition_url = modoCrear
@@ -204,13 +206,26 @@ const obtenerPublicaciones = async (tag, page = 1, limit = limite, categoriaId =
                 : `${API_URL}/publicidad/update-publicidad/${publicidadEditando._id}`;
             const method = modoCrear ? "POST" : "PUT";
 
+            const formData = new FormData();
+
+            if (imagen instanceof File) {
+                formData.append("imagen", imagen);
+            }
+            formData.append("descripcion", descripcion);
+            formData.append("fechaCaducidad", fechaCaducidad);
+            formData.append("autor", autor);
+            formData.append("activa", activa);
+
+            if (publicacionRelacionada) {
+                formData.append("publicacionRelacionada", publicacionRelacionada);
+            }
+
             const res = await fetch(petition_url,{
                 method,
                 headers: {
-                    "Content-Type": "application/json",
                     Authorization: `Bearer ${localStorage.getItem("token")}`,
                 },
-                body: JSON.stringify({ imagen, descripcion, fechaCaducidad, autor, activa, publicacionRelacionada }),
+                body: formData,
             });
 
             if (res.ok) {
