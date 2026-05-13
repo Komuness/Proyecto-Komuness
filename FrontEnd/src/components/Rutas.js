@@ -20,6 +20,7 @@ import EditarPerfil from './EditarPerfil';
 import BancoProfesionales from './BancoProfesionales';
 import TerminosCondiciones from './TerminosCondiciones'; // NUEVO
 import Tutoriales from "./tutoriales"; // NUEVO
+import NotificacionesMovil from "./notificaciones/NotificacionesMovil";
 
 export const Rutas = () =>{
     
@@ -47,6 +48,7 @@ export const Rutas = () =>{
                 <Route path="/profesionales" element={<BancoProfesionales />} />
                 <Route path="/terminos-y-condiciones" element={<TerminosCondiciones />} /> {/* NUEVO */}
                 <Route path="/tutoriales" element={<Tutoriales />} /> {/* NUEVO */}
+                <Route path="/notificaciones" element={<NotificacionesMovil />} />
 
                 <Route path="*" element={<Navigate to="/publicaciones" />} />
             </Routes>

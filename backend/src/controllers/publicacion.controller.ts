@@ -5,9 +5,10 @@ import { IAdjunto, IComentario, IEnlaceExterno, IPublicacion, IUbicacion } from 
 import { modelPublicacion } from '../models/publicacion.model';
 import mongoose from 'mongoose';
 import { saveMulterFileToGridFS, saveBufferToGridFS, deleteGridFSFile } from '../utils/gridfs';
-import { sendEmail } from '../utils/mail'; // usa el mismo transporter que recuperación
-import { modelUsuario } from '../models/usuario.model'; // ← Modelo de usuarios
 import { modelPerfil } from '../models/perfil.model';
+import { sendEmail } from '../utils/mail';
+import { modelUsuario } from '../models/usuario.model';
+import { createComentarioPublicacionNotificacion } from '../services/notificacion.service';
 
 const LOG_ON = process.env.LOG_PUBLICACION === '1';
 
@@ -644,16 +645,20 @@ export const deletePublicacion = async (req: Request, res: Response): Promise<vo
 // Agregar comentario
 export const addComentario = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
-  //const { autor, contenido, fecha } = req.body;
-  //const { id } = req.params;
   const { contenido } = req.body;
-  
+
   const user = req.user;
 
   if (!user) {
     res.status(401).json({ message: "No autorizado" });
     return;
   }
+
+  if (!contenido?.trim()) {
+    res.status(400).json({ message: "El contenido del comentario es obligatorio" });
+    return;
+  }
+
   const nuevoComentario = {
     autor: {
       _id: user._id,
@@ -661,11 +666,9 @@ export const addComentario = async (req: Request, res: Response): Promise<void> 
       apellido: user.apellido,
       avatar: user.avatar
     },
-    contenido,
+    contenido: contenido.trim(),
     fecha: new Date().toISOString()
   };
-
-  //const nuevoComentario: IComentario = { autor, contenido, fecha };
 
   try {
     const publicacionActualizada = await modelPublicacion.findByIdAndUpdate(
@@ -678,6 +681,27 @@ export const addComentario = async (req: Request, res: Response): Promise<void> 
       res.status(404).json({ message: 'Publicación no encontrada' });
       return;
     }
+
+    const autorPublicacionId = publicacionActualizada.autor?.toString?.();
+    const autorComentarioId = user._id?.toString?.();
+
+    if (autorPublicacionId && autorComentarioId && autorPublicacionId !== autorComentarioId) {
+      const nombreComentarista = [user.nombre, user.apellido].filter(Boolean).join(' ').trim();
+      const tituloPublicacion = publicacionActualizada.titulo || 'tu publicación';
+
+      try {
+        await createComentarioPublicacionNotificacion({
+          destinatarioId: autorPublicacionId, //temporalmente
+          recipientes: [autorPublicacionId],
+          publicacionId: id,
+          tituloPublicacion,
+          nombreComentarista
+        });
+      } catch (notificacionError) {
+        console.warn('No se pudo crear notificación de comentario:', notificacionError);
+      }
+    }
+
     res.status(201).json(publicacionActualizada.comentarios);
   } catch (error) {
     console.warn('Error al agregar comentario:', error);

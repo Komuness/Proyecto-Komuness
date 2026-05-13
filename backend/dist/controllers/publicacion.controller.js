@@ -17,9 +17,15 @@ exports.searchByTitulo = exports.searchPublicacionesAvanzada = exports.searchPub
 const publicacion_model_1 = require("../models/publicacion.model");
 const mongoose_1 = __importDefault(require("mongoose"));
 const gridfs_1 = require("../utils/gridfs");
+<<<<<<< HEAD
 const mail_1 = require("../utils/mail"); // usa el mismo transporter que recuperación
 const usuario_model_1 = require("../models/usuario.model"); // ← Modelo de usuarios
 const perfil_model_1 = require("../models/perfil.model");
+=======
+const mail_1 = require("../utils/mail");
+const usuario_model_1 = require("../models/usuario.model");
+const notificacion_service_1 = require("../services/notificacion.service");
+>>>>>>> Alejandro_Comment_Notification
 const LOG_ON = process.env.LOG_PUBLICACION === '1';
 // Utilidad: normaliza precio (string → number | undefined)
 function parsePrecio(input) {
@@ -575,13 +581,16 @@ const deletePublicacion = (req, res) => __awaiter(void 0, void 0, void 0, functi
 exports.deletePublicacion = deletePublicacion;
 // Agregar comentario
 const addComentario = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c, _d;
     const { id } = req.params;
-    //const { autor, contenido, fecha } = req.body;
-    //const { id } = req.params;
     const { contenido } = req.body;
     const user = req.user;
     if (!user) {
         res.status(401).json({ message: "No autorizado" });
+        return;
+    }
+    if (!(contenido === null || contenido === void 0 ? void 0 : contenido.trim())) {
+        res.status(400).json({ message: "El contenido del comentario es obligatorio" });
         return;
     }
     const nuevoComentario = {
@@ -591,15 +600,31 @@ const addComentario = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             apellido: user.apellido,
             avatar: user.avatar
         },
-        contenido,
+        contenido: contenido.trim(),
         fecha: new Date().toISOString()
     };
-    //const nuevoComentario: IComentario = { autor, contenido, fecha };
     try {
         const publicacionActualizada = yield publicacion_model_1.modelPublicacion.findByIdAndUpdate(id, { $push: { comentarios: nuevoComentario } }, { new: true });
         if (!publicacionActualizada) {
             res.status(404).json({ message: 'Publicación no encontrada' });
             return;
+        }
+        const autorPublicacionId = (_b = (_a = publicacionActualizada.autor) === null || _a === void 0 ? void 0 : _a.toString) === null || _b === void 0 ? void 0 : _b.call(_a);
+        const autorComentarioId = (_d = (_c = user._id) === null || _c === void 0 ? void 0 : _c.toString) === null || _d === void 0 ? void 0 : _d.call(_c);
+        if (autorPublicacionId && autorComentarioId && autorPublicacionId !== autorComentarioId) {
+            const nombreComentarista = [user.nombre, user.apellido].filter(Boolean).join(' ').trim();
+            const tituloPublicacion = publicacionActualizada.titulo || 'tu publicación';
+            try {
+                yield (0, notificacion_service_1.createComentarioPublicacionNotificacion)({
+                    destinatarioId: autorPublicacionId,
+                    publicacionId: id,
+                    tituloPublicacion,
+                    nombreComentarista
+                });
+            }
+            catch (notificacionError) {
+                console.warn('No se pudo crear notificación de comentario:', notificacionError);
+            }
         }
         res.status(201).json(publicacionActualizada.comentarios);
     }

@@ -55,7 +55,7 @@ const allowedOrigins = Array.from(new Set([...defaultCorsOrigins, ...extraCorsOr
 
 app.use(cors({
   origin: allowedOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   credentials: true
 }));
 
