@@ -4,13 +4,17 @@ import { modelNotificacion } from "../models/notificacion.model";
 type CreateNotificacionInput = {
   nombre: string;
   descripcion: string;
-  destinatarioId: string;
+  // Compatibilidad
+  destinatarioId?: string;
+  recipientes?: string[];
   publicacionId?: string;
   fechaCaducidad?: Date | null;
 };
 
 type CreateComentarioPublicacionNotificacionInput = {
-  destinatarioId: string;
+  // Compatibilidad
+  destinatarioId?: string;
+  recipientes?: string[];
   publicacionId: string;
   tituloPublicacion: string;
   nombreComentarista: string;
@@ -22,16 +26,27 @@ function ensureObjectId(id: string, fieldName: string): void {
   }
 }
 
-export async function createNotificacion(input: CreateNotificacionInput) {
+export async function createNotificacion( input: CreateNotificacionInput ) {
   const {
     nombre,
     descripcion,
     destinatarioId,
+    recipientes,
     publicacionId,
     fechaCaducidad = null,
   } = input;
 
-  ensureObjectId(destinatarioId, "destinatarioId");
+  // Compatibilidad
+  const recipientesFinales =
+    recipientes ||
+    (destinatarioId ? [destinatarioId] : []);
+
+  if (recipientesFinales.length > 0) {
+    recipientesFinales.forEach((id, index) => {
+      ensureObjectId(id, `recipientes[${index}]`);
+    });
+  }
+
   if (publicacionId) {
     ensureObjectId(publicacionId, "publicacionId");
   }
@@ -39,7 +54,8 @@ export async function createNotificacion(input: CreateNotificacionInput) {
   const nuevaNotificacion = new modelNotificacion({
     nombre: nombre.trim(),
     descripcion: descripcion.trim(),
-    destinatario: destinatarioId,
+    destinatario: recipientesFinales.length === 1 ? recipientesFinales[0] : null,
+    recipientes: recipientesFinales,
     publicacionId: publicacionId || null,
     fechaCaducidad,
   });
@@ -50,16 +66,27 @@ export async function createNotificacion(input: CreateNotificacionInput) {
 export async function createComentarioPublicacionNotificacion(
   input: CreateComentarioPublicacionNotificacionInput
 ) {
-  const { destinatarioId, publicacionId, tituloPublicacion, nombreComentarista } =
-    input;
+  const {
+    destinatarioId,
+    recipientes,
+    publicacionId,
+    tituloPublicacion,
+    nombreComentarista,
+  } = input;
 
-  const tituloSeguro = tituloPublicacion?.trim() || "tu publicación";
-  const autorSeguro = nombreComentarista?.trim() || "Un usuario";
+  const tituloSeguro =
+    tituloPublicacion?.trim() || "tu publicación";
+
+  const autorSeguro =
+    nombreComentarista?.trim() || "Un usuario";
 
   return createNotificacion({
     destinatarioId,
+    recipientes,
     publicacionId,
+
     nombre: "Nuevo comentario en tu publicación",
+
     descripcion: `${autorSeguro} comentó en "${tituloSeguro}"`,
   });
 }
