@@ -90,3 +90,41 @@ export async function createComentarioPublicacionNotificacion(
     descripcion: `${autorSeguro} comentó en "${tituloSeguro}"`,
   });
 }
+type CreateRespuestaComentarioNotificacionInput = {
+  // Compatibilidad
+  destinatarioId?: string;
+  recipientes?: string[];
+
+  publicacionId: string;
+  tituloPublicacion: string;
+  nombreRespondedor: string;
+};
+
+export async function createRespuestaComentarioNotificacion(
+  input: CreateRespuestaComentarioNotificacionInput
+) {
+  const {
+    destinatarioId,
+    recipientes,
+    publicacionId,
+    tituloPublicacion,
+    nombreRespondedor,
+  } = input;
+
+  const tituloSeguro =
+    tituloPublicacion?.trim() || "tu publicación";
+
+  const autorSeguro =
+    nombreRespondedor?.trim() || "Un usuario";
+
+  return createNotificacion({
+    destinatarioId,
+    recipientes,
+    publicacionId,
+
+    nombre: "Nueva respuesta a tu comentario",
+
+    descripcion:
+      `${autorSeguro} respondió tu comentario en "${tituloSeguro}"`,
+  });
+}

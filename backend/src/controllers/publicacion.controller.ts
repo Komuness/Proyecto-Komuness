@@ -8,7 +8,7 @@ import { saveMulterFileToGridFS, saveBufferToGridFS, deleteGridFSFile } from '..
 import { modelPerfil } from '../models/perfil.model';
 import { sendEmail } from '../utils/mail';
 import { modelUsuario } from '../models/usuario.model';
-import { createComentarioPublicacionNotificacion } from '../services/notificacion.service';
+import { createComentarioPublicacionNotificacion, createRespuestaComentarioNotificacion } from '../services/notificacion.service';
 
 const LOG_ON = process.env.LOG_PUBLICACION === '1';
 
@@ -750,6 +750,54 @@ export const addRespuesta = async (req: Request, res: Response): Promise<void> =
       res.status(404).json({ message: 'Publicación no encontrada' });
       return;
     }
+    const comentarios = publicacionActualizada.comentarios || [];
+    const comentarioPrincipal = comentarios.find((comentario) => comentario._id?.toString() === comentarioId);
+    
+    let usuarioObjetivoId: string | null = null;
+
+    if (comentarioPrincipal) {
+      // comentario principal
+      if (
+        comentarioPrincipal._id?.toString() ===
+        replyTo?._id
+      ) {
+        usuarioObjetivoId = comentarioPrincipal.autor?._id?.toString?.() || null;
+      } else {
+        // respuesta específica
+        const respuestas = Array.isArray(comentarioPrincipal.respuestas)
+          ? comentarioPrincipal.respuestas
+          : [];
+        const respuestaObjetivo = respuestas.find((respuesta: any) => respuesta._id?.toString() === replyTo?._id);
+
+        usuarioObjetivoId = respuestaObjetivo?.autor?._id?.toString?.() || null;
+      }
+    }
+    const usuarioActualId = user._id?.toString?.();
+
+    // no notificarse a sí mismo
+    if ( usuarioObjetivoId && usuarioActualId && usuarioObjetivoId !== usuarioActualId) {
+      const nombreRespondedor = [user.nombre, user.apellido,].filter(Boolean).join(" ").trim();
+
+      const tituloPublicacion = publicacionActualizada.titulo || "tu publicación";
+
+      try {
+        await createRespuestaComentarioNotificacion({
+          destinatarioId: usuarioObjetivoId, // temporal
+          recipientes: [usuarioObjetivoId],
+
+          publicacionId: id,
+          tituloPublicacion,
+
+          nombreRespondedor: nombreRespondedor
+        });
+      } catch (notificacionError) {
+        console.warn(
+          "No se pudo crear notificación:",
+          notificacionError
+        );
+      }
+    }
+
     res.status(201).json(publicacionActualizada.comentarios);
   } catch (error) {
     console.warn('Error al agregar respuesta:', error);
