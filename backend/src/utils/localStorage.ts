@@ -55,7 +55,7 @@ export async function saveLibraryFileToDisk(file: Express.Multer.File) {
   // key relativa a /srv/uploads
   const relFromUploads = path.relative(getUploadsRoot(), absPath).split(path.sep).join('/');
 
-  const publicBase = process.env.PUBLIC_BASE_URL || 'http://159.54.148.238';
+  const publicBase = process.env.PUBLIC_BASE_URL || 'http://localhost:5000';
   const url = `${publicBase}/uploads/${relFromUploads}`;
 
   return {

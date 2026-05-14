@@ -389,7 +389,7 @@ export const createPublicacionA = async (req: Request, res: Response): Promise<v
     for (const file of files) {
       const result = await saveMulterFileToGridFS(file, 'publicaciones');
       adjuntos.push({
-        url: `${process.env.PUBLIC_BASE_URL || 'http://159.54.148.238'}/api/files/${result.id.toString()}`,
+        url: `${process.env.PUBLIC_BASE_URL || 'http://localhost:5000'}/api/files/${result.id.toString()}`,
         key: result.id.toString(),
       });
     }

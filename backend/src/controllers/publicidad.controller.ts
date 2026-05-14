@@ -45,7 +45,7 @@ export const createPublicidad = async (req: Request, res: Response): Promise<voi
         file,
         "publicidad"
     );
-    const imagen = `${process.env.PUBLIC_BASE_URL || "http://159.54.148.238"}` + `/api/files/${result.id.toString()}`;
+    const imagen = `${process.env.PUBLIC_BASE_URL || "http://localhost:5000"}` + `/api/files/${result.id.toString()}`;
 
     const nuevaPublicidad = new modelPublicidad({
         imagen,
@@ -123,7 +123,7 @@ export const updatePublicidad = async (req: Request, res: Response): Promise<voi
     if (req.file) {
         const result = await saveMulterFileToGridFS(req.file, "publicidad");
 
-        imagen = `${process.env.PUBLIC_BASE_URL || "http://159.54.148.238"}` + `/api/files/${result.id.toString()}`;
+        imagen = `${process.env.PUBLIC_BASE_URL || "http://localhost:5000"}` + `/api/files/${result.id.toString()}`;
     }
     
     publicidad.imagen = imagen;

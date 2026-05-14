@@ -1,4 +1,13 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -18,9 +27,10 @@ const configuracion_routes_1 = __importDefault(require("./routes/configuracion.r
 const files_routes_1 = __importDefault(require("./routes/files.routes"));
 const seccionAcerca_routes_1 = __importDefault(require("./routes/seccionAcerca.routes"));
 const perfil_routes_1 = __importDefault(require("./routes/perfil.routes"));
+const publicacionExpiration_service_1 = require("./services/publicacionExpiration.service");
 const tutorial_routes_1 = __importDefault(require("./routes/tutorial.routes"));
-const paqueteSuscripcion_routes_1 = __importDefault(require("./routes/paqueteSuscripcion.routes"));
 const notificaciones_routes_1 = __importDefault(require("./routes/notificaciones.routes"));
+const paqueteSuscripcion_routes_1 = __importDefault(require("./routes/paqueteSuscripcion.routes"));
 const publicidad_routes_1 = __importDefault(require("./routes/publicidad.routes"));
 // Rutas de PayPal
 const paypal_routes_1 = __importDefault(require("./routes/paypal.routes"));
@@ -49,7 +59,7 @@ const extraCorsOrigins = (process.env.CORS_ORIGINS || '')
 const allowedOrigins = Array.from(new Set([...defaultCorsOrigins, ...extraCorsOrigins]));
 app.use((0, cors_1.default)({
     origin: allowedOrigins,
-    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     credentials: true
 }));
 /** ====== ESTÁTICOS (reemplazo directo de Nginx alias) ====== */
@@ -131,16 +141,19 @@ const globalErrorHandler = (err, _req, res, _next) => {
 };
 app.use(globalErrorHandler);
 const port = process.env.PORT || 5000;
+// Conexión a MongoDB
+(() => __awaiter(void 0, void 0, void 0, function* () {
+    yield (0, mongodb_1.connectBD)(process.env.BD_URL);
+    (0, publicacionExpiration_service_1.startPublicationExpirationJob)();
+    console.log("✅ MongoDB conectado");
+}))();
 exports.default = app;
 if (require.main === module) {
-    (0, mongodb_1.connectBD)(process.env.BD_URL || '')
-        .then(() => {
+    (0, mongodb_1.connectBD)(process.env.BD_URL || '').then(() => {
+        (0, publicacionExpiration_service_1.startPublicationExpirationJob)();
+        console.log('Connected to MongoDB');
         app.listen(port, () => {
             console.log(`Server is running on http://localhost:${port}`);
         });
-    })
-        .catch((error) => {
-        console.error('Failed to start server:', error);
-        process.exit(1);
     });
 }
