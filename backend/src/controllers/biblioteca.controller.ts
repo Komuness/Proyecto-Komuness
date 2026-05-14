@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Archivo } from '../models/archivo.model';
 import { Folder } from '../models/folder.model';
+import { modelPerfil } from '../models/perfil.model';
 // import { uploadFile } from '../utils/digitalOceanSpace';
 // import { uploadFileStorage } from '../utils/digitalOceanSpace';
 import { IArchivo } from '../interfaces/archivo.interface';
@@ -124,6 +125,7 @@ class BibliotecaController {
     static async uploadFiles(req: Request, res: Response) {
 
         const { folderId, userId, userType } = req.body;
+
         
         if (!userId) {
             return res.status(400).json({
@@ -156,8 +158,27 @@ class BibliotecaController {
         
         // RF023: Los usuarios básicos/premium SÍ pueden subir a carpetas (no hay restricción aquí)
         // Solo NO pueden CREAR carpetas (eso se valida en createFolder)
-
+            
         try {
+
+            //3.5.4 - Validación de usuarios dentro del banco
+            const perfil = await modelPerfil.findOne({ usuarioId: userId });
+
+            if (!perfil) {
+                res.status(200).json({
+                    success: false,
+                    message: "El perfil público no existe"
+                });
+                return;
+            }
+
+            if (!perfil?.enBancoProfesionales){
+                res.status(200).json({
+                    success: false,
+                    message: "Este usuario no está en el banco de profesionales"
+                });
+                return; 
+            }
 
             const results = await Promise.all(files.map(async (file) => {
 

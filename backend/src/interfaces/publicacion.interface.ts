@@ -23,6 +23,9 @@ export interface IPublicacion {
   telefono?: string;            
   ubicacion?: IUbicacion; // Ubicación del evento
   categoria: string | Types.ObjectId;
+  fechaExpiracion?: string | Date | null;
+  diasRestantes?: number | null;
+  estaCaducada?: boolean;
 
   // NUEVOS CAMPOS PARA CONTROL DE EDICIONES
   editCount?: number; // Contador de ediciones realizadas

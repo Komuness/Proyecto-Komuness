@@ -2,7 +2,11 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { IoMdArrowRoundBack } from "react-icons/io";
+import { toast } from 'react-hot-toast';
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import '../CSS/publicaciones.css';
+
+
 import PublicacionCard from './publicacionCard';
 import FormularioPublicacion from '../pages/formulario';
 import PublicacionModal from './publicacionModal';
@@ -12,6 +16,7 @@ import BuscadorPublicaciones from './buscadorPublicaciones';
 import AlertaLimitePublicaciones from './AlertaLimitePublicaciones';
 import { API_URL } from '../utils/api';
 import LimitePublicaciones from "./limiteDePublicaciones";
+import PublicidadModal from './publicidadModal';
 
 // Base de API robusta (evita /api/api)
 const RAW = process.env.REACT_APP_BACKEND_URL || window.location.origin;
@@ -46,6 +51,12 @@ export const Publicaciones = ({ tag: propTag }) => {
   const [estadoUsuario, setEstadoUsuario] = useState(null);
   const [cargandoEstado, setCargandoEstado] = useState(false);
 
+  // para PUBLICIDAD
+  const [mostrarModalPublicidad, setMostrarModalPublicidad] = useState(false);
+  const [publicidadEditando, setPublicidadEditando] = useState(null); // null = crear desde cero, objeto = editar publicidad
+  const [publicidad, setPublicidad] = useState([]);
+  const [currentPublicidadIndex, setCurrentPublicidadIndex] = useState(0);
+
   //Variables de Usuario
   const UserType = {
     SUPERADMIN: 0,
@@ -54,6 +65,11 @@ export const Publicaciones = ({ tag: propTag }) => {
   };
 
   const esAdmin = [UserType.SUPERADMIN, UserType.ADMIN].includes(Number(user?.tipoUsuario));
+
+  
+  useEffect(()=>{
+    fetchPublicidad(); 
+  }, []);
 
   useEffect(() => {
     const path = location.pathname;
@@ -143,6 +159,134 @@ const obtenerPublicaciones = async (tag, page = 1, limit = limite, categoriaId =
   }
 };
 
+  const fetchPublicidad = async () => {
+    try {
+      const response = await fetch(`${API_URL}/publicidad/get-publicidades`);
+      if (!response.ok) {
+        console.log(response);
+        throw new Error('Error al cargar publicidad');
+      }
+          
+      const data = await response.json();
+      setPublicidad(data.data || []);
+      console.log(data.data);
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al cargar publicidad');
+    }
+  };
+
+    /////////////////// MODAL publicidad
+    const abrirModalCrearPublicidad = () => {
+        setPublicidadEditando(null);
+        setMostrarModalPublicidad(true);
+    }
+
+
+    const abrirModalEditarPublicidad = (p) => {
+        setPublicidadEditando(p);
+        setMostrarModalPublicidad(true);
+    }
+
+
+    const cerrarModalPublicidad = () => {
+        setPublicidadEditando(null);
+        setMostrarModalPublicidad(false);
+    }
+
+
+    const nextPublicidad = () => {
+        setCurrentPublicidadIndex((prev) =>
+            prev === publicidad.length - 1
+                ? 0
+                : prev + 1
+        );
+    };
+
+    const prevPublicidad = () => {
+        setCurrentPublicidadIndex((prev) =>
+            prev === 0
+            ? publicidad.length - 1
+            : prev - 1
+        );
+    };
+    const handleSubmitPublicidad = async ({ 
+                imagen,
+                descripcion,
+                fechaCaducidad,
+                autor, 
+                activa,
+                publicacionRelacionada 
+    }) => {
+        try {
+            const modoCrear = (publicidadEditando == null);
+            const petition_url = modoCrear
+                ? `${API_URL}/publicidad/create-publicidad`
+                : `${API_URL}/publicidad/update-publicidad/${publicidadEditando._id}`;
+            const method = modoCrear ? "POST" : "PUT";
+
+            const formData = new FormData();
+
+            if (imagen instanceof File) {
+                formData.append("imagen", imagen);
+            }
+            formData.append("descripcion", descripcion);
+            formData.append("fechaCaducidad", fechaCaducidad);
+            formData.append("autor", autor);
+            formData.append("activa", activa);
+
+            if (publicacionRelacionada) {
+                formData.append("publicacionRelacionada", publicacionRelacionada);
+            }
+
+            const res = await fetch(petition_url,{
+                method,
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem("token")}`,
+                },
+                body: formData,
+            });
+
+            if (res.ok) {
+                toast.success(modoCrear ? "Publicidad creada" : "Publicidad actualizada");
+                cerrarModalPublicidad();
+                fetchPublicidad();
+              } else {
+                const errorData = await res.json();
+                toast.error(errorData.message || "Error al guardar la publicidad");
+              }
+        } catch (e) {
+            console.error("ERROR PUBLICIDAD: ", e);
+            toast.error("Error al guardar la publicidad");
+        }
+    };
+
+    const handleDeletePublicidad = async (pub) => {
+        if (!window.confirm('¿Está seguro de que quiere eliminar esta publicidad?')) return;
+
+        try {
+            const response = await fetch(`${API_URL}/publicidad/delete-publicidad/${pub._id}`, {
+                method: 'DELETE',
+                headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            if (response.ok) {
+                toast.success('Tutorial eliminado');
+                if (currentPublicidadIndex >= publicidad.length - 1) {
+                    setCurrentPublicidadIndex(Math.max(0, publicidad.length - 2));
+                }
+                fetchPublicidad();
+            } else {
+                const errorData = await response.json();
+                toast.error(errorData.message || 'Error al eliminar la publicidad');
+            }
+        } catch (e) {
+            toast.error('Error al eliminar la publicidad');
+            console.error(e);
+        }
+    }
+
   const mostrarBotonVolver = () => {
     const path = location.pathname;
     return path === '/eventos' || path === '/emprendimientos';
@@ -229,7 +373,6 @@ const obtenerPublicaciones = async (tag, page = 1, limit = limite, categoriaId =
         if (response.ok) {
           const data = await response.json();
           setEstadoUsuario(data.data);
-          console.log(data.data)
         }
        
       } catch (error) {
@@ -246,6 +389,7 @@ const obtenerPublicaciones = async (tag, page = 1, limit = limite, categoriaId =
       cargarDatosLimite();
     }
   }, [user]);
+
 
   return (
     <div className="bg-gray-800/80 min-h-screen">
@@ -270,6 +414,103 @@ const obtenerPublicaciones = async (tag, page = 1, limit = limite, categoriaId =
             )}
           </div>
         </div>
+      </div>
+
+      {/*PUBLICIDAD*/}
+      <div className='flex flex-col items-center justify-center gap-2 p-4 max-w-4xl mx-auto mt-4 rounded-xl bg-white/10'>
+        {publicidad && publicidad.length > 0 && (
+            <div className='w-full relative bg-gray-800 rounded-2xl p-4 shadow-2xl'>
+                <div className="relative h-56 md:h-80 lg:h-[450px] rounded-xl overflow-hidden">
+                    {/*Imagen*/}
+                    <img
+                        src={publicidad[currentPublicidadIndex]?.imagen}
+                        alt="Publicidad"
+                        className='w-full h-full object-cover'
+                    />
+                    {/*Flechas*/}
+                    {publicidad.length > 1 && (
+                      <>
+                        <button
+                          onClick={prevPublicidad}
+                          className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full"
+                        >
+                          <FaChevronLeft />
+                        </button>
+
+                        <button
+                          onClick={nextPublicidad}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full"
+                        >
+                          <FaChevronRight />
+                        </button>
+                      </>
+                    )}
+                </div>
+                {/*Descripcion*/}
+                <div className="mt-6 text-center">
+                    <p className="text-gray-200 text-lg"> {publicidad[currentPublicidadIndex]?.descripcion} </p>
+                </div>
+                {/* Indicadores */}
+                {publicidad.length > 1 && (
+                    <div className="flex justify-center mt-6 gap-2">
+                      {publicidad.map((_, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setCurrentPublicidadIndex(index)}
+                          className={`w-3 h-3 rounded-full transition-all ${
+                            index === currentPublicidadIndex
+                              ? "bg-white scale-125"
+                              : "bg-gray-500 hover:bg-gray-400"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                )}
+
+                {/*EDITAR Y BORRAR SOLO PARA ADMINS*/}
+                {esAdmin && (
+                <div className="flex justify-center gap-3 mt-6">
+
+                  <button
+                    onClick={() => abrirModalEditarPublicidad(publicidad[currentPublicidadIndex])}
+                    className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg"
+                  >
+                    Editar
+                  </button>
+
+                  <button
+                    onClick={() => handleDeletePublicidad(publicidad[currentPublicidadIndex])}
+                    className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              )}
+
+        </div>
+        )}
+
+        {/*BOTON DE AGREGAR SOLO PARA ADMINS*/}
+        { esAdmin && (
+        <div className="max-w-6xl px-4 py-2 text-white">
+            <div>
+            <button
+            onClick={() => abrirModalCrearPublicidad()}
+            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium p-4 rounded-lg shadow"
+            >
+            + Agregar Publicidad
+            </button>
+            </div>
+
+            {mostrarModalPublicidad && (
+              <PublicidadModal
+                publicidad={publicidadEditando}
+                onClose={cerrarModalPublicidad}
+                onSubmit={handleSubmitPublicidad}
+              />
+             )}
+      
+        </div>)}
       </div>
 
       {/* Mensaje de búsqueda */}

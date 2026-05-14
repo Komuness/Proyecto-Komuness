@@ -81,7 +81,6 @@ export const Tutoriales = () => {
           
           const data = await response.json();
           setTutoriales(data.data || []);
-          console.log(data.data);
         } catch (error) {
           console.error('Error:', error);
           toast.error('Error al cargar tutoriales');

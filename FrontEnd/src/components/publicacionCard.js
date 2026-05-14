@@ -6,6 +6,9 @@ import CategoriaBadge from "./categoriaBadge";
 import ProfileErrorModal from "./ProfileErrorModal"; 
 import { API_URL } from '../utils/api';
 
+import { obtenerEtiquetaExpiracion } from "../utils/publicacionExpiracion";
+
+
 export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
    // ========== FUNCIÓN FORMATFECHA CORREGIDA ==========
   // MODIFICACIÓN: Se corrigió el problema de zona horaria
@@ -159,6 +162,7 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
     (publicacion.tag === "evento" || publicacion.tag === "emprendimiento") &&
     !precioNegociable &&
     Number.isFinite(precio);
+  const etiquetaExpiracion = obtenerEtiquetaExpiracion(publicacion);
 
   return (
     <>
@@ -310,6 +314,13 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
                   </div>
 
               )}
+                          {etiquetaExpiracion && (
+              <div className="mb-3">
+                <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
+                  {etiquetaExpiracion}
+                </span>
+              </div>
+            )}
               </div>
           </div>
 

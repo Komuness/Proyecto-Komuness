@@ -23,6 +23,7 @@ import { useAuth } from "./context/AuthContext";
 import CategoriaBadge from "./categoriaBadge";
 import ProfileErrorModal from "./ProfileErrorModal";
 import '../CSS/publicacionDetalle.css';
+import { obtenerEtiquetaExpiracion } from "../utils/publicacionExpiracion";
 
 export const PublicacionDetalle = () => {
   const navigate = useNavigate();
@@ -188,6 +189,7 @@ export const PublicacionDetalle = () => {
      
 // === ENLACES EXTERNOS ===
   const enlacesExternos = publicacion?.enlacesExternos || [];
+  const etiquetaExpiracion = obtenerEtiquetaExpiracion(publicacion);
 
    // Función para formatear correctamente los enlaces
   const formatearEnlace = (url) => {
@@ -321,6 +323,13 @@ export const PublicacionDetalle = () => {
                 <h1 className="publicacion-title">
                   {publicacion.titulo}
                 </h1>
+                {etiquetaExpiracion && (
+                  <div className="mt-3">
+                    <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800 md:text-sm">
+                      {etiquetaExpiracion}
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -459,6 +468,13 @@ export const PublicacionDetalle = () => {
                   <div className="publicacion-info-item">
                     <span className="publicacion-info-label">Fecha de publicación:</span>
                     <span className="publicacion-info-value">{formatFecha(publicacion.fecha)}</span>
+                  </div>
+                )}
+
+                {etiquetaExpiracion && (
+                  <div className="publicacion-info-item">
+                    <span className="publicacion-info-label">Tiempo restante:</span>
+                    <span className="publicacion-info-value">{etiquetaExpiracion}</span>
                   </div>
                 )}
 

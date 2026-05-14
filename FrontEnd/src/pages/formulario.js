@@ -8,76 +8,108 @@ import '../CSS/formularioPublicacion.css';
 import MapaUbicacion from '../components/MapaUbicacion';
 import TextAreaComponent from '../components/TextAreaComponent';
 import { useLockBodyScroll } from "../hooks/useLockBodyScroll";
+import {
+  readSessionDraft,
+  removeSessionDraft,
+  writeSessionDraft
+} from "../utils/sessionDraftStorage";
+
+const CREATE_DRAFT_PREFIX = "komuness:crear-publicacion";
+
+const DEFAULT_UBICACION = {
+  latitude: 9.7489,
+  longitude: -83.7534,
+  direccion: "San José, Costa Rica",
+  mapLink: 'https://www.openstreetmap.org/?mlat=9.7489&mlon=-83.7534#map=16/9.7489/-83.7534'
+};
+
+const createDefaultUbicacion = () => ({ ...DEFAULT_UBICACION });
+
+const createDefaultEnlaces = () => [{ nombre: '', url: '' }];
+
+const getCreateDraftStorageKey = (tag) =>
+  `${CREATE_DRAFT_PREFIX}:${tag || "general"}`;
+
+const getInitialFormValues = (tag) => ({
+  titulo: "",
+  contenido: "",
+  contenidoBreve: "",
+  autor: "",
+  fecha: new Date().toLocaleDateString(),
+  archivos: [],
+  comentarios: [],
+  tag: tag || "",
+  publicado: false,
+  fechaEvento: "",
+  horaEvento: "",
+  precio: "",
+  moneda: "CRC",
+  precioNegociable: false,
+  precioEstudiante: "",
+  precioCiudadanoOro: "",
+  telefono: "",
+  categoria: "",
+});
+
+const getPersistedFormData = (formData) => {
+  const { archivos, ...resto } = formData;
+  return resto;
+};
 
 export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
   const [mostrarAlerta, setMostrarAlerta] = useState(false);
-  const [enlacesExternos, setEnlacesExternos] = useState([{ nombre: '', url: '' }]);
-  const [ubicacion, setUbicacion] = useState({
-    latitude: 9.7489,
-    longitude: -83.7534,
-    direccion: 'San José, Costa Rica',
-    mapLink: 'https://www.openstreetmap.org/?mlat=9.7489&mlon=-83.7534#map=16/9.7489/-83.7534'
-  });
+  const [enlacesExternos, setEnlacesExternos] = useState(createDefaultEnlaces);
+  const [ubicacion, setUbicacion] = useState(createDefaultUbicacion);
 
-  const valoresIniciales = {
-    titulo: "",
-    contenido: "",
-    contenidoBreve: "",
-    autor: "",
-    fecha: new Date().toLocaleDateString(),
-    archivos: [],
-    comentarios: [],
-    tag: "",
-    publicado: false,
-    fechaEvento: "",
-    horaEvento: "",   // <-- NUEVO
-    precio: "",
-    moneda: "CRC",
-    precioNegociable: false,
-    precioEstudiante: "",
-    precioCiudadanoOro: "",
-    telefono: "",
-    categoria: "",
-  };
-
-  const [formData, setFormData] = useState({
-    ...valoresIniciales,
-    tag: openTag || "",
-  });
+  const [formData, setFormData] = useState(() => getInitialFormValues(openTag));
+  const [draftCargado, setDraftCargado] = useState(false);
+  const draftStorageKey = getCreateDraftStorageKey(openTag);
 
   useLockBodyScroll(isOpen);
 
-   useEffect(() => {
-    if (isOpen) {
-      setFormData({ 
-        titulo: "",
-        contenido: "",
-	contenidoBreve: "",
-        autor: "",
-        fecha: new Date().toLocaleDateString(),
-        archivos: [],
-        comentarios: [],
-        tag: openTag || "",
-        publicado: false,
-        fechaEvento: "",
-        horaEvento: "",
-        precio: "",
-        moneda: "CRC",
-        precioNegociable: false,
-        precioEstudiante: "",
-        precioCiudadanoOro: "",
-        telefono: "",
-        categoria: "",
-      });
-      setEnlacesExternos([{ nombre: '', url: '' }]);
-          setUbicacion({
-            latitude: 9.7489,
-            longitude: -83.7534,
-            direccion: 'San José, Costa Rica',
-            mapLink: 'https://www.openstreetmap.org/?mlat=9.7489&mlon=-83.7534#map=16/9.7489/-83.7534'
-          });
+  useEffect(() => {
+    if (!isOpen) {
+      setDraftCargado(false);
+      return;
     }
-  }, [isOpen, openTag]); 
+
+    setDraftCargado(false);
+    const initialFormValues = getInitialFormValues(openTag);
+    const savedDraft = readSessionDraft(draftStorageKey);
+
+    if (savedDraft) {
+      setFormData({
+        ...initialFormValues,
+        ...(savedDraft.formData || {}),
+        archivos: [],
+      });
+      setEnlacesExternos(
+        Array.isArray(savedDraft.enlacesExternos) && savedDraft.enlacesExternos.length > 0
+          ? savedDraft.enlacesExternos
+          : createDefaultEnlaces()
+      );
+      setUbicacion({
+        ...createDefaultUbicacion(),
+        ...(savedDraft.ubicacion || {}),
+      });
+    } else {
+      setFormData(initialFormValues);
+      setEnlacesExternos(createDefaultEnlaces());
+      setUbicacion(createDefaultUbicacion());
+    }
+
+    setDraftCargado(true);
+  }, [isOpen, openTag, draftStorageKey]);
+
+  useEffect(() => {
+    if (!isOpen || !draftCargado) return;
+
+    writeSessionDraft(draftStorageKey, {
+      formData: getPersistedFormData(formData),
+      enlacesExternos,
+      ubicacion,
+    });
+  }, [isOpen, draftCargado, draftStorageKey, formData, enlacesExternos, ubicacion]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -170,6 +202,7 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
 
     try {
       await enviarPublicacion(data);
+      removeSessionDraft(draftStorageKey);
       onClose?.();
     } catch (error) {
       // Si el error es por límite de publicaciones (403), solo mostrar modal premium

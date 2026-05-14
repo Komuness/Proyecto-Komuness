@@ -15,6 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.uploadLibrary = void 0;
 const archivo_model_1 = require("../models/archivo.model");
 const folder_model_1 = require("../models/folder.model");
+const perfil_model_1 = require("../models/perfil.model");
 const mongoose_1 = __importDefault(require("mongoose"));
 /* ====================== NUEVO: dependencias para guardar en disco ====================== */
 const path_1 = __importDefault(require("path"));
@@ -149,6 +150,22 @@ class BibliotecaController {
             // RF023: Los usuarios básicos/premium SÍ pueden subir a carpetas (no hay restricción aquí)
             // Solo NO pueden CREAR carpetas (eso se valida en createFolder)
             try {
+                //3.5.4 - Validación de usuarios dentro del banco
+                const perfil = yield perfil_model_1.modelPerfil.findOne({ usuarioId: userId });
+                if (!perfil) {
+                    res.status(200).json({
+                        success: false,
+                        message: "El perfil público no existe"
+                    });
+                    return;
+                }
+                if (!(perfil === null || perfil === void 0 ? void 0 : perfil.enBancoProfesionales)) {
+                    res.status(200).json({
+                        success: false,
+                        message: "Este usuario no está en el banco de profesionales"
+                    });
+                    return;
+                }
                 const results = yield Promise.all(files.map((file) => __awaiter(this, void 0, void 0, function* () {
                     try {
                         /* ===========================================================

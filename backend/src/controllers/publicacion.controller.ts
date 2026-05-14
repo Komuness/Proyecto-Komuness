@@ -5,8 +5,14 @@ import { IAdjunto, IComentario, IEnlaceExterno, IPublicacion, IUbicacion } from 
 import { modelPublicacion } from '../models/publicacion.model';
 import mongoose from 'mongoose';
 import { saveMulterFileToGridFS, saveBufferToGridFS, deleteGridFSFile } from '../utils/gridfs';
+import { buildActivePublicationQuery, calculatePublicationExpirationDate } from '../utils/publicacionExpiration';
 import { sendEmail } from '../utils/mail'; // usa el mismo transporter que recuperación
 import { modelUsuario } from '../models/usuario.model'; // ← Modelo de usuarios
+import { modelPerfil } from '../models/perfil.model';
+import {
+  createComentarioPublicacionNotificacion,
+  createRespuestaComentarioNotificacion,
+} from '../services/notificacion.service';
 
 const LOG_ON = process.env.LOG_PUBLICACION === '1';
 
@@ -317,6 +323,25 @@ export const createPublicacionA = async (req: Request, res: Response): Promise<v
       return;
     }
 
+    //3.5.2 - Validación de usuarios dentro del banco
+    const perfil = await modelPerfil.findOne({ usuarioId: userId });
+
+    if (!perfil) {
+        res.status(200).json({
+            success: false,
+            message: "El perfil público no existe"
+        });
+        return;
+    }
+
+    if (!perfil?.enBancoProfesionales){
+        res.status(200).json({
+            success: false,
+            message: "Este usuario no está en el banco de profesionales"
+        });
+        return; 
+    }
+
     // --- Recolectar archivos desde Multer (array o fields) ---
     let files: Express.Multer.File[] = [];
     if (Array.isArray(req.files)) {
@@ -426,7 +451,7 @@ export const getPublicacionesByTag = async (req: Request, res: Response): Promis
     const limit = parseInt(req.query.limit as string) || 10;
     const { tag, publicado, categoria } = req.query as { tag?: string; publicado?: string; categoria?: string };
 
-    const query: any = {};
+    const query: any = { ...buildActivePublicationQuery() };
     if (tag) query.tag = tag;
     if (publicado !== undefined) query.publicado = publicado === 'true';
     if (categoria) query.categoria = categoria;
@@ -466,7 +491,7 @@ export const getPublicacionById = async (req: Request, res: Response): Promise<v
       .populate('autor', 'nombre')
       .populate('categoria', 'nombre estado');
 
-    if (!publicacion) {
+    if (!publicacion || publicacion.estaCaducada) {
       res.status(404).json({ message: 'Publicación no encontrada' });
       return;
     }
@@ -484,7 +509,7 @@ export const getPublicacionesByCategoria = async (req: Request, res: Response): 
     const offset = parseInt(req.query.offset as string) || 0;
     const limit = parseInt(req.query.limit as string) || 10;
 
-    const query = { categoria: categoriaId, publicado: true };
+    const query: any = { categoria: categoriaId, publicado: true, ...buildActivePublicationQuery() };
 
     const [publicaciones, total] = await Promise.all([
       modelPublicacion
@@ -516,10 +541,10 @@ export const updatePublicacion = async (req: Request, res: Response): Promise<vo
   try {
     const { id } = req.params;
     const updatedData: Partial<IPublicacion> & Record<string, any> = { ...req.body };
+    const publicacionActual = await modelPublicacion.findById(id);
 
-    const publicacion = await modelPublicacion.findById(id);
-    if (!publicacion) {
-      res.status(404).json({ message: 'Publicación no encontrada' });
+    if (!publicacionActual) {
+      res.status(404).json({ message: 'Publicacion no encontrada' });
       return;
     }
 
@@ -554,17 +579,17 @@ export const updatePublicacion = async (req: Request, res: Response): Promise<vo
       else delete updatedData.horaEvento;
     }
 
-    const nextTag = (updatedData.tag as string | undefined) ?? publicacion.tag;
-    const nextPrecio = updatedData.hasOwnProperty('precio') ? updatedData.precio : publicacion.precio;
+    const nextTag = (updatedData.tag as string | undefined) ?? publicacionActual.tag;
+    const nextPrecio = updatedData.hasOwnProperty('precio') ? updatedData.precio : publicacionActual.precio;
     const nextPrecioEstudiante = updatedData.hasOwnProperty('precioEstudiante')
       ? updatedData.precioEstudiante
-      : publicacion.precioEstudiante;
+      : publicacionActual.precioEstudiante;
     const nextPrecioCiudadanoOro = updatedData.hasOwnProperty('precioCiudadanoOro')
       ? updatedData.precioCiudadanoOro
-      : publicacion.precioCiudadanoOro;
+      : publicacionActual.precioCiudadanoOro;
     const nextPrecioNegociable = updatedData.hasOwnProperty('precioNegociable')
       ? updatedData.precioNegociable === true
-      : publicacion.precioNegociable === true;
+      : publicacionActual.precioNegociable === true;
 
     const pricing = validateAndNormalizePricing(
       nextTag,
@@ -577,14 +602,23 @@ export const updatePublicacion = async (req: Request, res: Response): Promise<vo
       res.status(400).json({ message: pricing.error });
       return;
     }
+    updatedData.fechaExpiracion =
+      calculatePublicationExpirationDate({
+        ...(publicacionActual.toObject() as IPublicacion),
+        ...updatedData,
+      }) ?? null;
 
     updatedData.precio = pricing.precio;
     updatedData.precioNegociable = pricing.precioNegociable;
     updatedData.precioEstudiante = pricing.precioEstudiante;
     updatedData.precioCiudadanoOro = pricing.precioCiudadanoOro;
 
-    Object.assign(publicacion, updatedData);
-    await publicacion.save();
+    const publicacion = await modelPublicacion.findByIdAndUpdate(id, updatedData, { new: true });
+    if (!publicacion) {
+      res.status(404).json({ message: 'Publicación no encontrada' });
+      return;
+    }
+
     res.status(200).json(publicacion);
   } catch (error) {
     const err = error as Error;
@@ -624,16 +658,20 @@ export const deletePublicacion = async (req: Request, res: Response): Promise<vo
 // Agregar comentario
 export const addComentario = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params;
-  //const { autor, contenido, fecha } = req.body;
-  //const { id } = req.params;
   const { contenido } = req.body;
-  
+
   const user = req.user;
 
   if (!user) {
     res.status(401).json({ message: "No autorizado" });
     return;
   }
+
+  if (!contenido?.trim()) {
+    res.status(400).json({ message: "El contenido del comentario es obligatorio" });
+    return;
+  }
+
   const nuevoComentario = {
     autor: {
       _id: user._id,
@@ -641,11 +679,9 @@ export const addComentario = async (req: Request, res: Response): Promise<void> 
       apellido: user.apellido,
       avatar: user.avatar
     },
-    contenido,
+    contenido: contenido.trim(),
     fecha: new Date().toISOString()
   };
-
-  //const nuevoComentario: IComentario = { autor, contenido, fecha };
 
   try {
     const publicacionActualizada = await modelPublicacion.findByIdAndUpdate(
@@ -658,6 +694,27 @@ export const addComentario = async (req: Request, res: Response): Promise<void> 
       res.status(404).json({ message: 'Publicación no encontrada' });
       return;
     }
+
+    const autorPublicacionId = publicacionActualizada.autor?.toString?.();
+    const autorComentarioId = user._id?.toString?.();
+
+    if (autorPublicacionId && autorComentarioId && autorPublicacionId !== autorComentarioId) {
+      const nombreComentarista = [user.nombre, user.apellido].filter(Boolean).join(' ').trim();
+      const tituloPublicacion = publicacionActualizada.titulo || 'tu publicación';
+
+      try {
+        await createComentarioPublicacionNotificacion({
+          destinatarioId: autorPublicacionId, //temporalmente
+          recipientes: [autorPublicacionId],
+          publicacionId: id,
+          tituloPublicacion,
+          nombreComentarista
+        });
+      } catch (notificacionError) {
+        console.warn('No se pudo crear notificación de comentario:', notificacionError);
+      }
+    }
+
     res.status(201).json(publicacionActualizada.comentarios);
   } catch (error) {
     console.warn('Error al agregar comentario:', error);
@@ -706,6 +763,54 @@ export const addRespuesta = async (req: Request, res: Response): Promise<void> =
       res.status(404).json({ message: 'Publicación no encontrada' });
       return;
     }
+    const comentarios = publicacionActualizada.comentarios || [];
+    const comentarioPrincipal = comentarios.find((comentario) => comentario._id?.toString() === comentarioId);
+    
+    let usuarioObjetivoId: string | null = null;
+
+    if (comentarioPrincipal) {
+      // comentario principal
+      if (
+        comentarioPrincipal._id?.toString() ===
+        replyTo?._id
+      ) {
+        usuarioObjetivoId = comentarioPrincipal.autor?._id?.toString?.() || null;
+      } else {
+        // respuesta específica
+        const respuestas = Array.isArray(comentarioPrincipal.respuestas)
+          ? comentarioPrincipal.respuestas
+          : [];
+        const respuestaObjetivo = respuestas.find((respuesta: any) => respuesta._id?.toString() === replyTo?._id);
+
+        usuarioObjetivoId = respuestaObjetivo?.autor?._id?.toString?.() || null;
+      }
+    }
+    const usuarioActualId = user._id?.toString?.();
+
+    // no notificarse a sí mismo
+    if ( usuarioObjetivoId && usuarioActualId && usuarioObjetivoId !== usuarioActualId) {
+      const nombreRespondedor = [user.nombre, user.apellido,].filter(Boolean).join(" ").trim();
+
+      const tituloPublicacion = publicacionActualizada.titulo || "tu publicación";
+
+      try {
+        await createRespuestaComentarioNotificacion({
+          destinatarioId: usuarioObjetivoId, // temporal
+          recipientes: [usuarioObjetivoId],
+
+          publicacionId: id,
+          tituloPublicacion,
+
+          nombreRespondedor: nombreRespondedor
+        });
+      } catch (notificacionError) {
+        console.warn(
+          "No se pudo crear notificación:",
+          notificacionError
+        );
+      }
+    }
+
     res.status(201).json(publicacionActualizada.comentarios);
   } catch (error) {
     console.warn('Error al agregar respuesta:', error);
@@ -718,24 +823,32 @@ export const addRespuesta = async (req: Request, res: Response): Promise<void> =
 export const filterPublicaciones = async (req: Request, res: Response): Promise<void> => {
   try {
     const { texto, tag, autor } = req.query;
-    const filtro: any = {};
+    const filtro: any = { $and: [buildActivePublicationQuery()] };
+    let hasSearchCriteria = false;
 
     if (texto) {
-      filtro.$or = [
-        { titulo: { $regex: texto as string, $options: 'i' } },
-        { contenido: { $regex: texto as string, $options: 'i' } },
-      ];
+      filtro.$and.push({
+        $or: [
+          { titulo: { $regex: texto as string, $options: 'i' } },
+          { contenido: { $regex: texto as string, $options: 'i' } },
+        ],
+      });
+      hasSearchCriteria = true;
     }
-    if (tag) filtro.tag = { $regex: tag as string, $options: 'i' };
+    if (tag) {
+      filtro.tag = { $regex: tag as string, $options: 'i' };
+      hasSearchCriteria = true;
+    }
     if (autor) {
       if (!mongoose.Types.ObjectId.isValid(autor as string)) {
         res.status(400).json({ message: 'ID de autor inválido' });
         return;
       }
       filtro.autor = autor as string;
+      hasSearchCriteria = true;
     }
 
-    if (Object.keys(filtro).length === 0) {
+    if (!hasSearchCriteria) {
       res.status(400).json({ message: 'Debe proporcionar al menos un parámetro de búsqueda (titulo, tag o autor)' });
       return;
     }
@@ -766,6 +879,7 @@ export const getEventosPorFecha = async (req: Request, res: Response): Promise<v
 
     const eventos = await modelPublicacion
       .find({
+        ...buildActivePublicationQuery(),
         tag: 'evento',
         publicado: true,
         fechaEvento: {
@@ -800,6 +914,7 @@ export const searchPublicacionesByTitulo = async (req: Request, res: Response): 
 
     const publicaciones = await modelPublicacion
       .find({
+        ...buildActivePublicationQuery(),
         publicado: true,
         titulo: { $regex: searchTerm, $options: 'i' }
       })
@@ -832,14 +947,16 @@ export const searchPublicacionesAvanzada = async (req: Request, res: Response): 
       limit = 12 
     } = req.query;
 
-    const query: any = { publicado: true };
+    const query: any = { publicado: true, $and: [buildActivePublicationQuery()] };
 
     // Búsqueda por texto en título o contenido
     if (q && typeof q === 'string' && q.trim() !== '') {
-      query.$or = [
-        { titulo: { $regex: q.trim(), $options: 'i' } },
-        { contenido: { $regex: q.trim(), $options: 'i' } }
-      ];
+      query.$and.push({
+        $or: [
+          { titulo: { $regex: q.trim(), $options: 'i' } },
+          { contenido: { $regex: q.trim(), $options: 'i' } }
+        ]
+      });
     }
 
     // Filtros adicionales
@@ -889,6 +1006,7 @@ export const searchByTitulo = async (req: Request, res: Response): Promise<void>
     const queryLimit = Math.min(Number(limit), 50);
 
     const query = {
+      ...buildActivePublicationQuery(),
       publicado: true,
       titulo: { $regex: searchTerm, $options: 'i' }
     };
@@ -920,3 +1038,4 @@ export const searchByTitulo = async (req: Request, res: Response): Promise<void>
     res.status(500).json({ message: 'Error al realizar la búsqueda' });
   }
 };
+

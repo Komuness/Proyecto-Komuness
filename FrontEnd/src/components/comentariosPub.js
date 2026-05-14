@@ -6,10 +6,12 @@ function ComentarioInput({
     value,
     onChange,
     onSubmit,
+    onCancel
   }: {
     value: string;
     onChange: (v: string) => void;
     onSubmit: () => void;
+    onCancel: (v: string) => void;
   }) {
   return (
     <div className="mt-4 w-full flex flex-col sm:flex-row sm:items-start gap-2">
@@ -30,7 +32,7 @@ function ComentarioInput({
         Comentar
       </button>
       <button
-        onClick={onSubmit}
+        onClick={(e) => onCancel(null)}
         className="px-2 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
       >
         Cancelar
@@ -241,6 +243,7 @@ const ComentariosPub = ({ comentarios, setComentarios, publicacionId }) => {
                   value={respuesta}
                   onChange={setRespuesta}
                   onSubmit={agregarRespuesta}
+                  onCancel={setReplyTo}
                 />
 
               </div>
@@ -286,6 +289,7 @@ const ComentariosPub = ({ comentarios, setComentarios, publicacionId }) => {
                   value={respuesta}
                   onChange={setRespuesta}
                   onSubmit={agregarRespuesta}
+                  onCancel={setReplyTo}
                 />
 
               </div>

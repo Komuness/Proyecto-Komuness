@@ -1,6 +1,7 @@
 import { IComentario, IPublicacion, IEnlaceExterno, IEditHistory, IPublicacionUpdate, IUbicacion } from "@/interfaces/publicacion.interface";
 import { IAdjunto } from "@/interfaces/publicacion.interface";
 import { model, Schema } from 'mongoose';
+import { calculatePublicationExpirationDate, calculateRemainingDays } from '../utils/publicacionExpiration';
 
 //schema comentario
 const comentarioSchema = new Schema({
@@ -111,6 +112,7 @@ const publicacionSchema = new Schema(
     precioCiudadanoOro: { type: Number, required: false }, 
     enlacesExternos: { type: [enlaceExternoSchema], required: false },
     telefono: { type: String, required: false },
+    fechaExpiracion: { type: Date, required: false, index: true },
     ubicacion: { type: ubicacionSchema, required: false }, // Ubicación del evento
 
     // categorías de área
@@ -147,5 +149,19 @@ const publicacionSchema = new Schema(
     toObject: { virtuals: true }
   }
 );
+
+publicacionSchema.pre('save', function (this: any, next) {
+  this.fechaExpiracion = calculatePublicationExpirationDate(this as unknown as IPublicacion) ?? null;
+  next();
+});
+
+publicacionSchema.virtual('diasRestantes').get(function (this: any) {
+  return calculateRemainingDays(this.fechaExpiracion);
+});
+
+publicacionSchema.virtual('estaCaducada').get(function (this: any) {
+  const diasRestantes = calculateRemainingDays(this.fechaExpiracion);
+  return typeof diasRestantes === 'number' ? diasRestantes === 0 : false;
+});
 
 export const modelPublicacion = model<IPublicacion>('Publicacion', publicacionSchema);
