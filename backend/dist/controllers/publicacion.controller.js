@@ -17,15 +17,11 @@ exports.searchByTitulo = exports.searchPublicacionesAvanzada = exports.searchPub
 const publicacion_model_1 = require("../models/publicacion.model");
 const mongoose_1 = __importDefault(require("mongoose"));
 const gridfs_1 = require("../utils/gridfs");
-<<<<<<< HEAD
+const publicacionExpiration_1 = require("../utils/publicacionExpiration");
 const mail_1 = require("../utils/mail"); // usa el mismo transporter que recuperación
 const usuario_model_1 = require("../models/usuario.model"); // ← Modelo de usuarios
 const perfil_model_1 = require("../models/perfil.model");
-=======
-const mail_1 = require("../utils/mail");
-const usuario_model_1 = require("../models/usuario.model");
 const notificacion_service_1 = require("../services/notificacion.service");
->>>>>>> Alejandro_Comment_Notification
 const LOG_ON = process.env.LOG_PUBLICACION === '1';
 // Utilidad: normaliza precio (string → number | undefined)
 function parsePrecio(input) {
@@ -399,7 +395,7 @@ const getPublicacionesByTag = (req, res) => __awaiter(void 0, void 0, void 0, fu
         const offset = parseInt(req.query.offset) || 0;
         const limit = parseInt(req.query.limit) || 10;
         const { tag, publicado, categoria } = req.query;
-        const query = {};
+        const query = Object.assign({}, (0, publicacionExpiration_1.buildActivePublicationQuery)());
         if (tag)
             query.tag = tag;
         if (publicado !== undefined)
@@ -440,7 +436,7 @@ const getPublicacionById = (req, res) => __awaiter(void 0, void 0, void 0, funct
             .findById(id)
             .populate('autor', 'nombre')
             .populate('categoria', 'nombre estado');
-        if (!publicacion) {
+        if (!publicacion || publicacion.estaCaducada) {
             res.status(404).json({ message: 'Publicación no encontrada' });
             return;
         }
@@ -458,7 +454,7 @@ const getPublicacionesByCategoria = (req, res) => __awaiter(void 0, void 0, void
         const { categoriaId } = req.params;
         const offset = parseInt(req.query.offset) || 0;
         const limit = parseInt(req.query.limit) || 10;
-        const query = { categoria: categoriaId, publicado: true };
+        const query = Object.assign({ categoria: categoriaId, publicado: true }, (0, publicacionExpiration_1.buildActivePublicationQuery)());
         const [publicaciones, total] = yield Promise.all([
             publicacion_model_1.modelPublicacion
                 .find(query)
@@ -486,13 +482,13 @@ const getPublicacionesByCategoria = (req, res) => __awaiter(void 0, void 0, void
 exports.getPublicacionesByCategoria = getPublicacionesByCategoria;
 // Actualizar una publicación
 const updatePublicacion = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b;
     try {
         const { id } = req.params;
         const updatedData = Object.assign({}, req.body);
-        const publicacion = yield publicacion_model_1.modelPublicacion.findById(id);
-        if (!publicacion) {
-            res.status(404).json({ message: 'Publicación no encontrada' });
+        const publicacionActual = yield publicacion_model_1.modelPublicacion.findById(id);
+        if (!publicacionActual) {
+            res.status(404).json({ message: 'Publicacion no encontrada' });
             return;
         }
         if (updatedData.hasOwnProperty('precio')) {
@@ -521,28 +517,33 @@ const updatePublicacion = (req, res) => __awaiter(void 0, void 0, void 0, functi
             else
                 delete updatedData.horaEvento;
         }
-        const nextTag = (_a = updatedData.tag) !== null && _a !== void 0 ? _a : publicacion.tag;
-        const nextPrecio = updatedData.hasOwnProperty('precio') ? updatedData.precio : publicacion.precio;
+        const nextTag = (_a = updatedData.tag) !== null && _a !== void 0 ? _a : publicacionActual.tag;
+        const nextPrecio = updatedData.hasOwnProperty('precio') ? updatedData.precio : publicacionActual.precio;
         const nextPrecioEstudiante = updatedData.hasOwnProperty('precioEstudiante')
             ? updatedData.precioEstudiante
-            : publicacion.precioEstudiante;
+            : publicacionActual.precioEstudiante;
         const nextPrecioCiudadanoOro = updatedData.hasOwnProperty('precioCiudadanoOro')
             ? updatedData.precioCiudadanoOro
-            : publicacion.precioCiudadanoOro;
+            : publicacionActual.precioCiudadanoOro;
         const nextPrecioNegociable = updatedData.hasOwnProperty('precioNegociable')
             ? updatedData.precioNegociable === true
-            : publicacion.precioNegociable === true;
+            : publicacionActual.precioNegociable === true;
         const pricing = validateAndNormalizePricing(nextTag, nextPrecio, nextPrecioNegociable, nextPrecioEstudiante, nextPrecioCiudadanoOro);
         if (pricing.error) {
             res.status(400).json({ message: pricing.error });
             return;
         }
+        updatedData.fechaExpiracion =
+            (_b = (0, publicacionExpiration_1.calculatePublicationExpirationDate)(Object.assign(Object.assign({}, publicacionActual.toObject()), updatedData))) !== null && _b !== void 0 ? _b : null;
         updatedData.precio = pricing.precio;
         updatedData.precioNegociable = pricing.precioNegociable;
         updatedData.precioEstudiante = pricing.precioEstudiante;
         updatedData.precioCiudadanoOro = pricing.precioCiudadanoOro;
-        Object.assign(publicacion, updatedData);
-        yield publicacion.save();
+        const publicacion = yield publicacion_model_1.modelPublicacion.findByIdAndUpdate(id, updatedData, { new: true });
+        if (!publicacion) {
+            res.status(404).json({ message: 'Publicación no encontrada' });
+            return;
+        }
         res.status(200).json(publicacion);
     }
     catch (error) {
@@ -616,7 +617,8 @@ const addComentario = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             const tituloPublicacion = publicacionActualizada.titulo || 'tu publicación';
             try {
                 yield (0, notificacion_service_1.createComentarioPublicacionNotificacion)({
-                    destinatarioId: autorPublicacionId,
+                    destinatarioId: autorPublicacionId, //temporalmente
+                    recipientes: [autorPublicacionId],
                     publicacionId: id,
                     tituloPublicacion,
                     nombreComentarista
@@ -637,6 +639,7 @@ const addComentario = (req, res) => __awaiter(void 0, void 0, void 0, function* 
 exports.addComentario = addComentario;
 // Agregar Respuesta
 const addRespuesta = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j;
     const { id, comentarioId } = req.params;
     const { contenido, replyTo } = req.body;
     const user = req.user;
@@ -668,6 +671,42 @@ const addRespuesta = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             res.status(404).json({ message: 'Publicación no encontrada' });
             return;
         }
+        const comentarios = publicacionActualizada.comentarios || [];
+        const comentarioPrincipal = comentarios.find((comentario) => { var _a; return ((_a = comentario._id) === null || _a === void 0 ? void 0 : _a.toString()) === comentarioId; });
+        let usuarioObjetivoId = null;
+        if (comentarioPrincipal) {
+            // comentario principal
+            if (((_a = comentarioPrincipal._id) === null || _a === void 0 ? void 0 : _a.toString()) ===
+                (replyTo === null || replyTo === void 0 ? void 0 : replyTo._id)) {
+                usuarioObjetivoId = ((_d = (_c = (_b = comentarioPrincipal.autor) === null || _b === void 0 ? void 0 : _b._id) === null || _c === void 0 ? void 0 : _c.toString) === null || _d === void 0 ? void 0 : _d.call(_c)) || null;
+            }
+            else {
+                // respuesta específica
+                const respuestas = Array.isArray(comentarioPrincipal.respuestas)
+                    ? comentarioPrincipal.respuestas
+                    : [];
+                const respuestaObjetivo = respuestas.find((respuesta) => { var _a; return ((_a = respuesta._id) === null || _a === void 0 ? void 0 : _a.toString()) === (replyTo === null || replyTo === void 0 ? void 0 : replyTo._id); });
+                usuarioObjetivoId = ((_g = (_f = (_e = respuestaObjetivo === null || respuestaObjetivo === void 0 ? void 0 : respuestaObjetivo.autor) === null || _e === void 0 ? void 0 : _e._id) === null || _f === void 0 ? void 0 : _f.toString) === null || _g === void 0 ? void 0 : _g.call(_f)) || null;
+            }
+        }
+        const usuarioActualId = (_j = (_h = user._id) === null || _h === void 0 ? void 0 : _h.toString) === null || _j === void 0 ? void 0 : _j.call(_h);
+        // no notificarse a sí mismo
+        if (usuarioObjetivoId && usuarioActualId && usuarioObjetivoId !== usuarioActualId) {
+            const nombreRespondedor = [user.nombre, user.apellido,].filter(Boolean).join(" ").trim();
+            const tituloPublicacion = publicacionActualizada.titulo || "tu publicación";
+            try {
+                yield (0, notificacion_service_1.createRespuestaComentarioNotificacion)({
+                    destinatarioId: usuarioObjetivoId, // temporal
+                    recipientes: [usuarioObjetivoId],
+                    publicacionId: id,
+                    tituloPublicacion,
+                    nombreRespondedor: nombreRespondedor
+                });
+            }
+            catch (notificacionError) {
+                console.warn("No se pudo crear notificación:", notificacionError);
+            }
+        }
         res.status(201).json(publicacionActualizada.comentarios);
     }
     catch (error) {
@@ -681,23 +720,30 @@ exports.addRespuesta = addRespuesta;
 const filterPublicaciones = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { texto, tag, autor } = req.query;
-        const filtro = {};
+        const filtro = { $and: [(0, publicacionExpiration_1.buildActivePublicationQuery)()] };
+        let hasSearchCriteria = false;
         if (texto) {
-            filtro.$or = [
-                { titulo: { $regex: texto, $options: 'i' } },
-                { contenido: { $regex: texto, $options: 'i' } },
-            ];
+            filtro.$and.push({
+                $or: [
+                    { titulo: { $regex: texto, $options: 'i' } },
+                    { contenido: { $regex: texto, $options: 'i' } },
+                ],
+            });
+            hasSearchCriteria = true;
         }
-        if (tag)
+        if (tag) {
             filtro.tag = { $regex: tag, $options: 'i' };
+            hasSearchCriteria = true;
+        }
         if (autor) {
             if (!mongoose_1.default.Types.ObjectId.isValid(autor)) {
                 res.status(400).json({ message: 'ID de autor inválido' });
                 return;
             }
             filtro.autor = autor;
+            hasSearchCriteria = true;
         }
-        if (Object.keys(filtro).length === 0) {
+        if (!hasSearchCriteria) {
             res.status(400).json({ message: 'Debe proporcionar al menos un parámetro de búsqueda (titulo, tag o autor)' });
             return;
         }
@@ -723,14 +769,10 @@ const getEventosPorFecha = (req, res) => __awaiter(void 0, void 0, void 0, funct
             return;
         }
         const eventos = yield publicacion_model_1.modelPublicacion
-            .find({
-            tag: 'evento',
-            publicado: true,
-            fechaEvento: {
+            .find(Object.assign(Object.assign({}, (0, publicacionExpiration_1.buildActivePublicationQuery)()), { tag: 'evento', publicado: true, fechaEvento: {
                 $gte: startDate,
                 $lte: endDate,
-            },
-        })
+            } }))
             .populate('autor', 'nombre')
             .populate('categoria', 'nombre')
             .select('titulo fechaEvento horaEvento contenido adjunto _id precio moneda monedaSimbolo')
@@ -754,10 +796,7 @@ const searchPublicacionesByTitulo = (req, res) => __awaiter(void 0, void 0, void
         const searchTerm = q.trim();
         const searchLimit = Math.min(Number(limit), 50); // Máximo 50 resultados
         const publicaciones = yield publicacion_model_1.modelPublicacion
-            .find({
-            publicado: true,
-            titulo: { $regex: searchTerm, $options: 'i' }
-        })
+            .find(Object.assign(Object.assign({}, (0, publicacionExpiration_1.buildActivePublicationQuery)()), { publicado: true, titulo: { $regex: searchTerm, $options: 'i' } }))
             .populate('autor', 'nombre')
             .populate('categoria', 'nombre estado')
             .select('titulo tag autor categoria fecha fechaEvento precio moneda monedaSimbolo adjunto')
@@ -780,13 +819,15 @@ exports.searchPublicacionesByTitulo = searchPublicacionesByTitulo;
 const searchPublicacionesAvanzada = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { q, tag, categoria, offset = 0, limit = 12 } = req.query;
-        const query = { publicado: true };
+        const query = { publicado: true, $and: [(0, publicacionExpiration_1.buildActivePublicationQuery)()] };
         // Búsqueda por texto en título o contenido
         if (q && typeof q === 'string' && q.trim() !== '') {
-            query.$or = [
-                { titulo: { $regex: q.trim(), $options: 'i' } },
-                { contenido: { $regex: q.trim(), $options: 'i' } }
-            ];
+            query.$and.push({
+                $or: [
+                    { titulo: { $regex: q.trim(), $options: 'i' } },
+                    { contenido: { $regex: q.trim(), $options: 'i' } }
+                ]
+            });
         }
         // Filtros adicionales
         if (tag)
@@ -832,10 +873,7 @@ const searchByTitulo = (req, res) => __awaiter(void 0, void 0, void 0, function*
         const searchTerm = q.trim();
         const queryOffset = Number(offset);
         const queryLimit = Math.min(Number(limit), 50);
-        const query = {
-            publicado: true,
-            titulo: { $regex: searchTerm, $options: 'i' }
-        };
+        const query = Object.assign(Object.assign({}, (0, publicacionExpiration_1.buildActivePublicationQuery)()), { publicado: true, titulo: { $regex: searchTerm, $options: 'i' } });
         const [publicaciones, total] = yield Promise.all([
             publicacion_model_1.modelPublicacion
                 .find(query)
