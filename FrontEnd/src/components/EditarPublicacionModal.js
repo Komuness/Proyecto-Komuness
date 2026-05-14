@@ -5,6 +5,47 @@ import { toast } from "react-hot-toast";
 import CategoriaSelector from '../components/categoriaSelector';
 import '../CSS/formularioPublicacion.css';
 import { useLockBodyScroll } from "../hooks/useLockBodyScroll";
+import {
+  readSessionDraft,
+  removeSessionDraft,
+  writeSessionDraft
+} from "../utils/sessionDraftStorage";
+
+const EDIT_DRAFT_PREFIX = "komuness:editar-publicacion";
+
+const getDraftStorageKey = (publicacionId) =>
+  `${EDIT_DRAFT_PREFIX}:${publicacionId}`;
+
+const getInitialDraftState = (publicacion) => ({
+  formData: {
+    titulo: publicacion.titulo || "",
+    contenido: publicacion.contenido || "",
+    fechaEvento: publicacion.fechaEvento || "",
+    horaEvento: publicacion.horaEvento || "",
+    precio:
+      publicacion.precio !== undefined && publicacion.precio !== null
+        ? publicacion.precio.toString()
+        : "",
+    moneda: publicacion.moneda || (publicacion.monedaSimbolo === "$" ? "USD" : "CRC"),
+    precioNegociable: publicacion.precioNegociable === true,
+    precioEstudiante:
+      publicacion.precioEstudiante !== undefined && publicacion.precioEstudiante !== null
+        ? publicacion.precioEstudiante.toString()
+        : "",
+    precioCiudadanoOro:
+      publicacion.precioCiudadanoOro !== undefined && publicacion.precioCiudadanoOro !== null
+        ? publicacion.precioCiudadanoOro.toString()
+        : "",
+    telefono: publicacion.telefono || "",
+    categoria: publicacion.categoria?._id || publicacion.categoria || "",
+  },
+  enlacesExternos:
+    publicacion.enlacesExternos && publicacion.enlacesExternos.length > 0
+      ? publicacion.enlacesExternos
+      : [{ nombre: "", url: "" }],
+  imagenesMantenidas:
+    publicacion.adjunto && publicacion.adjunto.length > 0 ? publicacion.adjunto : [],
+});
 
 export const EditarPublicacionModal = ({ publicacion, isOpen, onClose, onUpdate }) => {
   const [formData, setFormData] = useState({
@@ -25,6 +66,7 @@ export const EditarPublicacionModal = ({ publicacion, isOpen, onClose, onUpdate 
   const [imagenesMantenidas, setImagenesMantenidas] = useState([]);
   const [nuevasImagenes, setNuevasImagenes] = useState([]);
   const [cargando, setCargando] = useState(false);
+  const [draftCargado, setDraftCargado] = useState(false);
 
   useLockBodyScroll(isOpen);
 
@@ -34,6 +76,8 @@ export const EditarPublicacionModal = ({ publicacion, isOpen, onClose, onUpdate 
   // Inicializar datos cuando se abre el modal
   useEffect(() => {
     if (isOpen && publicacion) {
+      setDraftCargado(false);
+      const initialState = getInitialDraftState(publicacion);
       
       
       setFormData({
@@ -65,9 +109,40 @@ export const EditarPublicacionModal = ({ publicacion, isOpen, onClose, onUpdate 
         setImagenesMantenidas([]);
       }
 
+      const savedDraft = readSessionDraft(getDraftStorageKey(publicacion._id));
+      if (savedDraft) {
+        setFormData({
+          ...initialState.formData,
+          ...(savedDraft.formData || {}),
+        });
+        if (Array.isArray(savedDraft.enlacesExternos) && savedDraft.enlacesExternos.length > 0) {
+          setEnlacesExternos(savedDraft.enlacesExternos);
+        } else {
+          setEnlacesExternos(initialState.enlacesExternos);
+        }
+        if (Array.isArray(savedDraft.imagenesMantenidas)) {
+          setImagenesMantenidas(savedDraft.imagenesMantenidas);
+        } else {
+          setImagenesMantenidas(initialState.imagenesMantenidas);
+        }
+      }
+
       setNuevasImagenes([]);
+      setDraftCargado(true);
+    } else {
+      setDraftCargado(false);
     }
   }, [isOpen, publicacion]);
+
+  useEffect(() => {
+    if (!isOpen || !publicacion?._id || !draftCargado) return;
+
+    writeSessionDraft(getDraftStorageKey(publicacion._id), {
+      formData,
+      enlacesExternos,
+      imagenesMantenidas,
+    });
+  }, [isOpen, publicacion?._id, formData, enlacesExternos, imagenesMantenidas, draftCargado]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -219,6 +294,7 @@ export const EditarPublicacionModal = ({ publicacion, isOpen, onClose, onUpdate 
       );
 
       // 🔁 Cerrar el modal un poquito después para no matar el toast de inmediato
+      removeSessionDraft(getDraftStorageKey(publicacion._id));
       setTimeout(() => {
         onClose?.();
       }, 300);
