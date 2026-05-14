@@ -13,6 +13,12 @@ const Notificaciones = ({
   const [ntfs, setNtfs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [enviando, setEnviando] = useState(false);
+  const [formData, setFormData] = useState({
+    nombre: "",
+    descripcion: "",
+    fechaCaducidad: "",
+  });
 
   const usuarioLogueado = useMemo(() => {
     try {
@@ -20,10 +26,13 @@ const Notificaciones = ({
     } catch (_e) {
       return null;
     }
-  }, []);
+  }, [open]);
 
   const token = localStorage.getItem("token");
   const userId = usuarioLogueado?._id;
+  const esAdmin = Boolean(
+    usuarioLogueado && (usuarioLogueado.tipoUsuario === 0 || usuarioLogueado.tipoUsuario === 1)
+  );
 
   const syncCount = useCallback(
     (list) => {
@@ -136,6 +145,54 @@ const Notificaciones = ({
     }
   };
 
+  const handleEnviarNotificacion = async (event) => {
+    event.preventDefault();
+    if (!token || !esAdmin) {
+      setError("No tienes permisos para enviar notificaciones.");
+      return;
+    }
+
+    if (!formData.nombre.trim() || !formData.descripcion.trim()) {
+      setError("Nombre y descripción son obligatorios.");
+      return;
+    }
+
+    setEnviando(true);
+    setError("");
+
+    try {
+      const payload = {
+        nombre: formData.nombre.trim(),
+        descripcion: formData.descripcion.trim(),
+      };
+
+      if (formData.fechaCaducidad) {
+        payload.fechaCaducidad = new Date(formData.fechaCaducidad).toISOString();
+      }
+
+      const res = await fetch(`${API_URL}/notificaciones`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data?.message || "No se pudo enviar la notificación");
+      }
+
+      setFormData({ nombre: "", descripcion: "", fechaCaducidad: "" });
+      await cargarNotificaciones();
+    } catch (err) {
+      setError(err?.message || "Error al enviar notificación");
+    } finally {
+      setEnviando(false);
+    }
+  };
+
   const closePanel = () => {
     setOpen(false);
   };
@@ -165,6 +222,56 @@ const Notificaciones = ({
             </button>
           )}
         </div>
+
+        {esAdmin && (
+          <form
+            onSubmit={handleEnviarNotificacion}
+            className="mb-4 p-3 rounded-lg border border-blue-500 bg-slate-800"
+          >
+            <h3 className="text-sm font-semibold mb-2">
+              Enviar notificación general
+            </h3>
+            <div className="flex flex-col gap-2">
+              <input
+                className="px-3 py-2 rounded text-black text-sm"
+                placeholder="Título"
+                value={formData.nombre}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, nombre: e.target.value }))
+                }
+              />
+              <textarea
+                className="px-3 py-2 rounded text-black text-sm"
+                rows={3}
+                placeholder="Mensaje para todos los usuarios"
+                value={formData.descripcion}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, descripcion: e.target.value }))
+                }
+              />
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  className="px-3 py-2 rounded text-black text-sm"
+                  type="date"
+                  value={formData.fechaCaducidad}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, fechaCaducidad: e.target.value }))
+                  }
+                />
+                <button
+                  type="submit"
+                  disabled={enviando}
+                  className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {enviando ? "Enviando..." : "Enviar"}
+                </button>
+              </div>
+              <p className="text-xs text-slate-200">
+                Si no eliges fecha, la notificación caduca automáticamente en 3 días.
+              </p>
+            </div>
+          </form>
+        )}
 
         {!token || !userId ? (
           <p className="text-sm text-slate-200">

@@ -4,6 +4,8 @@ import { modelNotificacion } from "../models/notificacion.model";
 import { ObjectId } from "mongoose";
 import { createNotificacion as createNotificacionService } from "../services/notificacion.service";
 
+const DEFAULT_CADUCIDAD_DIAS = 3;
+
 function getRequestUserId(req: Request): string | null {
   const userId =
     req.user?._id?.toString?.() ||
@@ -13,25 +15,42 @@ function getRequestUserId(req: Request): string | null {
   return userId || null;
 }
 
+function agregarDias(fecha: Date, dias: number): Date {
+  const base = new Date(fecha);
+  base.setDate(base.getDate() + dias);
+  return base;
+}
+
+function parseFechaCaducidad(value: unknown): Date | null {
+  if (!value) return null;
+  const parsed =
+    value instanceof Date ? new Date(value.getTime()) : new Date(String(value));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 export const getNotificaciones = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-
     const userId = getRequestUserId(req);
-    
+
     const queryUserId = req.query.userId as string | undefined;
     const finalUserId = userId || queryUserId;
 
     const { onlyUnread } = req.query;
     const now = new Date();
 
+    // Eliminar caducadas (limpieza inmediata)
+    await modelNotificacion.deleteMany({
+      fechaCaducidad: { $ne: null, $lte: now },
+    });
+
     let filtro: any = {
       $or: [{ fechaCaducidad: null }, { fechaCaducidad: { $gte: now } }],
     };
- 
-    // Notificaciones especificas y generales
+
+    // Notificaciones específicas y generales
     if (finalUserId) {
       filtro.$or = [
         { recipientes: userId },
@@ -40,33 +59,32 @@ export const getNotificaciones = async (
       filtro.$and = [
         {
           $or: [
-            { fechaCaducidad: null},
-            { fechaCaducidad: { $gte: now }},
+            { fechaCaducidad: null },
+            { fechaCaducidad: { $gte: now } },
           ],
         },
       ];
-      // Solo no leídas ???? (Parte de Alejandro)
-      if (String(onlyUnread).toLowerCase() === "true"){
+      // Solo no leídas
+      if (String(onlyUnread).toLowerCase() === "true") {
         filtro.vistoPor = { $ne: finalUserId };
       }
     }
 
-    const notificaciones = await modelNotificacion.find(filtro).sort({ createdAt: -1}).lean();
+    const notificaciones = await modelNotificacion.find(filtro).sort({ createdAt: -1 }).lean();
 
-    if(notificaciones.length === 0){
+    if (notificaciones.length === 0) {
       res.status(200).json({ data: [], message: "Este usuario no posee notificaciones" });
       return;
     }
 
-    //Si no tiene filtro, solo devuelve
-    if (!finalUserId){
+    // Si no tiene filtro, solo devuelve
+    if (!finalUserId) {
       res.status(200).json({ data: notificaciones, message: "Notificaciones obtenidas correctamente" });
-      return
+      return;
     }
 
-    //Si tiene filtro, revisar por usuario el visto
+    // Si tiene filtro, revisar por usuario el visto
     const notificacionesConVisto = notificaciones.map((notificacion) => {
-
       const visto = notificacion.vistoPor?.some(
         (id) => id.toString() === userId
       );
@@ -80,7 +98,7 @@ export const getNotificaciones = async (
       return {
         ...notificacionLimpia,
         visto
-        };
+      };
     });
 
     res.status(200).json({ data: notificacionesConVisto, message: "Notificaciones obtenidas correctamente" });
@@ -95,13 +113,13 @@ export const createNotificacion = async (
   res: Response
 ): Promise<void> => {
   try {
-    const { 
-      nombre, 
+    const {
+      nombre,
       descripcion,
       destinatario,
       recipientes,
       publicacionId,
-      fechaCaducidad, 
+      fechaCaducidad,
     } = req.body || {};
 
     if (!nombre?.trim()) {
@@ -118,8 +136,8 @@ export const createNotificacion = async (
       return;
     }
     if (recipientes && (!Array.isArray(recipientes) || recipientes.some(
-          (id) => !mongoose.Types.ObjectId.isValid(id)
-        ))) {
+      (id) => !mongoose.Types.ObjectId.isValid(id)
+    ))) {
       res.status(400).json({ message: "Recipientes inválidos" });
       return;
     }
@@ -128,14 +146,29 @@ export const createNotificacion = async (
       res.status(400).json({ message: "ID de publicación inválido" });
       return;
     }
+
     const recipientesFinales = recipientes || (destinatario ? [destinatario] : []);
-    
+
+    const parsedCaducidad = parseFechaCaducidad(fechaCaducidad);
+    if (fechaCaducidad && !parsedCaducidad) {
+      res.status(400).json({ message: "Fecha de caducidad inválida" });
+      return;
+    }
+
+    const userTipo = Number((req as any).user?.tipoUsuario);
+    const isAdmin = userTipo === 0 || userTipo === 1;
+    const esGeneral = recipientesFinales.length === 0;
+
+    const fechaCaducidadFinal =
+      parsedCaducidad ??
+      (isAdmin && esGeneral ? agregarDias(new Date(), DEFAULT_CADUCIDAD_DIAS) : null);
+
     const saved = await createNotificacionService({
       nombre: nombre.trim(),
       descripcion: descripcion.trim(),
       recipientes: recipientesFinales,
       publicacionId: publicacionId || null,
-      fechaCaducidad: fechaCaducidad || null,
+      fechaCaducidad: fechaCaducidadFinal,
     });
 
     // para el destinatario en el frontend (cambiar luego el front)
@@ -194,7 +227,7 @@ export const updateNotificacion = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, fechaCaducidad, vistoPor, destinatario, recipientes, publicacionId} = req.body || {};
+    const { nombre, descripcion, fechaCaducidad, vistoPor, destinatario, recipientes, publicacionId } = req.body || {};
 
     const data: any = {};
 
@@ -215,7 +248,7 @@ export const updateNotificacion = async (
     }
 
     if (fechaCaducidad !== undefined) data.fechaCaducidad = fechaCaducidad;
-    
+
     if (recipientes !== undefined) {
       if (
         !Array.isArray(recipientes) ||
@@ -242,8 +275,8 @@ export const updateNotificacion = async (
       }
       data.publicacionId = publicacionId;
     }
-    
-     if (vistoPor !== undefined) {
+
+    if (vistoPor !== undefined) {
       const vistos = Array.isArray(vistoPor)
         ? vistoPor
         : [vistoPor];
