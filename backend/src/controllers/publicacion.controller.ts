@@ -8,6 +8,11 @@ import { saveMulterFileToGridFS, saveBufferToGridFS, deleteGridFSFile } from '..
 import { buildActivePublicationQuery, calculatePublicationExpirationDate } from '../utils/publicacionExpiration';
 import { sendEmail } from '../utils/mail'; // usa el mismo transporter que recuperación
 import { modelUsuario } from '../models/usuario.model'; // ← Modelo de usuarios
+import { modelPerfil } from '../models/perfil.model';
+import {
+  createComentarioPublicacionNotificacion,
+  createRespuestaComentarioNotificacion,
+} from '../services/notificacion.service';
 
 const LOG_ON = process.env.LOG_PUBLICACION === '1';
 
@@ -1033,3 +1038,4 @@ export const searchByTitulo = async (req: Request, res: Response): Promise<void>
     res.status(500).json({ message: 'Error al realizar la búsqueda' });
   }
 };
+

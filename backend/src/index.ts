@@ -18,6 +18,9 @@ import seccionAcercaRoutes from './routes/seccionAcerca.routes';
 import perfilRoutes from './routes/perfil.routes';
 import { startPublicationExpirationJob } from './services/publicacionExpiration.service';
 import tutorialRoutes from './routes/tutorial.routes'
+import notificacionesRoutes from './routes/notificaciones.routes';
+import paqueteSuscripcionRoutes from './routes/paqueteSuscripcion.routes';
+import publicidadRoutes from './routes/publicidad.routes';
 
 // Rutas de PayPal
 import paypalRoutes from './routes/paypal.routes';
