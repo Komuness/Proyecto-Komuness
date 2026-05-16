@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import "../CSS/navbar.css";
 import { AiOutlineUser, AiOutlineMenu, AiOutlineClose } from "react-icons/ai";
 import { FaUsers } from "react-icons/fa";
+import { toast } from "react-hot-toast";
 import logo from "../images/logo.png";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 import { API_URL } from "../utils/api";
@@ -16,6 +17,7 @@ export const Navbar = () => {
   const [menuAbierto, setMenuAbierto] = useState(false);
   const [open, setOpen] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [lastToastCount, setLastToastCount] = useState(0);
   const [isMobileView, setIsMobileView] = useState(
     () => window.innerWidth <= MOBILE_BREAKPOINT
   );
@@ -70,7 +72,7 @@ export const Navbar = () => {
     }
 
     try {
-      const res = await fetch(`${API_URL}/notificaciones`, {
+      const res = await fetch(`${API_URL}/notificaciones?onlyUnread=true`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -98,6 +100,12 @@ export const Navbar = () => {
   }, [obtenerCantidadNotificaciones]);
 
   useEffect(() => {
+    const onFocus = () => obtenerCantidadNotificaciones();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [obtenerCantidadNotificaciones]);
+
+  useEffect(() => {
     const handler = (event) => {
       const nextCount = Number(event?.detail);
       if (Number.isFinite(nextCount)) {
@@ -108,6 +116,43 @@ export const Navbar = () => {
     window.addEventListener("notifications-count-changed", handler);
     return () => window.removeEventListener("notifications-count-changed", handler);
   }, []);
+
+  useEffect(() => {
+    if (!usuario?._id) {
+      toast.dismiss("pending-notifications-toast");
+      toast.dismiss("no-pending-notifications-toast");
+      setLastToastCount(0);
+      return;
+    }
+
+    if (notificationCount <= 0) {
+      toast.dismiss("pending-notifications-toast");
+      if (lastToastCount > 0) {
+        toast.success("Ya no tienes notificaciones pendientes.", {
+          id: "no-pending-notifications-toast",
+          duration: 3000,
+        });
+      }
+      setLastToastCount(0);
+      return;
+    }
+
+    if (notificationCount === lastToastCount) {
+      return;
+    }
+
+    const mensaje =
+      notificationCount === 1
+        ? "Tienes 1 notificación pendiente de revisar."
+        : `Tienes ${notificationCount} notificaciones pendientes de revisar.`;
+
+    toast(mensaje, {
+      id: "pending-notifications-toast",
+      duration: 4000,
+      icon: "🔔",
+    });
+    setLastToastCount(notificationCount);
+  }, [notificationCount, lastToastCount, usuario?._id]);
 
   const toggleMenu = () => {
     setMenuAbierto(!menuAbierto);
