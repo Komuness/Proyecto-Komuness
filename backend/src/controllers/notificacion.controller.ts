@@ -342,7 +342,10 @@ export const notificacionSeenBy = async (
     const notificacionActualizada = await modelNotificacion.findOneAndUpdate(
       {
         _id: id,
-        destinatario: viewerId,
+        $or: [
+          { recipientes: viewerId },
+          { recipientes: { $size: 0 } },
+        ],
       },
       {
         $addToSet: { vistoPor: viewerId },
