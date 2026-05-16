@@ -92,7 +92,7 @@ router.post("/upload", authMiddleware, verificarRoles([0, 1, 2, 3]), uploadLibra
 router.put(
   "/move",
   authMiddleware,
-  verificarRoles([0, 1, 2, 3]),
+  verificarRoles([0, 1]),
   BibliotecaController.moveFiles as any
 );
 

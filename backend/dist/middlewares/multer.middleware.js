@@ -9,7 +9,7 @@ const node_path_1 = __importDefault(require("node:path"));
 const multer_1 = __importDefault(require("multer"));
 // Tamaño máximo por archivo (MB). Prioriza UPLOAD_MAX_FILE_SIZE_MB, luego LIBRARY_MAX_FILE_SIZE_MB, por defecto 200MB
 // Añadimos un pequeño margen (slack) en bytes para cubrir overhead del multipart/form-data (boundaries, headers).
-const maxFileSizeMB = parseInt(process.env.UPLOAD_MAX_FILE_SIZE_MB || process.env.LIBRARY_MAX_FILE_SIZE_MB || '200', 10);
+const maxFileSizeMB = parseInt(process.env.UPLOAD_MAX_FILE_SIZE_MB || process.env.LIBRARY_MAX_FILE_SIZE_MB || '80', 10);
 const maxFileSizeSlackBytes = parseInt(process.env.UPLOAD_MAX_FILE_SIZE_SLACK_BYTES || String(1 * 1024 * 1024), 10); // 1 MB por defecto
 // Cantidad máxima de archivos por subida
 const maxFilesPerUpload = parseInt(process.env.UPLOAD_MAX_FILES || '20', 10);

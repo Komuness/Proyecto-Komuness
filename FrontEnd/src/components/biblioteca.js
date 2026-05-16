@@ -15,7 +15,7 @@ import {
 } from 'react-icons/ai'
 import { IoMdArrowRoundBack } from "react-icons/io"
 import { useDropzone } from 'react-dropzone'
-import { toast } from "react-hot-toast"
+import { CheckmarkIcon, toast } from "react-hot-toast"
 import { useAuth } from "../components/context/AuthContext"
 import { API_URL } from '../utils/api'
 
@@ -33,13 +33,32 @@ const mapTipoArchivo = (tipo) => {
 }
 
 export const Biblioteca = () => {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { user } = useAuth()
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  const [ userIsProfesional, setUserIsProfesional ] = useState(false);
 
   // Estados principales
-  const [folderName, setFolderName] = useState(location.state?.folderName || 'Biblioteca')
+  const [folderName, setFolderName] = useState(location.state?.folderName || 'Biblioteca');
+
+  useEffect(() => {
+      const checkProfesional = async() => {
+          try {
+              const response = await fetch(`${API_URL}/banco-profesionales/es-profesional/${user._id}`);
+              const data = await response.json();
+              console.log(data);
+              setUserIsProfesional(data.esProfesional);
+          } catch (e) {
+              console.error("Error al verificar si el usuario pertenece al banco de profesionales:", e);
+          }
+      };
+      if (user?._id){
+          checkProfesional();
+      } else {
+          setUserIsProfesional(false);
+      }
+  },[user])
 
   // actualizar el folderName
   useEffect(() => {
@@ -640,7 +659,7 @@ export const Biblioteca = () => {
       </p>
 
       {/* Zona de subida (RF023: usuarios básicos/premium pueden subir a cualquier carpeta) */}
-      {user && (user.tipoUsuario === 0 || user.tipoUsuario === 1 || user.tipoUsuario === 2 || user.tipoUsuario === 3) && (
+      {user && (user.tipoUsuario === 0 || user.tipoUsuario === 1 || user.tipoUsuario === 2 || user.tipoUsuario === 3) && userIsProfesional && (
         <div className="flex flex-wrap justify-center gap-4 w-full max-w-6xl p-4">
           {/* RF023: Mensaje informativo para usuarios básicos/premium */}
           {(user.tipoUsuario === 2 || user.tipoUsuario === 3) && (
@@ -672,7 +691,7 @@ export const Biblioteca = () => {
 
           {fileRejections.length > 0 && (
             <div className="mt-4 text-red-600">
-              Algunos archivos no se pudieron subir por exceder el tamaño máximo permitido de 200 MB.
+              Algunos archivos no se pudieron subir por exceder el tamaño máximo permitido de 80 MB.
             </div>
           )}
 

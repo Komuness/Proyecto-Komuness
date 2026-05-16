@@ -3,6 +3,7 @@ import { IPublicacion, IPublicacionUpdate, IEditHistory, IEnlaceExterno, IAdjunt
 import { modelPublicacion } from '../models/publicacion.model';
 import mongoose from 'mongoose';
 import { saveMulterFileToGridFS } from '../utils/gridfs';
+import { calculatePublicationExpirationDate } from '../utils/publicacionExpiration';
 
 const LOG_ON = process.env.LOG_PUBLICACION === '1';
 
@@ -433,6 +434,7 @@ export const approveUpdate = async (req: Request, res: Response): Promise<void> 
     const currentEditCount = publicacion.editCount || 0;
     const newEditCount = currentEditCount + 1;
     publicacion.editCount = newEditCount;
+    publicacion.fechaExpiracion = calculatePublicationExpirationDate(publicacion) ?? null;
 
     // Preparar historial
     const editHistory = publicacion.editHistory || [];

@@ -78,12 +78,14 @@ const BancoProfesionales = () => {
     }
 
     //Verificar si puede unirse según el perfil público
-    const returnData = await cargarDatosUsuario();
+    if (!estadoUsuario?.enBancoProfesionales && !esAdmin){
+      const returnData = await cargarDatosUsuario();
 
-    if(returnData === false){
-      return;
+      if(returnData === false){
+        return;
+      }
     }
-    
+
     try {
       setCargandoToggle(true);
       const response = await fetch(`${PROFESIONALES_API_URL}/banco-profesionales/toggle`, { 

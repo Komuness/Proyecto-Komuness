@@ -63,6 +63,29 @@ export const obtenerProfesionales = async (req: Request, res: Response): Promise
 };
 
 /**
+ * ver si un usuario es profesional
+ * @route GET /api/banco-profesionales/es-profesional/:id
+ */
+export const esProfesional = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const perfil = await modelPerfil.findOne({ 
+      usuarioId: id,
+      enBancoProfesionales: true,
+      perfilPublico: true
+    });
+
+    res.status(200).json({
+      success: true,
+      esProfesional: !!perfil
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Error al verificar profesional' });
+  }
+};
+
+/**
  * Unirse/Retirarse del banco de profesionales
  * @route PUT /api/banco-profesionales/toggle
  */

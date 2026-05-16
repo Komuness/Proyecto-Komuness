@@ -7,13 +7,15 @@ export interface ITutorial extends Document {
     _id: Types.ObjectId;
     nombre: string;
     url: string;
+    descripcion: string;
     createdAt: Date;      // generado automáticamente por timestamps
     updatedAt: Date;      // generado automáticamente por timestamps
 }
 */
 const tutorialSchema = new Schema<ITutorial>({
-    nombre: { type: String, required: true },
-    url: { type: String, required: true, unique: true }
+    nombre: { type: String, required: true, unique: true},
+    url: { type: String, required: false},
+    descripcion: {type: String, required: false},
 }, {
     timestamps: true
 });

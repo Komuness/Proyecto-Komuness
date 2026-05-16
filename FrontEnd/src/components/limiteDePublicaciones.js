@@ -3,7 +3,7 @@ const LimitePublicaciones = ({limiteData, navBar = true}) => {
         <div className="">
             
             <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-200">Publicaciones</span>
+                <span className="text-gray-200 mx-2">Publicaciones</span>
                 <span className="font-semibold text-white">
                 {limiteData.publicacionesActuales} / {limiteData.limite}
                 </span>

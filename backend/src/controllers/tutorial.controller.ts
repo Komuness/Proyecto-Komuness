@@ -9,16 +9,17 @@ import { modelTutorial } from "../models/tutorial.model";
  * */
 export const createTutorial = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { nombre, url } = req.body;
+    const { nombre, url, descripcion } = req.body;
 
-    if (!nombre?.trim() || !url?.trim()) {
-      res.status(400).json({ message: "La url y el nombre son obligatorios" });
+    if (!nombre?.trim()) {
+      res.status(400).json({ message: "El nombre del tutorial es obligatorio" });
       return;
     }
 
     const nuevoTutorial = new modelTutorial({
       nombre: nombre.trim(),
-      url: url.trim(),
+      url: url?.trim() ?? "",
+      descripcion: descripcion?.trim() ?? "",
     });
 
     const saved = await nuevoTutorial.save();
@@ -27,7 +28,7 @@ export const createTutorial = async (req: Request, res: Response): Promise<void>
     console.error(error);
     
     if (error?.code == 11000) {
-        res.status(409).json({ message: "Ya existe un tutorial con esa URL" });
+        res.status(409).json({ message: "Ya existe un tutorial con ese nombre" });
         return;
     }
 
@@ -67,3 +68,46 @@ export const getTutoriales = async (req: Request, res: Response): Promise<void> 
     res.status(500).json({ message: "Error al obtener los tutoriales" });
   }
 };
+
+/*
+ * ENTRADA: id de tutrial a editar y valores que se quieren escribir
+ * SALIDA: tutorial respectivo actualizado
+ * */
+export const updateTutorial = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { nombre, url, descripcion } = req.body;
+ 
+    if (!nombre?.trim()) {
+      res.status(400).json({ message: "El nombre del tutorial es obligatorio" });
+      return;
+    }
+ 
+    const tutorialActualizado = await modelTutorial.findByIdAndUpdate(
+      id,
+      {
+        nombre: nombre.trim(),
+        url: url?.trim() ?? "",
+        descripcion: descripcion?.trim() ?? "",
+      },
+      { new: true, runValidators: true }
+    );
+ 
+    if (!tutorialActualizado) {
+      res.status(404).json({ message: "Tutorial no encontrado" });
+      return;
+    }
+ 
+    res.status(200).json(tutorialActualizado);
+  } catch (error: any) {
+    console.error(error);
+ 
+    if (error?.code === 11000) {
+      res.status(409).json({ message: "Ya existe un tutorial con ese nombre" });
+      return;
+    }
+    res.status(500).json({ message: "Error al actualizar el tutorial" });
+  }
+};
+
+
