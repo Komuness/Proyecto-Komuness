@@ -417,10 +417,11 @@ const obtenerPublicaciones = async (tag, page = 1, limit = limite, categoriaId =
       </div>
 
       {/*PUBLICIDAD*/}
-      <div className='flex flex-col items-center justify-center gap-2 p-4 max-w-4xl mx-auto mt-4 rounded-xl bg-white/10'>
+      <div className='w-full flex flex-col items-center justify-center gap-2 py-4 mt-4 rounded-xl bg-white/10'>
         {publicidad && publicidad.length > 0 && (
-            <div className='w-full relative bg-gray-800 rounded-2xl p-4 shadow-2xl'>
-                <div className="relative h-56 md:h-80 lg:h-[450px] rounded-xl overflow-hidden">
+            <div className='w-full max-w-[1920px] relative bg-gray-800 rounded-2xl shadow-2xl overflow-hidden py-4'>
+                {/*CARRUSEL*/}
+                <div className="relative w-[1920px] h-[540px] max-w-full mx-auto rounded-xl">
                     {/*Imagen*/}
                     <img
                         src={publicidad[currentPublicidadIndex]?.imagen}
