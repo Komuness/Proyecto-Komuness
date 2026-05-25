@@ -4,7 +4,8 @@ import {
     getCategorias,
     getCategoriaById,
     updateCategoria,
-    deleteCategoria
+    deleteCategoria,
+    toggleCategoriaEstado
 } from "../controllers/categoria.controller";
 
 
@@ -21,5 +22,6 @@ router.get("/:id", getCategoriaById);
 router.post("/", authMiddleware, verificarRoles([1]), createCategoria);
 router.put("/:id", authMiddleware, verificarRoles([1]), updateCategoria);
 router.delete("/:id", authMiddleware, verificarRoles([1]), deleteCategoria);
+router.put('/toggle/:id', authMiddleware, verificarRoles([1]), toggleCategoriaEstado);
 
 export default router;

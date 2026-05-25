@@ -117,6 +117,25 @@ export const AdminCategorias = () => {
       toast.error('Error al eliminar la categoría');
     }
   };
+  const handleToggle = async (id) => {
+    try {
+      const response = await fetch(`${API_URL}/categorias/toggle/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+
+      if (response.ok) {
+        toast.success('Estado actualizado');
+        fetchCategorias();
+      } else {
+        toast.error('Error al actualizar estado');
+      }
+    } catch (error) {
+      toast.error('Error al actualizar estado');
+    }
+  };
 
   const handleGoBack = () => {
     navigate(-1); // Vuelve a la página anterior
@@ -218,10 +237,10 @@ export const AdminCategorias = () => {
                           Editar
                         </button>
                         <button
-                          onClick={() => handleDelete(categoria._id)}
+                          onClick={() => handleToggle(categoria._id)}
                           className="admin-categorias-delete-btn"
                         >
-                          Eliminar
+                          {categoria.estado ? 'Desactivar' : 'Activar'}
                         </button>
                       </div>
                     </td>

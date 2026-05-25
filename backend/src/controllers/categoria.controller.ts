@@ -14,9 +14,25 @@ export const createCategoria = async (req: Request, res: Response): Promise<void
       return;
     }
 
-    const existe = await modelCategoria.findOne({ nombre: nombre.trim().toLowerCase() });
+    const existe = await modelCategoria.findOne({
+    nombre: nombre.trim().toLowerCase()
+    });
+
     if (existe) {
-      res.status(400).json({ message: "Ya existe una categoría con ese nombre" });
+      if (!existe.estado) {
+        existe.estado = true;
+        await existe.save();
+  
+        res.status(200).json({
+          message: "Categoría reactivada correctamente",
+          data: existe
+        });
+        return;
+      }
+
+      res.status(400).json({
+        message: "Ya existe una categoría con ese nombre"
+      });
       return;
     }
 
@@ -42,8 +58,8 @@ export const getCategorias = async (req: Request, res: Response): Promise<void> 
 
     const skip = (Number(page) - 1) * Number(limit);
     const [categorias, total] = await Promise.all([
-      modelCategoria.find({ estado: true }).skip(skip).limit(Number(limit)),
-      modelCategoria.countDocuments({ estado: true })
+      modelCategoria.find().skip(skip).limit(Number(limit)),
+      modelCategoria.countDocuments()
     ]);
 
     res.json({
@@ -132,5 +148,41 @@ export const deleteCategoria = async (req: Request, res: Response): Promise<void
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error al eliminar la categoría" });
+  }
+};
+
+export const toggleCategoriaEstado = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const categoria = await modelCategoria.findById(id);
+
+    if (!categoria) {
+      res.status(404).json({
+        message: "Categoría no encontrada"
+      });
+      return;
+    }
+
+    categoria.estado = !categoria.estado;
+
+    await categoria.save();
+
+    res.json({
+      message: categoria.estado
+        ? "Categoría activada"
+        : "Categoría desactivada",
+      data: categoria
+    });
+
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      message: "Error al cambiar estado"
+    });
   }
 };
