@@ -2,6 +2,10 @@ import { Request, Response } from 'express';
 import { IConfiguracion } from '../interfaces/configuracion.interface';
 import { modelConfiguracion } from '../models/configuracion.model';
 import { IUsuario } from '../interfaces/usuario.interface';
+import { modelInicioContenido } from '../models/inicioContenido.model';
+
+const normalizarTexto = (value: unknown): string =>
+    typeof value === 'string' ? value.trim() : '';
 
 /**
  * Obtener todas las configuraciones (solo para admins)
@@ -406,5 +410,233 @@ export const actualizarConfiguracionPagos = async (req: Request, res: Response):
       message: err.message
     });
   }
+};
+
+/**
+ * Obtener frase motivacional de la pagina de inicio (publica)
+ */
+export const getFraseInicioPublica = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const contenidoInicio = await modelInicioContenido
+            .findOne()
+            .sort({ updatedAt: -1, createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            data: {
+                frase: normalizarTexto(contenidoInicio?.frase)
+            }
+        });
+    } catch (error) {
+        const err = error as Error;
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
+};
+
+/**
+ * Actualizar frase motivacional de la pagina de inicio (solo admins)
+ */
+export const actualizarFraseInicio = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const user = (req as Request & { user?: IUsuario }).user;
+        const fraseRaw = req.body?.frase;
+
+        if (typeof fraseRaw !== 'string') {
+            res.status(400).json({
+                success: false,
+                message: 'El campo frase es obligatorio y debe ser texto'
+            });
+            return;
+        }
+
+        const frase = fraseRaw.trim();
+
+        if (frase.length === 0) {
+            res.status(400).json({
+                success: false,
+                message: 'La frase no puede estar vacia'
+            });
+            return;
+        }
+
+        if (frase.length > 280) {
+            res.status(400).json({
+                success: false,
+                message: 'La frase no puede superar los 280 caracteres'
+            });
+            return;
+        }
+
+        const actual = await modelInicioContenido
+            .findOne()
+            .sort({ updatedAt: -1, createdAt: -1 });
+
+        if (!actual) {
+            await modelInicioContenido.create({
+                eslogan: '',
+                frase,
+                actualizadoPor: user?._id
+            });
+        } else {
+            actual.frase = frase;
+            actual.actualizadoPor = user?._id as any;
+            await actual.save();
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Frase motivacional actualizada correctamente',
+            data: {
+                frase
+            }
+        });
+    } catch (error) {
+        const err = error as Error;
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
+};
+
+/**
+ * Obtener contenido de portada (eslogan + frase motivacional)
+ */
+export const getContenidoInicioPublico = async (_req: Request, res: Response): Promise<void> => {
+    try {
+        const contenidoInicio = await modelInicioContenido
+            .findOne()
+            .sort({ updatedAt: -1, createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            data: {
+                eslogan: normalizarTexto(contenidoInicio?.eslogan),
+                frase: normalizarTexto(contenidoInicio?.frase)
+            }
+        });
+    } catch (error) {
+        const err = error as Error;
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
+};
+
+/**
+ * Actualizar contenido de portada (eslogan + frase motivacional) - solo admins
+ */
+export const actualizarContenidoInicio = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const user = (req as Request & { user?: IUsuario }).user;
+        const esloganRaw = req.body?.eslogan;
+        const fraseRaw = req.body?.frase;
+
+        const tieneEslogan = esloganRaw !== undefined;
+        const tieneFrase = fraseRaw !== undefined;
+
+        if (!tieneEslogan && !tieneFrase) {
+            res.status(400).json({
+                success: false,
+                message: 'Debe enviar al menos uno de los campos: eslogan o frase'
+            });
+            return;
+        }
+
+        if (tieneEslogan && typeof esloganRaw !== 'string') {
+            res.status(400).json({
+                success: false,
+                message: 'El campo eslogan debe ser texto'
+            });
+            return;
+        }
+
+        if (tieneFrase && typeof fraseRaw !== 'string') {
+            res.status(400).json({
+                success: false,
+                message: 'El campo frase debe ser texto'
+            });
+            return;
+        }
+
+        const eslogan = tieneEslogan ? esloganRaw.trim() : undefined;
+        const frase = tieneFrase ? fraseRaw.trim() : undefined;
+
+        if (eslogan !== undefined && eslogan.length > 180) {
+            res.status(400).json({
+                success: false,
+                message: 'El eslogan no puede superar los 180 caracteres'
+            });
+            return;
+        }
+
+        if (frase !== undefined && frase.length > 280) {
+            res.status(400).json({
+                success: false,
+                message: 'La frase no puede superar los 280 caracteres'
+            });
+            return;
+        }
+
+        const actual = await modelInicioContenido
+            .findOne()
+            .sort({ updatedAt: -1, createdAt: -1 });
+
+        const esloganActual = normalizarTexto(actual?.eslogan);
+        const fraseActual = normalizarTexto(actual?.frase);
+
+        const cambiaEslogan = eslogan !== undefined && eslogan !== esloganActual;
+        const cambiaFrase = frase !== undefined && frase !== fraseActual;
+
+        // Regla solicitada: si cambian ambos, borrar informacion anterior y crear registro nuevo.
+        if (cambiaEslogan && cambiaFrase) {
+            await modelInicioContenido.deleteMany({});
+            await modelInicioContenido.create({
+                eslogan,
+                frase,
+                actualizadoPor: user?._id
+            });
+        } else {
+            if (!actual) {
+                await modelInicioContenido.create({
+                    eslogan: eslogan ?? '',
+                    frase: frase ?? '',
+                    actualizadoPor: user?._id
+                });
+            } else {
+                if (eslogan !== undefined) {
+                    actual.eslogan = eslogan;
+                }
+                if (frase !== undefined) {
+                    actual.frase = frase;
+                }
+                actual.actualizadoPor = user?._id as any;
+                await actual.save();
+            }
+        }
+
+        const actualizado = await modelInicioContenido
+            .findOne()
+            .sort({ updatedAt: -1, createdAt: -1 });
+
+        res.status(200).json({
+            success: true,
+            message: 'Contenido de inicio actualizado correctamente',
+            data: {
+                eslogan: normalizarTexto(actualizado?.eslogan),
+                frase: normalizarTexto(actualizado?.frase)
+            }
+        });
+    } catch (error) {
+        const err = error as Error;
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
 };
 

@@ -8,6 +8,10 @@ import {
     deleteConfiguracion,
     actualizarConfiguracionPagos,
     getConfiguracionPagos,
+    getFraseInicioPublica,
+    actualizarFraseInicio,
+    getContenidoInicioPublico,
+    actualizarContenidoInicio,
       
 } from '../controllers/configuracion.controller';
 import { authMiddleware } from '../middlewares/auth.middleware';
@@ -16,6 +20,11 @@ import { verificarRoles } from '../middlewares/roles.middleware';
 const router = Router();
 
 // IMPORTANTE: Rutas específicas primero, rutas dinámicas después
+router.get('/frase-inicio', getFraseInicioPublica);
+router.put('/frase-inicio', authMiddleware, verificarRoles([0, 1]), actualizarFraseInicio);
+router.get('/inicio-contenido', getContenidoInicioPublico);
+router.put('/inicio-contenido', authMiddleware, verificarRoles([0, 1]), actualizarContenidoInicio);
+
 router.get('/pagos', authMiddleware, getConfiguracionPagos); 
 router.put('/pagos', authMiddleware, verificarRoles([0, 1]), actualizarConfiguracionPagos);
 

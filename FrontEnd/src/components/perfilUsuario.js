@@ -27,6 +27,9 @@ export const PerfilUsuario = () => {
   const [modalPremiumAbierto, setModalPremiumAbierto] = useState(false);
   const [activeTab, setActiveTab] = useState("publicaciones");
   const [limiteData, setLimiteData] = useState(null);
+  const [inicioContenido, setInicioContenido] = useState({ eslogan: "", frase: "" });
+  const [cargandoInicioContenido, setCargandoInicioContenido] = useState(false);
+  const [guardandoInicioContenido, setGuardandoInicioContenido] = useState(false);
   const [, setPerfilExistente] = useState(false); 
   const [, setPerfilPublico] = useState(false);
 
@@ -52,6 +55,65 @@ export const PerfilUsuario = () => {
       }
     } catch (error) {
       console.error("Error al cargar datos de límite:", error);
+    }
+  };
+
+  const cargarContenidoInicio = async () => {
+    try {
+      setCargandoInicioContenido(true);
+      const response = await fetch(`${API_URL}/configuracion/inicio-contenido`);
+      const data = await response.json();
+
+      if (response.ok) {
+        setInicioContenido({
+          eslogan: data?.data?.eslogan || "",
+          frase: data?.data?.frase || "",
+        });
+      }
+    } catch (error) {
+      console.error("Error al cargar contenido de inicio:", error);
+    } finally {
+      setCargandoInicioContenido(false);
+    }
+  };
+
+  const guardarContenidoInicio = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast.error("Debes iniciar sesión para actualizar el contenido de inicio.");
+        return;
+      }
+
+      setGuardandoInicioContenido(true);
+      const response = await fetch(`${API_URL}/configuracion/inicio-contenido`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          eslogan: inicioContenido.eslogan || "",
+          frase: inicioContenido.frase || "",
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(data?.message || "No se pudo actualizar el contenido de inicio.");
+      }
+
+      setInicioContenido({
+        eslogan: data?.data?.eslogan || "",
+        frase: data?.data?.frase || "",
+      });
+      toast.success("Contenido de inicio actualizado correctamente.");
+    } catch (error) {
+      console.error("Error al guardar contenido de inicio:", error);
+      toast.error(error.message || "Error al guardar el contenido de inicio.");
+    } finally {
+      setGuardandoInicioContenido(false);
     }
   };
 
@@ -208,6 +270,7 @@ export const PerfilUsuario = () => {
         await cargarArchivos();
         await cargarUsuarios();
         await cargarActualizacionesPendientes();
+        await cargarContenidoInicio();
       }
     };
     loader();
@@ -1128,6 +1191,62 @@ export const PerfilUsuario = () => {
               </button>
             </div>
           )}
+
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <h2 className="text-lg font-semibold text-black mb-2">
+              Contenido de la Página de Inicio
+            </h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Configura aquí el eslogan y la frase motivacional que se muestran en la portada.
+            </p>
+
+            {cargandoInicioContenido ? (
+              <p className="text-sm text-gray-500">Cargando contenido actual...</p>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Eslogan
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={180}
+                    value={inicioContenido.eslogan}
+                    onChange={(e) =>
+                      setInicioContenido((prev) => ({ ...prev, eslogan: e.target.value }))
+                    }
+                    placeholder="Ej: Conectamos ideas, creamos comunidad."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Frase motivacional
+                  </label>
+                  <textarea
+                    rows={3}
+                    maxLength={280}
+                    value={inicioContenido.frase}
+                    onChange={(e) =>
+                      setInicioContenido((prev) => ({ ...prev, frase: e.target.value }))
+                    }
+                    placeholder="Ej: Cada publicación es una oportunidad de aprender y crecer juntos."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={guardarContenidoInicio}
+                  disabled={guardandoInicioContenido}
+                  className="px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 font-medium disabled:opacity-60"
+                >
+                  {guardandoInicioContenido ? "Guardando..." : "Guardar contenido de inicio"}
+                </button>
+              </div>
+            )}
+          </div>
 
           <ModalLimitesPublicaciones
             isOpen={modalLimitesAbierto}

@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
+import { InicioPrincipal } from './InicioPrincipal';
 import {LandingPage} from './landingPage' 
 import {PerfilUsuario} from './perfilUsuario'
 import {PublicacionDetalle} from './publicacionDetalle'
@@ -28,7 +29,7 @@ export const Rutas = () =>{
         <Router>
             <Navbar />
             <Routes>
-                <Route path = "/" element= {<Navigate to="/publicaciones" />}/>
+                <Route path = "/" element= {<InicioPrincipal />}/>
                 <Route path = "/eventos" element = {<LandingPage tag="evento" />}/>
                 <Route path = "/publicaciones" element = {<LandingPage tag="publicacion" />}/>
                 <Route path = "/publicaciones/:id" element = {<PublicacionDetalle/>}/>
@@ -50,7 +51,7 @@ export const Rutas = () =>{
                 <Route path="/tutoriales" element={<Tutoriales />} /> {/* NUEVO */}
                 <Route path="/notificaciones" element={<NotificacionesMovil />} />
 
-                <Route path="*" element={<Navigate to="/publicaciones" />} />
+                <Route path="*" element={<Navigate to="/" />} />
             </Routes>
             <Footer />
         </Router>

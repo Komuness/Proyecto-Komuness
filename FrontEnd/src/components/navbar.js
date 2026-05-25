@@ -198,6 +198,12 @@ export const Navbar = () => {
         <nav className={`nav-menu ${menuAbierto ? "menu-abierto" : ""}`}>
           <ul className="menu">
             <li
+              onClick={() => handleNavigation("/")}
+              className={isActive("/") ? "activo" : ""}
+            >
+              <span>Inicio</span>
+            </li>
+            <li
               onClick={() => handleNavigation("/publicaciones")}
               className={isActive("/publicaciones") ? "activo" : ""}
             >

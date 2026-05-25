@@ -1,0 +1,114 @@
+.inicio-principal-wrapper {
+  width: 100%;
+  min-height: calc(100vh - 140px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 26px 16px;
+  background: rgba(31, 41, 55, 0.8);
+}
+
+.inicio-principal-card {
+  width: min(980px, 100%);
+  padding: 20px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: center;
+}
+
+.inicio-principal-logo {
+  width: min(300px, 76%);
+  margin: 0 auto;
+  filter: drop-shadow(0 0 20px rgba(84, 69, 255, 0.35));
+}
+
+.inicio-principal-eslogan {
+  margin: 6px 0 0;
+  font-size: clamp(2rem, 5.2vw, 4rem);
+  line-height: 1.08;
+  font-weight: 700;
+  color: #ffffff;
+  text-wrap: balance;
+}
+
+.inicio-principal-frase-box {
+  margin-top: 2px;
+  padding: 0 8px;
+}
+
+.inicio-principal-frase-box p {
+  margin: 0;
+  font-size: clamp(1rem, 2.25vw, 1.48rem);
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.inicio-principal-redes {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 14px;
+  margin-top: 2px;
+}
+
+.inicio-principal-redes a {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  transition: all 0.2s ease;
+  font-size: 1.05rem;
+}
+
+.inicio-principal-redes a:hover {
+  transform: translateY(-2px);
+  background: rgba(84, 69, 255, 0.55);
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
+.inicio-principal-actions {
+  display: flex;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.inicio-principal-btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 999px;
+  padding: 10px 20px;
+  background: #ffbf30;
+  color: #12143d;
+  font-weight: 700;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+}
+
+.inicio-principal-btn:hover {
+  background: #efad1b;
+}
+
+@media (max-width: 768px) {
+  .inicio-principal-wrapper {
+    min-height: calc(100vh - 120px);
+    align-items: center;
+  }
+
+  .inicio-principal-logo {
+    width: min(240px, 78%);
+  }
+
+  .inicio-principal-redes a {
+    width: 36px;
+    height: 36px;
+    font-size: 0.98rem;
+  }
+}
