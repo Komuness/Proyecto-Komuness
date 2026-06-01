@@ -476,7 +476,7 @@ const ModalConfiguracionTematica = ({ isOpen, onClose }) => {
 
                     <div>
                       <label className="block text-xs font-semibold uppercase text-gray-600 mb-1">
-                        Descripción (opcional)
+                        DescripciÃ³n (opcional)
                       </label>
                       <textarea
                         rows={2}
@@ -590,7 +590,7 @@ const ModalConfiguracionTematica = ({ isOpen, onClose }) => {
                             </div>
                           ) : (
                             <p className="mt-2 text-xs text-gray-500">
-                              Sin imagen específica. Se hereda la imagen del tema base.
+                              Sin imagen especÃ­fica. Se hereda la imagen del tema base.
                             </p>
                           )}
                         </div>
@@ -708,7 +708,7 @@ const ModalConfiguracionTematica = ({ isOpen, onClose }) => {
                             color: previewTheme.navbarActiveTextColor,
                           }}
                         >
-                          Opción activa
+                          OpciÃ³n activa
                         </button>
                         <div
                           className="rounded-lg border p-3"
@@ -718,7 +718,7 @@ const ModalConfiguracionTematica = ({ isOpen, onClose }) => {
                           }}
                         >
                           <p className="font-semibold text-sm" style={{ color: previewTheme.cardTextColor }}>
-                            Carta de publicación
+                            Carta de publicaciÃ³n
                           </p>
                           <p className="text-xs mt-1" style={{ color: previewTheme.cardSecondaryTextColor }}>
                             Texto secundario para fechas y detalles.
@@ -743,7 +743,7 @@ const ModalConfiguracionTematica = ({ isOpen, onClose }) => {
                   <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
                     {sortedProgramadas.length === 0 && (
                       <div className="border border-dashed border-gray-300 rounded-lg p-6 text-sm text-gray-500 text-center">
-                        Aún no hay temas programados.
+                        AÃºn no hay temas programados.
                       </div>
                     )}
                     {sortedProgramadas.map((item) => (
