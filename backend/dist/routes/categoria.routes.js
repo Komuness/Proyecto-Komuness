@@ -12,4 +12,5 @@ router.get("/:id", categoria_controller_1.getCategoriaById);
 router.post("/", auth_middleware_1.authMiddleware, (0, roles_middleware_1.verificarRoles)([1]), categoria_controller_1.createCategoria);
 router.put("/:id", auth_middleware_1.authMiddleware, (0, roles_middleware_1.verificarRoles)([1]), categoria_controller_1.updateCategoria);
 router.delete("/:id", auth_middleware_1.authMiddleware, (0, roles_middleware_1.verificarRoles)([1]), categoria_controller_1.deleteCategoria);
+router.put('/toggle/:id', auth_middleware_1.authMiddleware, (0, roles_middleware_1.verificarRoles)([1]), categoria_controller_1.toggleCategoriaEstado);
 exports.default = router;

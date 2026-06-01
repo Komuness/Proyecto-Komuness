@@ -32,68 +32,70 @@ const tutorial_routes_1 = __importDefault(require("./routes/tutorial.routes"));
 const notificaciones_routes_1 = __importDefault(require("./routes/notificaciones.routes"));
 const paqueteSuscripcion_routes_1 = __importDefault(require("./routes/paqueteSuscripcion.routes"));
 const publicidad_routes_1 = __importDefault(require("./routes/publicidad.routes"));
+const proyectosDestacados_routes_1 = __importDefault(require("./routes/proyectosDestacados.routes"));
 // Rutas de PayPal
 const paypal_routes_1 = __importDefault(require("./routes/paypal.routes"));
 const bancoProfesionales_routes_1 = __importDefault(require("./routes/bancoProfesionales.routes"));
 const app = (0, express_1.default)();
 dotenv_1.default.config();
-app.disable('x-powered-by');
+app.disable("x-powered-by");
 app.use((0, cookie_parser_1.default)());
-app.use(express_1.default.json({ limit: '25mb' }));
+app.use(express_1.default.json({ limit: "25mb" }));
 /** CORS: lista fija + extra por variable (para Railway Frontend luego) */
 const defaultCorsOrigins = [
-    'http://localhost:3001',
-    'http://localhost:3000',
-    'https://proyecto-komuness-front.vercel.app',
-    'https://komuness-project.netlify.app',
-    'http://64.23.137.192',
-    'http://159.54.148.238',
-    'https://komuness.duckdns.org',
-    'https://proyecto-komuness-production.up.railway.app',
-    'https://frontend-production-0b7e.up.railway.app/',
+    "http://localhost:3001",
+    "http://localhost:3000",
+    "https://proyecto-komuness-front.vercel.app",
+    "https://komuness-project.netlify.app",
+    "http://64.23.137.192",
+    "http://159.54.148.238",
+    "https://komuness.duckdns.org",
+    "https://proyecto-komuness-production.up.railway.app",
+    "https://frontend-production-0b7e.up.railway.app/",
 ];
-const extraCorsOrigins = (process.env.CORS_ORIGINS || '')
-    .split(',')
-    .map(s => s.trim())
+const extraCorsOrigins = (process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((s) => s.trim())
     .filter(Boolean);
 const allowedOrigins = Array.from(new Set([...defaultCorsOrigins, ...extraCorsOrigins]));
 app.use((0, cors_1.default)({
     origin: allowedOrigins,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    credentials: true
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    credentials: true,
 }));
 /** ====== ESTÁTICOS (reemplazo directo de Nginx alias) ====== */
-const UPLOADS_ROOT = process.env.UPLOAD_DIR || '/srv/uploads';
-const LIBRARY_DIR = process.env.LIBRARY_DIR || path_1.default.join(UPLOADS_ROOT, 'biblioteca');
-const ACERCADE_DIR = process.env.ACERCADE_LIB || path_1.default.join(UPLOADS_ROOT, 'acercade');
-const PROFILE_DIR = process.env.PROFILE_LIB || path_1.default.join(UPLOADS_ROOT, 'perfil');
-const CSV_DIR = process.env.CSV_LIB || path_1.default.join(UPLOADS_ROOT, 'csv');
+const UPLOADS_ROOT = process.env.UPLOAD_DIR || "/srv/uploads";
+const LIBRARY_DIR = process.env.LIBRARY_DIR || path_1.default.join(UPLOADS_ROOT, "biblioteca");
+const ACERCADE_DIR = process.env.ACERCADE_LIB || path_1.default.join(UPLOADS_ROOT, "acercade");
+const PROFILE_DIR = process.env.PROFILE_LIB || path_1.default.join(UPLOADS_ROOT, "perfil");
+const CSV_DIR = process.env.CSV_LIB || path_1.default.join(UPLOADS_ROOT, "csv");
 app.use("/uploads", express_1.default.static(UPLOADS_ROOT));
-app.use("/biblioteca", express_1.default.static(process.env.LIBRARY_DIR || (UPLOADS_ROOT + "/biblioteca")));
-app.use("/acercade", express_1.default.static(process.env.ACERCADE_LIB || (UPLOADS_ROOT + "/acercade")));
-app.use("/perfil", express_1.default.static(process.env.PROFILE_LIB || (UPLOADS_ROOT + "/perfil")));
-app.use("/csv", express_1.default.static(process.env.CSV_LIB || (UPLOADS_ROOT + "/csv")));
+app.use("/biblioteca", express_1.default.static(process.env.LIBRARY_DIR || UPLOADS_ROOT + "/biblioteca"));
+app.use("/acercade", express_1.default.static(process.env.ACERCADE_LIB || UPLOADS_ROOT + "/acercade"));
+app.use("/perfil", express_1.default.static(process.env.PROFILE_LIB || UPLOADS_ROOT + "/perfil"));
+app.use("/csv", express_1.default.static(process.env.CSV_LIB || UPLOADS_ROOT + "/csv"));
 /** ====== Rutas API ====== */
-app.use('/api/configuracion', configuracion_routes_1.default);
-app.use('/api/usuario', usuario_routes_1.default);
-app.use('/api/publicaciones', publicaciones_routes_1.default);
-app.use('/api/biblioteca', biblioteca_routes_1.default);
+app.use("/api/configuracion", configuracion_routes_1.default);
+app.use("/api/usuario", usuario_routes_1.default);
+app.use("/api/publicaciones", publicaciones_routes_1.default);
+app.use("/api/biblioteca", biblioteca_routes_1.default);
 app.use("/api/categorias", categoria_routes_1.default);
-app.use('/api', files_routes_1.default);
-app.use('/api/acerca-de', seccionAcerca_routes_1.default);
-app.use('/api/perfil', perfil_routes_1.default);
-app.use('/api/banco-profesionales', bancoProfesionales_routes_1.default);
-app.use('/api/paypal', paypal_routes_1.default);
-app.use('/api/tutoriales', tutorial_routes_1.default);
-app.use('/api/notificaciones', notificaciones_routes_1.default);
-app.use('/api/paquetes-suscripcion', paqueteSuscripcion_routes_1.default);
-app.use('/api/publicidad', publicidad_routes_1.default);
+app.use("/api", files_routes_1.default);
+app.use("/api/acerca-de", seccionAcerca_routes_1.default);
+app.use("/api/perfil", perfil_routes_1.default);
+app.use("/api/banco-profesionales", bancoProfesionales_routes_1.default);
+app.use("/api/paypal", paypal_routes_1.default);
+app.use("/api/tutoriales", tutorial_routes_1.default);
+app.use("/api/proyectos-destacados", proyectosDestacados_routes_1.default);
+app.use("/api/notificaciones", notificaciones_routes_1.default);
+app.use("/api/paquetes-suscripcion", paqueteSuscripcion_routes_1.default);
+app.use("/api/publicidad", publicidad_routes_1.default);
 /** Smoke test mínimo */
-app.get('/api/', (_req, res) => {
-    res.send('Hello World');
+app.get("/api/", (_req, res) => {
+    res.send("Hello World");
 });
 /** Healthcheck mínimo para Railway (útil para ver si conectó a Mongo) */
-app.get(['/health', '/api/health'], (_req, res) => {
+app.get(["/health", "/api/health"], (_req, res) => {
     res.json({
         ok: true,
         uptimeSeconds: Math.round(process.uptime()),
@@ -102,40 +104,47 @@ app.get(['/health', '/api/health'], (_req, res) => {
 });
 // Middleware global de errores
 const globalErrorHandler = (err, _req, res, _next) => {
-    if (err && (err.code === 'LIMIT_FILE_SIZE' || err.code === 'LIMIT_PART_COUNT' || err.code === 'LIMIT_FILE_COUNT')) {
+    if (err &&
+        (err.code === "LIMIT_FILE_SIZE" ||
+            err.code === "LIMIT_PART_COUNT" ||
+            err.code === "LIMIT_FILE_COUNT")) {
         res.status(413).json({
             success: false,
-            message: `El archivo excede el límite permitido de ${(process.env.LIBRARY_MAX_FILE_SIZE_MB || '200')} MB.`,
-            errorCode: err.code || 'LIMIT_EXCEEDED'
+            message: `El archivo excede el límite permitido de ${process.env.LIBRARY_MAX_FILE_SIZE_MB || "200"} MB.`,
+            errorCode: err.code || "LIMIT_EXCEEDED",
         });
         return;
     }
     if (err && err.status === 413) {
         res.status(413).json({
             success: false,
-            message: `Payload demasiado grande. Asegúrate que los archivos no superen ${(process.env.LIBRARY_MAX_FILE_SIZE_MB || '200')} MB.`,
+            message: `Payload demasiado grande. Asegúrate que los archivos no superen ${process.env.LIBRARY_MAX_FILE_SIZE_MB || "200"} MB.`,
         });
         return;
     }
-    if (err && (err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT')) {
+    if (err && (err.code === "ECONNRESET" || err.code === "ETIMEDOUT")) {
         res.status(502).json({
             success: false,
-            message: 'Hubo un problema de conexión durante la carga. Intenta nuevamente.',
-            errorCode: err.code
+            message: "Hubo un problema de conexión durante la carga. Intenta nuevamente.",
+            errorCode: err.code,
         });
         return;
     }
-    if (err && typeof err.message === 'string' && err.message.includes('Tipo de archivo no permitido')) {
+    if (err &&
+        typeof err.message === "string" &&
+        err.message.includes("Tipo de archivo no permitido")) {
         res.status(400).json({
             success: false,
             message: err.message,
-            errorCode: 'INVALID_FILE_TYPE'
+            errorCode: "INVALID_FILE_TYPE",
         });
         return;
     }
     if (err) {
-        console.error('Unhandled error middleware:', err);
-        res.status(500).json({ success: false, message: 'Error interno del servidor' });
+        console.error("Unhandled error middleware:", err);
+        res
+            .status(500)
+            .json({ success: false, message: "Error interno del servidor" });
         return;
     }
 };
@@ -149,9 +158,9 @@ const port = process.env.PORT || 5000;
 }))();
 exports.default = app;
 if (require.main === module) {
-    (0, mongodb_1.connectBD)(process.env.BD_URL || '').then(() => {
+    (0, mongodb_1.connectBD)(process.env.BD_URL || "").then(() => {
         (0, publicacionExpiration_service_1.startPublicationExpirationJob)();
-        console.log('Connected to MongoDB');
+        console.log("Connected to MongoDB");
         app.listen(port, () => {
             console.log(`Server is running on http://localhost:${port}`);
         });

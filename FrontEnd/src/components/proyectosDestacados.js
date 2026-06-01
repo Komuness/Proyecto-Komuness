@@ -2,27 +2,27 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../components/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { API_URL } from "../utils/api";
-import TutorialModal from "../components/tutorialModal";
+import ProyectosDestacadosModal from "../components/proyectosDestacadosModal";
 import ReactMarkdown from "react-markdown";
 
-export const Tutoriales = () => {
+export const ProyectosDestacados = () => {
   const { user } = useAuth();
   const [mostrarModal, setMostrarModal] = useState(false);
-  const [tutoriales, setTutoriales] = useState([]);
-  const [tutorialEditando, setTutorialEditando] = useState(null); // null = crear desde cero, objeto = editar tutorial
+  const [proyectos, setProyectos] = useState([]);
+  const [proyectoEditando, setProyectoEditando] = useState(null); // null = crear desde cero, objeto = editar tutorial
 
   useEffect(() => {
-    fetchTutoriales();
+    fetchProyectos();
   }, []);
 
   ///////////////////// CRUD
-  const handleDeleteTutorial = async (tutorial) => {
-    if (!window.confirm("¿Está seguro de que quiere eliminar este tutorial?"))
+  const handleDeleteProyecto = async (proyecto) => {
+    if (!window.confirm("¿Está seguro de que quiere eliminar este proyecto?"))
       return;
 
     try {
       const response = await fetch(
-        `${API_URL}/tutoriales/delete-tutorial/${tutorial._id}`,
+        `${API_URL}/proyectos-destacados/delete-proyecto/${proyecto._id}`,
         {
           method: "DELETE",
           headers: {
@@ -31,24 +31,24 @@ export const Tutoriales = () => {
         },
       );
       if (response.ok) {
-        toast.success("Tutorial eliminado");
-        fetchTutoriales();
+        toast.success("Proyecto eliminado");
+        fetchProyectos();
       } else {
         const errorData = await response.json();
-        toast.error(errorData.message || "Error al eliminar el tutorial");
+        toast.error(errorData.message || "Error al eliminar el proyecto");
       }
     } catch (e) {
-      toast.error("Error al eliminar el tutorial");
+      toast.error("Error al eliminar el proyecto");
       console.error(e);
     }
   };
 
-  const handleSubmitTutorial = async ({ nombre, url, descripcion }) => {
+  const handleSubmitProyecto = async ({ nombre, url, descripcion }) => {
     try {
-      const modoCrear = tutorialEditando == null;
+      const modoCrear = proyectoEditando == null;
       const petition_url = modoCrear
-        ? `${API_URL}/tutoriales/create-tutorial`
-        : `${API_URL}/tutoriales/update-tutorial/${tutorialEditando._id}`;
+        ? `${API_URL}/proyectos-destacados/create-proyecto`
+        : `${API_URL}/proyectos-destacados/update-proyecto/${proyectoEditando._id}`;
       const method = modoCrear ? "POST" : "PUT";
 
       const res = await fetch(petition_url, {
@@ -61,48 +61,50 @@ export const Tutoriales = () => {
       });
 
       if (res.ok) {
-        toast.success(modoCrear ? "Tutorial creado" : "Tutorial actualizado");
+        toast.success(modoCrear ? "Proyecto creado" : "Proyecto actualizado");
         cerrarModal();
-        fetchTutoriales();
+        fetchProyectos();
       } else {
         const errorData = await res.json();
-        toast.error(errorData.message || "Error al guardar el tutorial");
+        toast.error(errorData.message || "Error al guardar el proyecto");
       }
     } catch (e) {
-      console.error("ERROR TUTORIAL: ", e);
-      toast.error("Error al guardar el tutorial");
+      console.error("ERROR PROYECTOS DESTACADOS: ", e);
+      toast.error("Error al guardar el proyecto");
     }
   };
 
-  const fetchTutoriales = async () => {
+  const fetchProyectos = async () => {
     try {
-      const response = await fetch(`${API_URL}/tutoriales/get-tutoriales`);
+      const response = await fetch(
+        `${API_URL}/proyectos-destacados/get-proyectos`,
+      );
       if (!response.ok) {
         console.log(response);
-        throw new Error("Error al cargar tutoriales");
+        throw new Error("Error al cargar proyectos destacados");
       }
 
       const data = await response.json();
-      setTutoriales(data.data || []);
+      setProyectos(data.data || []);
     } catch (error) {
       console.error("Error:", error);
-      toast.error("Error al cargar tutoriales");
+      toast.error("Error al cargar proyectos destacados");
     }
   };
 
   /////////////////// MODAL
   const abrirModalCrear = () => {
-    setTutorialEditando(null);
+    setProyectoEditando(null);
     setMostrarModal(true);
   };
 
-  const abrirModalEditar = (tutorial) => {
-    setTutorialEditando(tutorial);
+  const abrirModalEditar = (proyecto) => {
+    setProyectoEditando(proyecto);
     setMostrarModal(true);
   };
 
   const cerrarModal = () => {
-    setTutorialEditando(null);
+    setProyectoEditando(null);
     setMostrarModal(false);
   };
 
@@ -130,7 +132,7 @@ export const Tutoriales = () => {
     <div className="flex flex-col items-center gap-4 bg-gray-800/80 pt-16 min-h-screen p-4 sm:p-8">
       {/* Título */}
       <h1 className="text-4xl sm:text-5xl font-bold text-white drop-shadow-[0_2px_6px_rgba(0,0,0,1)]">
-        <span className="text-gray-200">Tutoriales</span>
+        <span className="text-gray-200">Proyectos Destacados</span>
       </h1>
 
       {/*Boton para crear, solo para admin*/}
@@ -141,52 +143,52 @@ export const Tutoriales = () => {
               onClick={() => abrirModalCrear()}
               className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium p-4 rounded-lg shadow"
             >
-              + Agregar Tutorial
+              + Agregar Proyecto
             </button>
           </div>
 
           {/*Modal para crear o editar tutorial*/}
           {mostrarModal && (
-            <TutorialModal
-              tutorial={tutorialEditando}
+            <ProyectosDestacadosModal
+              proyecto={proyectoEditando}
               onClose={cerrarModal}
-              onSubmit={handleSubmitTutorial}
+              onSubmit={handleSubmitProyecto}
             />
           )}
         </div>
       )}
 
       {/* cada tutorial tiene video si es de YT o link si no y el boton de borrar*/}
-      {tutoriales.map((tutorial) => (
+      {proyectos.map((proyecto) => (
         <div
-          key={tutorial._id}
+          key={proyecto._id}
           className="w-full max-w-6xl bg-white/10 rounded-xl p-4"
         >
           {/* Nombre */}
           <h2 className="text-4xl text-white font-semibold flex items-center gap-2 justify-center">
-            {tutorial.nombre}
+            {proyecto.nombre}
           </h2>
 
           {/* Descripción */}
-          {tutorial.descripcion && (
+          {proyecto.descripcion && (
             <div className="mt-5">
               <div className="prose prose-invert max-w-none mt-2">
-                <ReactMarkdown>{tutorial.descripcion}</ReactMarkdown>
+                <ReactMarkdown>{proyecto.descripcion}</ReactMarkdown>
               </div>
             </div>
           )}
 
           {/* Video o enlace, solo si tiene url */}
-          {tutorial.url && (
+          {proyecto.url && (
             <div className="mt-5">
               <h3 className="text-3xl text-white font-semibold flex gap-2">
-                Video del tutorial:
+                Video del proyecto:
               </h3>
-              {isYouTube(tutorial.url) ? (
+              {isYouTube(proyecto.url) ? (
                 <div className="mt-3 aspect-video w-full">
                   <iframe
-                    title={tutorial.nombre}
-                    src={getYTEmbedUrl(tutorial.url)}
+                    title={proyecto.nombre}
+                    src={getYTEmbedUrl(proyecto.url)}
                     className="w-full h-full rounded-lg"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
@@ -195,12 +197,12 @@ export const Tutoriales = () => {
               ) : (
                 <div>
                   <a
-                    href={tutorial.url}
+                    href={proyecto.url}
                     className="text-blue-300 hover:text-blue-200 underline"
                     target="_blank"
                     rel="noreferrer"
                   >
-                    {tutorial.url}
+                    {proyecto.url}
                   </a>
                 </div>
               )}
@@ -211,13 +213,13 @@ export const Tutoriales = () => {
           {esAdmin && (
             <div className="flex gap-3 mt-5">
               <button
-                onClick={() => abrirModalEditar(tutorial)}
+                onClick={() => abrirModalEditar(proyecto)}
                 className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium px-4 py-2 rounded-lg shadow"
               >
                 + Editar
               </button>
               <button
-                onClick={() => handleDeleteTutorial(tutorial)}
+                onClick={() => handleDeleteProyecto(proyecto)}
                 className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow"
               >
                 − Eliminar
@@ -230,4 +232,4 @@ export const Tutoriales = () => {
   );
 };
 
-export default Tutoriales;
+export default ProyectosDestacados;

@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteCategoria = exports.updateCategoria = exports.getCategoriaById = exports.getCategorias = exports.createCategoria = void 0;
+exports.toggleCategoriaEstado = exports.deleteCategoria = exports.updateCategoria = exports.getCategoriaById = exports.getCategorias = exports.createCategoria = void 0;
 const categoria_model_1 = require("../models/categoria.model");
 /**
  * Crear categoría
@@ -21,9 +21,22 @@ const createCategoria = (req, res) => __awaiter(void 0, void 0, void 0, function
             res.status(400).json({ message: "El nombre es obligatorio" });
             return;
         }
-        const existe = yield categoria_model_1.modelCategoria.findOne({ nombre: nombre.trim().toLowerCase() });
+        const existe = yield categoria_model_1.modelCategoria.findOne({
+            nombre: nombre.trim().toLowerCase()
+        });
         if (existe) {
-            res.status(400).json({ message: "Ya existe una categoría con ese nombre" });
+            if (!existe.estado) {
+                existe.estado = true;
+                yield existe.save();
+                res.status(200).json({
+                    message: "Categoría reactivada correctamente",
+                    data: existe
+                });
+                return;
+            }
+            res.status(400).json({
+                message: "Ya existe una categoría con ese nombre"
+            });
             return;
         }
         const nuevaCategoria = new categoria_model_1.modelCategoria({
@@ -47,8 +60,8 @@ const getCategorias = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         const { page = 1, limit = 10 } = req.query;
         const skip = (Number(page) - 1) * Number(limit);
         const [categorias, total] = yield Promise.all([
-            categoria_model_1.modelCategoria.find({ estado: true }).skip(skip).limit(Number(limit)),
-            categoria_model_1.modelCategoria.countDocuments({ estado: true })
+            categoria_model_1.modelCategoria.find().skip(skip).limit(Number(limit)),
+            categoria_model_1.modelCategoria.countDocuments()
         ]);
         res.json({
             total,
@@ -135,3 +148,30 @@ const deleteCategoria = (req, res) => __awaiter(void 0, void 0, void 0, function
     }
 });
 exports.deleteCategoria = deleteCategoria;
+const toggleCategoriaEstado = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        const categoria = yield categoria_model_1.modelCategoria.findById(id);
+        if (!categoria) {
+            res.status(404).json({
+                message: "Categoría no encontrada"
+            });
+            return;
+        }
+        categoria.estado = !categoria.estado;
+        yield categoria.save();
+        res.json({
+            message: categoria.estado
+                ? "Categoría activada"
+                : "Categoría desactivada",
+            data: categoria
+        });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: "Error al cambiar estado"
+        });
+    }
+});
+exports.toggleCategoriaEstado = toggleCategoriaEstado;

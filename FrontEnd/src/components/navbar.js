@@ -19,7 +19,7 @@ export const Navbar = () => {
   const [notificationCount, setNotificationCount] = useState(0);
   const [lastToastCount, setLastToastCount] = useState(0);
   const [isMobileView, setIsMobileView] = useState(
-    () => window.innerWidth <= MOBILE_BREAKPOINT
+    () => window.innerWidth <= MOBILE_BREAKPOINT,
   );
 
   let usuario = null;
@@ -114,7 +114,8 @@ export const Navbar = () => {
     };
 
     window.addEventListener("notifications-count-changed", handler);
-    return () => window.removeEventListener("notifications-count-changed", handler);
+    return () =>
+      window.removeEventListener("notifications-count-changed", handler);
   }, []);
 
   useEffect(() => {
@@ -168,7 +169,8 @@ export const Navbar = () => {
     return false;
   };
 
-  const notificationBadgeText = notificationCount > 9 ? "9+" : `${notificationCount}`;
+  const notificationBadgeText =
+    notificationCount > 9 ? "9+" : `${notificationCount}`;
 
   const handleOpenNotificaciones = () => {
     setMenuAbierto(false);
@@ -242,6 +244,13 @@ export const Navbar = () => {
             </li>
 
             <li
+              onClick={() => handleNavigation("/proyectos-destacados")}
+              className={isActive("/proyectos-destacados") ? "activo" : ""}
+            >
+              <span>Proyectos Destacados</span>
+            </li>
+
+            <li
               onClick={() => handleNavigation("/profesionales")}
               className={isActive("/profesionales") ? "activo" : ""}
             >
@@ -250,7 +259,9 @@ export const Navbar = () => {
             </li>
             <li
               onClick={() =>
-                handleNavigation(goToLogin ? "/perfilUsuario" : "/iniciarSesion")
+                handleNavigation(
+                  goToLogin ? "/perfilUsuario" : "/iniciarSesion",
+                )
               }
               className={
                 isActive("/perfilUsuario") || isActive("/iniciarSesion")
@@ -283,7 +294,9 @@ export const Navbar = () => {
                   />
                 </svg>
                 {notificationCount > 0 && (
-                  <span className="notification-badge">{notificationBadgeText}</span>
+                  <span className="notification-badge">
+                    {notificationBadgeText}
+                  </span>
                 )}
               </div>
               <span className="menu-text-movil">Notificaciones</span>
