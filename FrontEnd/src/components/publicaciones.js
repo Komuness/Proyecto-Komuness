@@ -618,12 +618,18 @@ export const Publicaciones = ({ tag: propTag }) => {
       </div>
 
       {(esAdmin || estadoUsuario?.enBancoProfesionales) && (
-        <button
-          onClick={handleCrearPublicacion}
-          className="fixed bottom-4 right-4 md:bottom-6 md:right-6 bg-yellow-500 text-white w-14 h-14 md:w-16 md:h-16 rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 z-50 flex items-center justify-center text-2xl"
-        >
-          +
-        </button>
+        <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex items-center gap-3">
+          <span className="hidden md:block bg-white px-4 py-2 rounded-full shadow-md text-sm font-medium text-gray-700">
+            Inspira a otros con tu talento
+          </span>
+
+          <button
+            onClick={handleCrearPublicacion}
+            className="bg-yellow-500 text-white w-14 h-14 md:w-16 md:h-16 rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 flex items-center justify-center text-2xl"
+          >
+            +
+          </button>
+        </div>
       )}
 
       <AlertaLimitePublicaciones
