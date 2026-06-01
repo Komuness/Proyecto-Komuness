@@ -203,7 +203,7 @@ export const AdminCategorias = () => {
             <IoMdArrowRoundBack color={"black"} size={25} />
           </button>
           <h1 className="admin-categorias-title">
-            Administración de Categorías y Etiquetas
+            Administración de Clasificaciones
           </h1>
         </div>
 
