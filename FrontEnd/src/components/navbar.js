@@ -215,7 +215,7 @@ export const Navbar = () => {
               onClick={() => handleNavigation("/eventos")}
               className={isActive("/eventos") ? "activo" : ""}
             >
-              <span>Eventos</span>
+              <span>Cartelera de Eventos</span>
             </li>
             <li
               onClick={() => handleNavigation("/emprendimientos")}

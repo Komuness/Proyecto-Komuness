@@ -7,6 +7,7 @@ import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import "../CSS/publicaciones.css";
 
 import PublicacionCard from "./publicacionCard";
+import EventoCard from "./eventoCard";
 import FormularioPublicacion from "../pages/formulario";
 import PublicacionModal from "./publicacionModal";
 import { useAuth } from "./context/AuthContext";
@@ -514,7 +515,7 @@ export const Publicaciones = ({ tag: propTag }) => {
           </div>
         )}
 
-        {/*BOTON DE AGREGAR SOLO PARA ADMINS*/}
+        {/*BOTON DE AGREGAR PUBLICIDAD SOLO PARA ADMINS*/}
         {esAdmin && (
           <div className="max-w-6xl px-4 py-2 text-white">
             <div>
@@ -549,7 +550,11 @@ export const Publicaciones = ({ tag: propTag }) => {
         </div>
       )}
 
-      <div className="card-container">
+      <div
+        className={
+          tag === "evento" ? "evento-card-container" : "card-container"
+        }
+      >
         {cards.length === 0 ? (
           <p className="text-white">
             {searchFilter
@@ -557,13 +562,21 @@ export const Publicaciones = ({ tag: propTag }) => {
               : "No hay publicaciones para mostrar."}
           </p>
         ) : (
-          cards.map((publicacion) => (
-            <PublicacionCard
-              key={publicacion._id}
-              publicacion={publicacion}
-              onDeleteClick={(pub) => setSelectedPub(pub)}
-            />
-          ))
+          cards.map((publicacion) =>
+            tag === "evento" ? (
+              <EventoCard
+                key={publicacion._id}
+                publicacion={publicacion}
+                onDeleteClick={(pub) => setSelectedPub(pub)}
+              />
+            ) : (
+              <PublicacionCard
+                key={publicacion._id}
+                publicacion={publicacion}
+                onDeleteClick={(pub) => setSelectedPub(pub)}
+              />
+            ),
+          )
         )}
       </div>
 
