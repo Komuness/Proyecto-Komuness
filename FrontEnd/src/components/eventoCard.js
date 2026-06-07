@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
-import CategoriaBadge from "./categoriaBadge";
+import CategoriaBadge from "./generic/categoriaBadge";
 import ProfileErrorModal from "./ProfileErrorModal";
 import { API_URL } from "../utils/api";
 

@@ -11,7 +11,7 @@ import EventoCard from "./eventoCard";
 import FormularioPublicacion from "../pages/formulario";
 import PublicacionModal from "./publicacionModal";
 import { useAuth } from "./context/AuthContext";
-import CategoriaFilter from "./categoriaFilter";
+import CategoriaFilter from "./generic/categoriaFilter";
 import BuscadorPublicaciones from "./buscadorPublicaciones";
 import AlertaLimitePublicaciones from "./AlertaLimitePublicaciones";
 import { API_URL } from "../utils/api";

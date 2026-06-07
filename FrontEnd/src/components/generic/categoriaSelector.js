@@ -1,6 +1,6 @@
 // components/categoriaSelector.js
 import { useState, useEffect } from "react";
-import { API_URL } from "../utils/api";
+import { API_URL } from "../../utils/api";
 
 export const CategoriaSelector = ({
   selectedCategoria,

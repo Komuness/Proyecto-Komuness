@@ -1,7 +1,7 @@
 // components/categoriaFilter.js
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { API_URL } from "../utils/api";
+import { API_URL } from "../../utils/api";
 
 export const CategoriaFilter = () => {
   const [categorias, setCategorias] = useState([]);
