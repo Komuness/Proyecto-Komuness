@@ -986,22 +986,36 @@ export const filterPublicaciones = async (
       hasSearchCriteria = true;
     }
     if (tag) {
-      filtro.tag = { $regex: tag as string, $options: "i" };
+      filtro.$and.push({
+        tag: {
+          $regex: tag as string,
+          $options: "i",
+        },
+      });
+
       hasSearchCriteria = true;
     }
+
     if (autor) {
       if (!mongoose.Types.ObjectId.isValid(autor as string)) {
-        res.status(400).json({ message: "ID de autor inválido" });
+        res.status(400).json({
+          message: "ID de autor inválido",
+        });
+
         return;
       }
-      filtro.autor = autor as string;
+
+      filtro.$and.push({
+        autor,
+      });
+
       hasSearchCriteria = true;
     }
 
     if (!hasSearchCriteria) {
       res.status(400).json({
         message:
-          "Debe proporcionar al menos un parámetro de búsqueda (titulo, tag o autor)",
+          "Debe proporcionar al menos un parámetro de búsqueda (texto, tag o autor)",
       });
       return;
     }
