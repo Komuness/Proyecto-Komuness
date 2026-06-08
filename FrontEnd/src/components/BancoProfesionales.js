@@ -3,8 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { BASE_URL, API_URL, PROFESIONALES_API_URL } from '../utils/api'; // AGREGAR PROFESIONALES_API_URL
 import { useAuth } from './context/AuthContext';
 import { toast } from 'react-hot-toast';
+import { AiOutlineUser } from "react-icons/ai";
 import { 
   FaSearch, 
+  FaListAlt,
+  FaHistory,
+  FaEdit,
   FaUser, 
   FaBriefcase, 
   FaMapMarkerAlt, 
@@ -21,11 +25,22 @@ const BancoProfesionales = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [profesionales, setProfesionales] = useState([]);
+  const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [estadoUsuario, setEstadoUsuario] = useState(null);
   const [cargandoEstado, setCargandoEstado] = useState(false);
   const [cargandoToggle, setCargandoToggle] = useState(false);
+  const [activeTab, setActiveTab] = useState("profesionales");
+
+  const usuariosFiltrados = usuarios.data?.filter((item) => {
+    const texto = searchTerm.toLowerCase();
+    return (
+      item.nombre?.toLowerCase().includes(texto) ||
+      item.apellido?.toLowerCase().includes(texto) ||
+      item.email?.toLowerCase().includes(texto)
+    );
+  });
 
   // Cargar profesionales - USAR PROFESIONALES_API_URL
   const cargarProfesionales = useCallback(async (search = '') => {
@@ -37,10 +52,39 @@ const BancoProfesionales = () => {
       if (!response.ok) throw new Error('Error al cargar profesionales');
       
       const data = await response.json();
-      setProfesionales(data.data || []);
+      setProfesionales(data);
+
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al cargar los profesionales');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Cargar usuarios
+  const cargarUsuarios = useCallback(async (search = '') => {
+    try {
+      setLoading(true);
+
+      const queryParams = search ? `?search=${encodeURIComponent(search)}` : '';
+      const response = await fetch(
+        `${API_URL}/usuario?tipoUsuario=1,2,3${queryParams}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!response.ok) throw new Error('Error al cargar usuarios');
+
+      const data = await response.json();
+      setUsuarios(data);
+
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al cargar usuarios');
     } finally {
       setLoading(false);
     }
@@ -202,6 +246,8 @@ const quitarDelBanco = async (perfilId) => {
 
   // Búsqueda en tiempo real con debounce
   useEffect(() => {
+    if(activeTab !== 'profesionales') return;
+
     const timeoutId = setTimeout(() => {
       cargarProfesionales(searchTerm);
     }, 300);
@@ -213,6 +259,11 @@ const quitarDelBanco = async (perfilId) => {
   useEffect(() => {
     cargarEstadoUsuario();
   }, [cargarEstadoUsuario]);
+
+  // Cargar usuarios al montar
+  useEffect(() => {
+    cargarUsuarios();
+  }, [cargarUsuarios]);
 
   const esAdmin = user && (user.tipoUsuario === 0 || user.tipoUsuario === 1);
 
@@ -254,80 +305,108 @@ const quitarDelBanco = async (perfilId) => {
 
       {/* Barra de búsqueda */}
       <div className="search-container">
-        <div className="search-box">
-          <FaSearch className="search-icon" />
+        <div className="search-box flex items-center bg-white border border-gray-300 rounded-lg p-3 relative w-full max-w-md">
+          <FaSearch className="text-gray-400 w-4 h-4 mr-2 flex-shrink-0" />
           <input
             type="text"
-            placeholder="Buscar profesionales por nombre, especialidad, ocupación..."
+            placeholder="Filtrar por nombre, especialidad, ocupación..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
+            className="flex-1 outline-none text-gray-800 py-1"
           />
           {searchTerm && (
             <button 
               onClick={() => setSearchTerm('')}
-              className="clear-search"
+              className="absolute right-2 text-gray-400 hover:text-gray-600 flex items-center justify-center w-5 h-5"
             >
-              <FaTimes />
+               <FaTimes className="w-3 h-3" />
             </button>
           )}
         </div>
       </div>
 
-      {/* Contador de resultados */}
-      {!loading && (
-        <div className="results-info">
-          <p>
-            {profesionales.length} profesional{profesionales.length !== 1 ? 'es' : ''} encontrado{profesionales.length !== 1 ? 's' : ''}
-            {searchTerm && ` para "${searchTerm}"`}
-          </p>
-        </div>
-      )}
+      {/* Pestañas para navegación */}
+      <div className="flex justify-center">
+      <div className="dashboard-tabs w-fit flex flex-wrap gap-2 border-b border-gray-200 pb-2 bg-white px-3 py-2 rounded-lg shadow-sm">
+          <button
+            onClick={() => setActiveTab("profesionales")}
+            className={`px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-0 ${
+              activeTab === "profesionales"
+                ? "bg-gray-200 text-blue-600 shadow-inner"
+                : "text-gray-500 hover:bg-gray-100"
+            }`}
+          >
+            <AiOutlineUser className="inline w-4 h-4 mr-2" />
+            Profesionales
+          </button>
 
-      {/* Grid de profesionales */}
-      {loading ? (
-        <div className="loading-container">
-          <FaSpinner className="spinner large" />
-          <p>Cargando profesionales...</p>
-        </div>
-      ) : profesionales.length > 0 ? (
+          <button
+            onClick={() => setActiveTab("usuarios")}
+            className={`px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-0 ${
+            activeTab === "usuarios"
+              ? "bg-gray-200 text-blue-600 shadow-inner"
+              : "text-gray-500 hover:bg-gray-100"
+          }`}
+          >
+            <AiOutlineUser className="inline w-4 h-4 mr-2" />
+            Usuarios
+          </button>
+      </div>
+      </div>
+
+      {/* Grid de profesionales/usuarios */}
+    {loading ? (
+      <div className="loading-container">
+        <FaSpinner className="spinner large" />
+        <p>
+          {activeTab === "profesionales"
+            ? "Cargando profesionales..."
+            : "Cargando usuarios..."}
+        </p>
+      </div>
+    ) : activeTab === "profesionales" ? (
+
+      // MAP PROFESIONALES 
+      profesionales && profesionales.data?.length > 0 ? (
         <div className="profesionales-grid">
-          {profesionales.map((profesional) => (
-            <div key={profesional._id} className="profesional-card">
-              {/* Foto de perfil */}
+
+          {profesionales.data?.map((item) => (
+            <div key={item._id} className="profesional-card">
+
+              {/* HEADER */}
               <div className="card-header">
                 <div className="avatar-container">
-                {profesional.fotoPerfil ? (
-                    <img 
-                    src={`${BASE_URL}${profesional.fotoPerfil}`} 
-                    alt={`${profesional.nombre} ${profesional.apellidos}`}
-                    className="avatar"
-                    onError={(e) => {
-                        e.target.style.display = 'none';
-                        // Asegurarse de que el placeholder se muestre
-                        const placeholder = e.target.nextSibling;
-                        if (placeholder) {
-                        placeholder.style.display = 'flex';
-                        }
-                    }}
-                    onLoad={(e) => {
-                        // Ocultar placeholder cuando la imagen carga correctamente
-                        const placeholder = e.target.nextSibling;
-                        if (placeholder) {
-                        placeholder.style.display = 'none';
-                        }
-                    }}
-                    />
-                ) : null}
-                <div className={`avatar-placeholder ${profesional.fotoPerfil ? 'hidden' : ''}`}>
-                    <FaUser />
-                </div>
-                </div>
 
-                {/* Botón de quitar (solo admin) */}
+                  {item.fotoPerfil ? (
+                    <img
+                      src={`${BASE_URL}${item.fotoPerfil}`}
+                      alt={`${item.nombre} ${item.apellidos}`}
+                      className="avatar"
+                      onError={(e) => {
+                        e.target.style.display = "none";
+                        const placeholder = e.target.nextSibling;
+                        if (placeholder) placeholder.style.display = "flex";
+                      }}
+                      onLoad={(e) => {
+                        const placeholder = e.target.nextSibling;
+                        if (placeholder) placeholder.style.display = "none";
+                      }}
+                    />
+                  ) : null}
+
+                  <div
+                    className={`avatar-placeholder ${
+                      item.fotoPerfil ? "hidden" : ""
+                    }`}
+                  >
+                    <FaUser />
+                  </div>
+
+                </div>
+                
                 {esAdmin && (
                   <button
-                    onClick={() => quitarDelBanco(profesional._id)}
+                    onClick={() => quitarDelBanco(item._id)}
                     className="btn-quitar-admin"
                     title="Quitar del banco"
                   >
@@ -336,55 +415,62 @@ const quitarDelBanco = async (perfilId) => {
                 )}
               </div>
 
-              {/* Información principal */}
+              {/* BODY */}
               <div className="card-body">
                 <h3 className="profesional-name">
-                  {profesional.nombre} {profesional.apellidos}
+                  {item.nombre} {item.apellidos}
                 </h3>
 
-                {profesional.ocupacionPrincipal && (
+                {item.ocupacionPrincipal && (
                   <p className="profesional-ocupacion">
                     <FaBriefcase />
-                    {profesional.ocupacionPrincipal}
+                    {item.ocupacionPrincipal}
                   </p>
                 )}
 
-                {profesional.especialidad && (
+                {item.especialidad && (
                   <p className="profesional-especialidad">
-                    {profesional.especialidad}
+                    {item.especialidad}
                   </p>
                 )}
 
-                {(profesional.canton || profesional.provincia) && (
+                {(item.canton || item.provincia) && (
                   <p className="profesional-ubicacion">
                     <FaMapMarkerAlt />
-                    {[profesional.canton, profesional.provincia].filter(Boolean).join(', ')}
+                    {[item.canton, item.provincia]
+                      .filter(Boolean)
+                      .join(", ")}
                   </p>
                 )}
               </div>
 
-              {/* Acciones */}
+              {/* ACTIONS */}
               <div className="card-actions">
                 <button
-                  onClick={() => navigate(`/perfil/${profesional.usuarioId._id}`)}
+                  onClick={() =>
+                    navigate(`/perfil/${item.perfilId}`)
+                  }
                   className="btn-ver-perfil"
                 >
                   <FaEye /> Ver Perfil Completo
                 </button>
               </div>
+
             </div>
           ))}
+
         </div>
       ) : (
         <div className="empty-state">
-          <FaUser className="empty-icon" />
+          <FaUser className="empty-icon mx-auto" />
           <h3>No se encontraron profesionales</h3>
+
           <p>
-            {searchTerm 
-              ? 'No hay profesionales que coincidan con tu búsqueda.'
-              : 'Aún no hay profesionales en el banco.'
-            }
+            {searchTerm
+              ? "No hay profesionales que coincidan con tu búsqueda."
+              : "Aún no hay profesionales en el banco."}
           </p>
+
           {user && !estadoUsuario?.enBancoProfesionales && (
             <button
               onClick={toggleUnirseBanco}
@@ -394,7 +480,61 @@ const quitarDelBanco = async (perfilId) => {
             </button>
           )}
         </div>
-      )}
+      )
+
+    ) : (
+
+      // MAP USUARIOS
+      <div className="tab-table-container mx-auto w-[80%] h-full flex flex-col">
+        {usuariosFiltrados && usuariosFiltrados.length > 0 ? (
+          <div className="flex-1 overflow-y-auto w-full flex justify-center" style={{ maxHeight: "400px" }}>
+            <div className="min-w-full">
+              <table className="responsive-table min-w-full">
+                <thead className="sticky top-0 bg-gray-100">
+                  <tr>
+                    <th className="text-left px-3 py-2 min-w-[120px]">
+                      Nombre
+                    </th>
+                    <th className="text-left px-3 py-2 min-w-[120px]">
+                      Apellidos
+                    </th>
+                    <th className="text-left px-3 py-2 min-w-[120px]">
+                      Email
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {usuariosFiltrados.map((item) => (
+                    <tr
+                      key={item._id}
+                      className="border-t hover:bg-gray-50"
+                    >
+                      <td className="px-3 py-2 break-words min-w-[120px]">
+                        {item.nombre || "Sin nombre"}
+                      </td>
+
+                      <td className="px-3 py-2 break-words min-w-[120px]">
+                        {item.apellido || "Sin apellido"}
+                      </td>
+
+                      <td className="px-3 py-2 break-words min-w-[120px]">
+                        {item.email}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+
+              </table>
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            No se encontraron usuarios.
+          </div>
+        )}
+      </div>
+    )}
     </div>
   );
 };
