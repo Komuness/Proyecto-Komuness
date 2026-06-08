@@ -518,12 +518,15 @@ export const getPublicacionesByTag = async (
   try {
     const offset = parseInt(req.query.offset as string) || 0;
     const limit = parseInt(req.query.limit as string) || 10;
-    const { tag, publicado, categoria, fecha } = req.query as {
-      tag?: string;
-      publicado?: string;
-      categoria?: string;
-      fecha?: string;
-    };
+    const { tag, publicado, categoria, fecha, precioMin, precioMax } =
+      req.query as {
+        tag?: string;
+        publicado?: string;
+        categoria?: string;
+        fecha?: string;
+        precioMin?: number;
+        precioMax?: number;
+      };
 
     const query: any = { ...buildActivePublicationQuery() };
     if (tag) query.tag = tag;
@@ -546,6 +549,14 @@ export const getPublicacionesByTag = async (
           $lt: fin,
         };
       }
+    }
+
+    if (precioMin || precioMax) {
+      query.precio = {};
+
+      if (precioMin) query.precio.$gte = Number(precioMin);
+
+      if (precioMax) query.precio.$lte = Number(precioMax);
     }
 
     const [publicaciones, totalPublicaciones] = await Promise.all([

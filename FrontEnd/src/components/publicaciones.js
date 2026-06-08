@@ -18,6 +18,7 @@ import { API_URL } from "../utils/api";
 import LimitePublicaciones from "./limiteDePublicaciones";
 import PublicidadModal from "./publicidadModal";
 import DateFilter from "./generic/dateFilter";
+import PriceFilter from "./generic/priceFilter";
 
 // Base de API robusta (evita /api/api)
 const RAW = process.env.REACT_APP_BACKEND_URL || window.location.origin;
@@ -44,6 +45,9 @@ export const Publicaciones = ({ tag: propTag }) => {
   const categoriaFilter = searchParams.get("categoria");
   const searchTerm = searchParams.get("q");
   const fechaFilter = searchParams.get("fecha");
+  const precioMin = searchParams.get("precioMin");
+  const precioMax = searchParams.get("precioMax");
+
   const isSearch = searchParams.get("search") === "true";
   const searchFilter = isSearch ? searchTerm : null;
   const [limiteData, setLimiteData] = useState(null);
@@ -106,15 +110,13 @@ export const Publicaciones = ({ tag: propTag }) => {
 
   useEffect(() => {
     if (tag)
-      obtenerPublicaciones(
-        tag,
-        1,
-        limite,
-        categoriaFilter,
-        searchFilter,
-        fechaFilter,
-      );
-  }, [tag, categoriaFilter, searchFilter, fechaFilter]);
+      obtenerPublicaciones(tag, 1, limite, searchFilter, {
+        categoria: categoriaFilter,
+        fecha: fechaFilter,
+        precioMin: precioMin,
+        precioMax: precioMax,
+      });
+  }, [tag, categoriaFilter, searchFilter, fechaFilter, precioMin, precioMax]);
 
   useEffect(() => {
     if (mostrar === 3) {
@@ -133,9 +135,13 @@ export const Publicaciones = ({ tag: propTag }) => {
     tag,
     page = 1,
     limit = limite,
-    categoriaId = null,
     searchTerm = null,
-    fecha = null,
+    filters = {
+      categoria: null,
+      fecha: null,
+      precioMin: null,
+      precioMax: null,
+    },
   ) => {
     try {
       const offset = (page - 1) * limit;
@@ -151,7 +157,6 @@ export const Publicaciones = ({ tag: propTag }) => {
           offset: String(offset),
           limit: String(limit),
         });
-        if (categoriaId) params.set("categoria", categoriaId);
       } else {
         // Usar búsqueda normal por tag
         url = `${API}/publicaciones`;
@@ -161,16 +166,13 @@ export const Publicaciones = ({ tag: propTag }) => {
           limit: String(limit),
           publicado: "true",
         });
-
-        if (categoriaId) {
-          params.set("categoria", categoriaId);
-        }
-
-        if (fecha) {
-          params.set("fecha", fecha);
+      }
+      // Agregar filtros
+      for (const filter in filters) {
+        if (filters[filter]) {
+          params.set(filter, filters[filter]);
         }
       }
-
       const resp = await fetch(`${url}?${params.toString()}`);
       if (resp.status === 404) {
         setPublicaciones([]);
@@ -325,7 +327,12 @@ export const Publicaciones = ({ tag: propTag }) => {
   };
 
   const handlePagination = (newPage) => {
-    obtenerPublicaciones(tag, newPage, limite, categoriaFilter, searchFilter);
+    obtenerPublicaciones(tag, newPage, limite, searchFilter, {
+      categoria: categoriaFilter,
+      fecha: fechaFilter,
+      precioMin: precioMin,
+      precioMax: precioMax,
+    });
   };
 
   const verificarLimite = async () => {
@@ -435,6 +442,9 @@ export const Publicaciones = ({ tag: propTag }) => {
 
               {/* Filtro de fecha de evento/publicación */}
               <DateFilter />
+
+              {/* Filtro para precio regular */}
+              {tag !== "publicacion" && <PriceFilter />}
             </div>
 
             {limiteData && tag === "publicacion" && !esAdmin && (
