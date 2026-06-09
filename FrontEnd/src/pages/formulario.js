@@ -91,28 +91,6 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
       const initialFormValues = getInitialFormValues(openTag);
       const savedDraft = readSessionDraft(draftStorageKey);
 
-    if (savedDraft) {
-      setFormData({
-        ...initialFormValues,
-        ...(savedDraft.formData || {}),
-        archivos: [],
-      });
-      setEnlacesExternos(
-        Array.isArray(savedDraft.enlacesExternos) &&
-          savedDraft.enlacesExternos.length > 0
-          ? savedDraft.enlacesExternos
-          : createDefaultEnlaces(),
-      );
-      setUbicacion({
-        ...createDefaultUbicacion(),
-        ...(savedDraft.ubicacion || {}),
-      });
-    } else {
-      setFormData(initialFormValues);
-      setEnlacesExternos(createDefaultEnlaces());
-      setUbicacion(createDefaultUbicacion());
-      setHasChanges(false);
-
       if (savedDraft) {
         const shouldLoadDraft = await confirm({
           title: "Borrador encontrado",
@@ -143,7 +121,16 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
           setHasChanges(true);
         } else {
           removeSessionDraft(draftStorageKey);
+          setFormData(initialFormValues);
+          setEnlacesExternos(createDefaultEnlaces());
+          setUbicacion(createDefaultUbicacion());
+          setHasChanges(false);
         }
+      } else {
+        setFormData(initialFormValues);
+        setEnlacesExternos(createDefaultEnlaces());
+        setUbicacion(createDefaultUbicacion());
+        setHasChanges(false);
       }
 
       if (!isActive) return;
