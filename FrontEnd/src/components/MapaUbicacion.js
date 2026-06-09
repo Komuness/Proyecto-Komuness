@@ -29,6 +29,7 @@ export const MapaUbicacion = ({
   );
   const [direccionManual, setDireccionManual] = useState(ubicacion.direccion || '');
   const [buscando, setBuscando] = useState(false);
+  const [detectando, setDetectando] = useState(false);
 
   // Límites de Costa Rica (aproximados)
   const costaRicaBounds = L.latLngBounds(
@@ -127,7 +128,7 @@ export const MapaUbicacion = ({
   const obtenerDireccionDesdeCoord = async (lat, lng) => {
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1&zoom=16`
       );
       const data = await response.json();
       const direccion = data.address?.road || data.display_name || 
@@ -167,7 +168,7 @@ export const MapaUbicacion = ({
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
           direccionManual
-        )}&format=json&limit=1`
+        )}&format=json&limit=1&countrycodes=cr`
       );
       const data = await response.json();
 
@@ -203,6 +204,43 @@ export const MapaUbicacion = ({
     }
   };
 
+  const usarUbicacionActual = () => {
+    if (!navigator.geolocation) {
+      alert('Tu navegador no permite detectar la ubicación automáticamente.');
+      return;
+    }
+
+    setDetectando(true);
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => {
+        const lat = coords.latitude;
+        const lng = coords.longitude;
+        map.current?.setView([lat, lng], 13);
+
+        if (marker.current) {
+          map.current.removeLayer(marker.current);
+        }
+
+        marker.current = L.marker([lat, lng], { draggable: true })
+          .addTo(map.current)
+          .bindPopup(`Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`)
+          .openPopup();
+
+        marker.current.on('dragend', () => {
+          const { lat: markerLat, lng: markerLng } = marker.current.getLatLng();
+          actualizarUbicacion(markerLat, markerLng, ubicacion.direccion);
+        });
+
+        obtenerDireccionDesdeCoord(lat, lng).finally(() => setDetectando(false));
+      },
+      () => {
+        setDetectando(false);
+        alert('No se pudo detectar tu ubicación. Puedes buscarla o seleccionarla en el mapa.');
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
+
   return (
     <div className={`mapa-ubicacion-container ${className}`}>
       <div className="mapa-seccion-busqueda">
@@ -229,6 +267,14 @@ export const MapaUbicacion = ({
             onClick={buscarDireccion}
           >
             {buscando ? 'Buscando...' : 'Buscar'}
+          </button>
+          <button
+            type="button"
+            className="mapa-boton-actual"
+            disabled={detectando}
+            onClick={usarUbicacionActual}
+          >
+            {detectando ? 'Detectando...' : 'Usar mi ubicación'}
           </button>
         </div>
         <p className="mapa-ayuda">

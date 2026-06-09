@@ -2,6 +2,11 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-hot-toast";
 import { API_URL } from "../utils/api";
+import EncuestaInicioFields from "./EncuestaInicioFields";
+import {
+  createEmptySurvey,
+  normalizeSurveyPayload,
+} from "../utils/onboardingSurvey";
 
 export const CrearUsuario = () => {
   const navigate = useNavigate();
@@ -17,6 +22,7 @@ export const CrearUsuario = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [encuestaInicio, setEncuestaInicio] = useState(createEmptySurvey);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -49,6 +55,7 @@ export const CrearUsuario = () => {
       password,
       codigo: "0",
       tipoUsuario: 2,
+      encuestaInicio: normalizeSurveyPayload(encuestaInicio),
     };
 
     try {
@@ -176,6 +183,10 @@ export const CrearUsuario = () => {
               </a>
             </label>
           </div>
+          <EncuestaInicioFields
+            value={encuestaInicio}
+            onChange={setEncuestaInicio}
+          />
           <button
             type="submit"
             disabled={!acceptedTerms}

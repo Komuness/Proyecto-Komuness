@@ -1,5 +1,19 @@
 import { Document } from "mongoose";
 
+export interface IEncuestaInicio {
+    rol?: "comprador" | "vendedor" | "ambos";
+    ubicacion?: {
+        latitude: number;
+        longitude: number;
+        direccion: string;
+        mapLink?: string;
+    };
+    queVende?: string;
+    etiquetas?: string[];
+    completada?: boolean;
+    completadaEn?: Date | null;
+}
+
 export interface IUsuario extends Document {
     nombre: string;
     apellido: string;
@@ -13,4 +27,5 @@ export interface IUsuario extends Document {
     emailConfirmado?: boolean;
     tokenConfirmacion?: string | null;
     tokenConfirmacionExpira?: Date | null;
+    encuestaInicio?: IEncuestaInicio;
 }

@@ -21,6 +21,7 @@ import {
 } from "../utils/publicacionExpiration";
 import { sendEmail } from "../utils/mail"; // usa el mismo transporter que recuperación
 import { modelUsuario } from "../models/usuario.model"; // ← Modelo de usuarios
+import { modelEtiqueta } from "../models/etiqueta.model";
 import { modelPerfil } from "../models/perfil.model";
 import {
   createComentarioPublicacionNotificacion,
@@ -236,6 +237,64 @@ function parseUbicacion(input: any): IUbicacion | undefined {
     return undefined;
   }
 }
+
+const escapeRegex = (value: string): string => {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
+
+const splitCsv = (value: unknown): string[] => {
+  if (typeof value !== "string") return [];
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const getEtiquetaNames = async (ids: string[]): Promise<string[]> => {
+  const validIds = ids.filter((id) => mongoose.Types.ObjectId.isValid(id));
+  if (!validIds.length) return [];
+
+  const etiquetas = await modelEtiqueta
+    .find({ _id: { $in: validIds }, estado: true })
+    .select("nombre")
+    .lean();
+
+  return etiquetas
+    .map((etiqueta: any) => String(etiqueta.nombre || "").trim())
+    .filter(Boolean);
+};
+
+const applyEncuestaFilters = async (
+  query: any,
+  filters: Record<string, unknown>,
+): Promise<void> => {
+  const rol = typeof filters.rol === "string" ? filters.rol.trim() : "";
+  const queVende = typeof filters.queVende === "string" ? filters.queVende.trim() : "";
+  const etiquetaNames = await getEtiquetaNames(splitCsv(filters.etiquetas));
+  const keywords = Array.from(new Set([...etiquetaNames, queVende].filter(Boolean)));
+  const andFilters: any[] = [];
+
+  if (rol === "vendedor" && !query.tag) {
+    andFilters.push({ tag: "emprendimiento" });
+  }
+
+  if (keywords.length) {
+    andFilters.push({
+      $or: keywords.flatMap((keyword) => {
+        const regex = { $regex: escapeRegex(keyword), $options: "i" };
+        return [
+          { titulo: regex },
+          { contenido: regex },
+          { contenidoBreve: regex },
+        ];
+      }),
+    });
+  }
+
+  if (andFilters.length) {
+    query.$and = [...(query.$and || []), ...andFilters];
+  }
+};
 
 // ───────────────────────────────────────────────────────────────────────────────
 // Helper: correos de admins (tipoUsuario = 1) con email válido
@@ -511,7 +570,7 @@ export const getPublicacionesByTag = async (
   try {
     const offset = parseInt(req.query.offset as string) || 0;
     const limit = parseInt(req.query.limit as string) || 10;
-    const { tag, publicado, categoria, fecha, precioMin, precioMax } =
+    const { tag, publicado, categoria, fecha, precioMin, precioMax, etiquetas, rol, queVende } =
       req.query as {
         tag?: string;
         publicado?: string;
@@ -519,6 +578,9 @@ export const getPublicacionesByTag = async (
         fecha?: string;
         precioMin?: number;
         precioMax?: number;
+        etiquetas?: string;
+        rol?: string;
+        queVende?: string;
       };
 
     const query: any = { ...buildActivePublicationQuery() };
@@ -551,6 +613,8 @@ export const getPublicacionesByTag = async (
 
       if (precioMax) query.precio.$lte = Number(precioMax);
     }
+
+    await applyEncuestaFilters(query, { etiquetas, rol, queVende });
 
     const [publicaciones, totalPublicaciones] = await Promise.all([
       modelPublicacion
@@ -1134,7 +1198,7 @@ export const searchPublicacionesAvanzada = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { q, tag, categoria, offset = 0, limit = 12 } = req.query;
+    const { q, tag, categoria, offset = 0, limit = 12, etiquetas, rol, queVende } = req.query;
 
     const query: any = {
       publicado: true,
@@ -1155,24 +1219,28 @@ export const searchPublicacionesAvanzada = async (
     if (tag) query.tag = tag;
     if (categoria) query.categoria = categoria;
 
+    await applyEncuestaFilters(query, { etiquetas, rol, queVende });
+    const numericOffset = Number(offset);
+    const numericLimit = Number(limit);
+
     const [publicaciones, totalPublicaciones] = await Promise.all([
       modelPublicacion
         .find(query)
         .populate("autor", "nombre")
         .populate("categoria", "nombre estado")
         .sort({ createdAt: -1 })
-        .skip(Number(offset))
-        .limit(Number(limit)),
+        .skip(numericOffset)
+        .limit(numericLimit),
       modelPublicacion.countDocuments(query),
     ]);
 
     res.status(200).json({
       data: publicaciones,
       pagination: {
-        offset: Number(offset),
-        limit: Number(limit),
+        offset: numericOffset,
+        limit: numericLimit,
         total: totalPublicaciones,
-        pages: Math.ceil(totalPublicaciones / Math.max(Number(limit), 1)),
+        pages: Math.ceil(totalPublicaciones / Math.max(numericLimit, 1)),
       },
       searchTerm: q,
     });
