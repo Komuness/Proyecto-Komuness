@@ -7,15 +7,18 @@ import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import "../CSS/publicaciones.css";
 
 import PublicacionCard from "./publicacionCard";
+import EventoCard from "./eventoCard";
 import FormularioPublicacion from "../pages/formulario";
 import PublicacionModal from "./publicacionModal";
 import { useAuth } from "./context/AuthContext";
-import CategoriaFilter from "./categoriaFilter";
+import CategoriaFilter from "./generic/categoriaFilter";
 import BuscadorPublicaciones from "./buscadorPublicaciones";
 import AlertaLimitePublicaciones from "./AlertaLimitePublicaciones";
 import { API_URL } from "../utils/api";
 import LimitePublicaciones from "./limiteDePublicaciones";
 import PublicidadModal from "./publicidadModal";
+import DateFilter from "./generic/dateFilter";
+import PriceFilter from "./generic/priceFilter";
 
 // Base de API robusta (evita /api/api)
 const RAW = process.env.REACT_APP_BACKEND_URL || window.location.origin;
@@ -41,6 +44,10 @@ export const Publicaciones = ({ tag: propTag }) => {
 
   const categoriaFilter = searchParams.get("categoria");
   const searchTerm = searchParams.get("q");
+  const fechaFilter = searchParams.get("fecha");
+  const precioMin = searchParams.get("precioMin");
+  const precioMax = searchParams.get("precioMax");
+
   const isSearch = searchParams.get("search") === "true";
   const searchFilter = isSearch ? searchTerm : null;
   const [limiteData, setLimiteData] = useState(null);
@@ -103,8 +110,13 @@ export const Publicaciones = ({ tag: propTag }) => {
 
   useEffect(() => {
     if (tag)
-      obtenerPublicaciones(tag, 1, limite, categoriaFilter, searchFilter);
-  }, [tag, categoriaFilter, searchFilter]);
+      obtenerPublicaciones(tag, 1, limite, searchFilter, {
+        categoria: categoriaFilter,
+        fecha: fechaFilter,
+        precioMin: precioMin,
+        precioMax: precioMax,
+      });
+  }, [tag, categoriaFilter, searchFilter, fechaFilter, precioMin, precioMax]);
 
   useEffect(() => {
     if (mostrar === 3) {
@@ -123,8 +135,13 @@ export const Publicaciones = ({ tag: propTag }) => {
     tag,
     page = 1,
     limit = limite,
-    categoriaId = null,
     searchTerm = null,
+    filters = {
+      categoria: null,
+      fecha: null,
+      precioMin: null,
+      precioMax: null,
+    },
   ) => {
     try {
       const offset = (page - 1) * limit;
@@ -140,7 +157,6 @@ export const Publicaciones = ({ tag: propTag }) => {
           offset: String(offset),
           limit: String(limit),
         });
-        if (categoriaId) params.set("categoria", categoriaId);
       } else {
         // Usar búsqueda normal por tag
         url = `${API}/publicaciones`;
@@ -150,9 +166,13 @@ export const Publicaciones = ({ tag: propTag }) => {
           limit: String(limit),
           publicado: "true",
         });
-        if (categoriaId) params.set("categoria", categoriaId);
       }
-
+      // Agregar filtros
+      for (const filter in filters) {
+        if (filters[filter]) {
+          params.set(filter, filters[filter]);
+        }
+      }
       const resp = await fetch(`${url}?${params.toString()}`);
       if (resp.status === 404) {
         setPublicaciones([]);
@@ -306,13 +326,13 @@ export const Publicaciones = ({ tag: propTag }) => {
     }
   };
 
-  const mostrarBotonVolver = () => {
-    const path = location.pathname;
-    return path === "/eventos" || path === "/emprendimientos";
-  };
-
   const handlePagination = (newPage) => {
-    obtenerPublicaciones(tag, newPage, limite, categoriaFilter, searchFilter);
+    obtenerPublicaciones(tag, newPage, limite, searchFilter, {
+      categoria: categoriaFilter,
+      fecha: fechaFilter,
+      precioMin: precioMin,
+      precioMax: precioMax,
+    });
   };
 
   const verificarLimite = async () => {
@@ -419,6 +439,12 @@ export const Publicaciones = ({ tag: propTag }) => {
 
               {/* Filtro de categorías */}
               <CategoriaFilter />
+
+              {/* Filtro de fecha de evento/publicación */}
+              <DateFilter />
+
+              {/* Filtro para precio regular */}
+              {tag !== "publicacion" && <PriceFilter />}
             </div>
 
             {limiteData && tag === "publicacion" && !esAdmin && (
@@ -514,7 +540,7 @@ export const Publicaciones = ({ tag: propTag }) => {
           </div>
         )}
 
-        {/*BOTON DE AGREGAR SOLO PARA ADMINS*/}
+        {/*BOTON DE AGREGAR PUBLICIDAD SOLO PARA ADMINS*/}
         {esAdmin && (
           <div className="max-w-6xl px-4 py-2 text-white">
             <div>
@@ -549,7 +575,11 @@ export const Publicaciones = ({ tag: propTag }) => {
         </div>
       )}
 
-      <div className="card-container">
+      <div
+        className={
+          tag === "evento" ? "evento-card-container" : "card-container"
+        }
+      >
         {cards.length === 0 ? (
           <p className="text-white">
             {searchFilter
@@ -557,13 +587,21 @@ export const Publicaciones = ({ tag: propTag }) => {
               : "No hay publicaciones para mostrar."}
           </p>
         ) : (
-          cards.map((publicacion) => (
-            <PublicacionCard
-              key={publicacion._id}
-              publicacion={publicacion}
-              onDeleteClick={(pub) => setSelectedPub(pub)}
-            />
-          ))
+          cards.map((publicacion) =>
+            tag === "evento" ? (
+              <EventoCard
+                key={publicacion._id}
+                publicacion={publicacion}
+                onDeleteClick={(pub) => setSelectedPub(pub)}
+              />
+            ) : (
+              <PublicacionCard
+                key={publicacion._id}
+                publicacion={publicacion}
+                onDeleteClick={(pub) => setSelectedPub(pub)}
+              />
+            ),
+          )
         )}
       </div>
 
@@ -618,12 +656,18 @@ export const Publicaciones = ({ tag: propTag }) => {
       </div>
 
       {(esAdmin || estadoUsuario?.enBancoProfesionales) && (
-        <button
-          onClick={handleCrearPublicacion}
-          className="fixed bottom-4 right-4 md:bottom-6 md:right-6 bg-yellow-500 text-white w-14 h-14 md:w-16 md:h-16 rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 z-50 flex items-center justify-center text-2xl"
-        >
-          +
-        </button>
+        <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex items-center gap-3">
+          <span className="hidden md:block bg-white px-4 py-2 rounded-full shadow-md text-sm font-medium text-gray-700">
+            Inspira a otros con tu talento
+          </span>
+
+          <button
+            onClick={handleCrearPublicacion}
+            className="bg-yellow-500 text-white w-14 h-14 md:w-16 md:h-16 rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 flex items-center justify-center text-2xl"
+          >
+            +
+          </button>
+        </div>
       )}
 
       <AlertaLimitePublicaciones

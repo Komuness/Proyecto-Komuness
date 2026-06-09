@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import PublicacionModal from "./publicacionModal";
 import { useAuth } from "./context/AuthContext";
 import CategoriaBadge from "./generic/categoriaBadge";
 import ProfileErrorModal from "./ProfileErrorModal";
@@ -8,7 +7,7 @@ import { API_URL } from "../utils/api";
 
 import { obtenerEtiquetaExpiracion } from "../utils/publicacionExpiracion";
 
-export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
+export const EventoCard = ({ publicacion, onDeleteClick }) => {
   // ========== FUNCIÓN FORMATFECHA CORREGIDA ==========
   // MODIFICACIÓN: Se corrigió el problema de zona horaria
   // que causaba que las fechas se mostraran un día después
@@ -136,7 +135,6 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
   // ========== FIN DE MODIFICACIÓN ==========
 
   const tieneImagenes = publicacion.adjunto && publicacion.adjunto.length > 0;
-  const esPublicacion = publicacion.tag === "publicacion";
 
   // Obtener la inicial del autor
   const getInicialAutor = () => {
@@ -186,8 +184,8 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
         onClose={() => setShowProfileError(false)}
         type={errorType}
       />
-      <div className="card rounded-lg overflow-hidden shadow-lg flex flex-col h-full">
-        <div className="relative flex-grow" onClick={handleClick}>
+      <div className="relative card max-w-2xl mx-auto rounded-lg shadow-md hover:shadow-ld transition-all duration-300 overflow-hidden">
+        <div className="flex flex-col md:flex-row" onClick={handleClick}>
           {/* Badge de categoría - MÁS PEQUEÑO EN MÓVIL */}
           <div className="absolute top-2 right-2 z-10">
             <CategoriaBadge categoria={publicacion.categoria} mobile />
@@ -211,126 +209,56 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
             </div>
           )}
 
-          {/* Espacio de imagen para publicaciones NO 'publicacion' */}
-          {!esPublicacion && (
-            <div className="imagen h-48 bg-gray-200 flex items-center justify-center">
-              {tieneImagenes ? (
-                <img
-                  src={publicacion.adjunto[0]?.url}
-                  alt={publicacion.titulo}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="text-gray-500 text-center p-4">
-                  <div className="text-4xl mb-2">📷</div>
-                  <p className="text-sm">No hay imagen</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Espacio de imagen para publicaciones de tipo 'publicacion' */}
-          {esPublicacion && (
-            <div className="imagen h-48 flex items-center justify-center">
-              {tieneImagenes ? (
-                <img
-                  src={publicacion.adjunto[0]?.url}
-                  alt={publicacion.titulo}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div
-                  className={`w-20 h-20 ${colorAutor} rounded-full flex items-center justify-center text-white text-4xl font-bold cursor-pointer hover:opacity-80 transition-opacity`}
-                  onClick={(e) => handleProfileClick(e, publicacion.autor?._id)}
-                >
-                  {getInicialAutor()}
-                </div>
-              )}
-            </div>
-          )}
+          {/* IMAGEN */}
+          <div className="h-72 w-72 flex-shrink-0">
+            {tieneImagenes ? (
+              <img
+                src={publicacion.adjunto[0]?.url}
+                alt={publicacion.titulo}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="text-gray-500 text-center p-4">
+                <div className="text-4xl mb-2">📷</div>
+                <p className="text-sm">{publicacion.titulo}</p>
+              </div>
+            )}
+          </div>
 
           {/* Detalles */}
-          <div className="p-4">
-            {/* Emprendimiento */}
-            {publicacion.tag === "emprendimiento" && (
-              <div className="card-details">
-                <h3 className="titulo">{publicacion.titulo}</h3>
-                <div className="tweet-content mb-2">
-                  <p className="theme-card-text">{publicacion.contenidoBreve}</p>
-                </div>
-                <hr className="my-3 w-full border-gray-300" />
-                <p className="fecha">
-                  Creador por:{" "}
-                  <span
-                    className="theme-card-author-link cursor-pointer hover:underline"
-                    onClick={(e) => handleProfileClick(e, publicacion.autor?._id)}
-                  >
-                    {publicacion.autor?.nombre || "Desconocido"}
-                  </span>
-                </p>
-                <p className="fecha">Fecha: {formatFecha(publicacion.fecha)}</p>
-              </div>
-            )}
+          <div className="flex-1 min-w-0 p-4">
+            <div className="card-details">
+              <h3 className="font-bold text-2xl">{publicacion.titulo}</h3>
 
-            {/* Otros (p.ej. evento) */}
-            {publicacion.tag !== "publicacion" && publicacion.tag !== "emprendimiento" && (
-              <div className="card-details">
-                <h3 className="titulo">{publicacion.titulo}</h3>     
-		            <div className="tweet-content mb-2">
-                  <p className="theme-card-text">{publicacion.contenidoBreve}</p>
-                </div>
-                <hr className="my-3 w-full border-gray-300" />
-		            <p className="fecha">
-                  Publicado por:{" "}
-                  <span
-                    className="theme-card-author-link cursor-pointer hover:underline"
-                    onClick={(e) => handleProfileClick(e, publicacion.autor?._id)}
-                  >
-                    {publicacion.autor?.nombre || "Desconocido"}
-                  </span>
-                </p>
-                <p className="fecha">
-                  Fecha del evento:{" "}
-                  {formatFecha(publicacion.fechaEvento || publicacion.fecha)}
-                </p>
-              </div>
-            )}
+              <p className="font-semibold text-xl">
+                {formatFecha(publicacion.fechaEvento || publicacion.fecha)}
+                {publicacion.horaEvento
+                  ? ` a las ${publicacion.horaEvento}`
+                  : ``}
+              </p>
 
-            {/* Publicación estilo tweet */}
-            {publicacion.tag === "publicacion" && (
-              <div className="tweet">
-                <div className="tweet-header mb-2">
-                  <div className="tweet-title">
-                      <h4
-                        className="title font-semibold"
-		      >
-                          {publicacion.titulo || "Sin título"}
-                      </h4>
-                      </div>
-                  </div>
-                  <div className="tweet-content mb-2">
-                      <p className="theme-card-text">{publicacion.contenidoBreve}</p>
-                  </div>
-		  <div className="tweet-footer mt-2">
-                    <div className="tweet-user">
-                      <h4
-                        className="user-name theme-card-author-link cursor-pointer hover:underline"
-                        onClick={(e) => handleProfileClick(e, publicacion.autor?._id)}
-                      >
-                          Publicado por: <b>{publicacion.autor?.nombre || "Desconocido"} </b>
-                      </h4>
-                    </div>
-                    <p className="tweet-date text-sm">
-                     Fecha: {formatFecha(publicacion.fecha)}
-                    </p>
-                  </div>      
-                  </div>
-                  <p className="tweet-date text-sm text-gray-600">
-                    Fecha: {formatFecha(publicacion.fecha)}
-                  </p>
-                </div>
+              <div className="mb-2">
+                <p className="text-white">{publicacion.contenidoBreve}</p>
               </div>
-            )}
+
+              <hr className="my-3 w-full border-gray-300" />
+
+              <div className="mb-2">
+                <p className="text-white text-sm">{publicacion.contenido}</p>
+              </div>
+
+              <hr className="my-3 w-full border-gray-300" />
+              <p className="fecha">
+                Publicado por:{" "}
+                <span
+                  className="text-white hover:text-blue-100 cursor-pointer hover:underline"
+                  onClick={(e) => handleProfileClick(e, publicacion.autor?._id)}
+                >
+                  {publicacion.autor?.nombre || "Desconocido"}
+                </span>
+              </p>
+            </div>
+
             {etiquetaExpiracion && (
               <div className="mb-3">
                 <span className="inline-flex rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
@@ -343,11 +271,11 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
 
         {/* Botón de eliminar (solo para admins) - MÁS PEQUEÑO EN MÓVIL */}
         {user && (user.tipoUsuario === 0 || user.tipoUsuario === 1) && (
-          <div className="p-3 border-t md:p-4">
+          <div className="p-3 border-t md:p-4 flex justify-center">
             {" "}
             {/* Padding reducido en móvil */}
             <button
-              className="w-full bg-red-600 text-white py-1.5 px-3 rounded hover:bg-red-700 transition-colors text-sm md:py-2 md:px-4 md:text-base" /* Tamaño reducido en móvil */
+              className="w-full max-w-4xl bg-red-600 text-white py-1.5 px-3 rounded hover:bg-red-700 transition-colors text-sm md:py-2 md:px-4 md:text-base" /* Tamaño reducido en móvil */
               onClick={handleDeleteClick}
             >
               Eliminar
@@ -359,4 +287,4 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
   );
 };
 
-export default PublicacionCard;
+export default EventoCard;

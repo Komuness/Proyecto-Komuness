@@ -21,7 +21,7 @@ export const PerfilUsuario = () => {
   const [archivos, setArchivos] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
   const [pendingUpdates, setPendingUpdates] = useState([]);
-  const { user, logout, updateUser } = useAuth(); 
+  const { user, logout, updateUser } = useAuth();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modalLimitesAbierto, setModalLimitesAbierto] = useState(false);
   const [modalPagosAbierto, setModalPagosAbierto] = useState(false);
@@ -29,13 +29,16 @@ export const PerfilUsuario = () => {
   const [modalPremiumAbierto, setModalPremiumAbierto] = useState(false);
   const [activeTab, setActiveTab] = useState("publicaciones");
   const [limiteData, setLimiteData] = useState(null);
-  const [inicioContenido, setInicioContenido] = useState({ eslogan: "", frase: "" });
+  const [inicioContenido, setInicioContenido] = useState({
+    eslogan: "",
+    frase: "",
+  });
   const [cargandoInicioContenido, setCargandoInicioContenido] = useState(false);
-  const [guardandoInicioContenido, setGuardandoInicioContenido] = useState(false);
-  const [, setPerfilExistente] = useState(false); 
+  const [guardandoInicioContenido, setGuardandoInicioContenido] =
+    useState(false);
+  const [, setPerfilExistente] = useState(false);
   const [, setPerfilPublico] = useState(false);
 
-  
   useEffect(() => {
     if (!user) {
       navigate("/");
@@ -83,27 +86,34 @@ export const PerfilUsuario = () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        toast.error("Debes iniciar sesión para actualizar el contenido de inicio.");
+        toast.error(
+          "Debes iniciar sesión para actualizar el contenido de inicio.",
+        );
         return;
       }
 
       setGuardandoInicioContenido(true);
-      const response = await fetch(`${API_URL}/configuracion/inicio-contenido`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `${API_URL}/configuracion/inicio-contenido`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            eslogan: inicioContenido.eslogan || "",
+            frase: inicioContenido.frase || "",
+          }),
         },
-        body: JSON.stringify({
-          eslogan: inicioContenido.eslogan || "",
-          frase: inicioContenido.frase || "",
-        }),
-      });
+      );
 
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok) {
-        throw new Error(data?.message || "No se pudo actualizar el contenido de inicio.");
+        throw new Error(
+          data?.message || "No se pudo actualizar el contenido de inicio.",
+        );
       }
 
       setInicioContenido({
@@ -135,7 +145,7 @@ export const PerfilUsuario = () => {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
-        }
+        },
       );
       if (!responseapi.ok) {
         if (responseapi.status === 401 || responseapi.status === 403) {
@@ -153,8 +163,6 @@ export const PerfilUsuario = () => {
   // Función para cargar actualizaciones pendientes
   const cargarActualizacionesPendientes = async () => {
     try {
-    
-
       const response = await fetch(
         `${API_URL}/publicaciones/admin/pending-updates`,
         {
@@ -162,10 +170,8 @@ export const PerfilUsuario = () => {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
-
- 
 
       if (response.status === 404) {
         setPendingUpdates([]);
@@ -182,7 +188,6 @@ export const PerfilUsuario = () => {
       }
 
       const data = await response.json();
-     
 
       setPendingUpdates(data.data || []);
     } catch (error) {
@@ -208,7 +213,7 @@ export const PerfilUsuario = () => {
         setArchivos(data.archivos || []);
       })
       .catch((error) =>
-        console.error("Error al obtener los archivos pendientes: ", error)
+        console.error("Error al obtener los archivos pendientes: ", error),
       );
   };
 
@@ -241,10 +246,10 @@ export const PerfilUsuario = () => {
         try {
           const response = await fetch(`${API_URL}/perfil/usuario/me`, {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
           });
-          
+
           if (response.ok) {
             const data = await response.json();
             setPerfilExistente(true);
@@ -254,7 +259,7 @@ export const PerfilUsuario = () => {
             setPerfilPublico(false);
           }
         } catch (error) {
-          console.error('Error al verificar perfil admin:', error);
+          console.error("Error al verificar perfil admin:", error);
           setPerfilExistente(false);
           setPerfilPublico(false);
         }
@@ -340,8 +345,6 @@ export const PerfilUsuario = () => {
   //  Funciones para manejar actualizaciones pendientes
   const aprobarActualizacion = async (publicacionId) => {
     try {
-      
-
       const response = await fetch(
         `${API_URL}/publicaciones/admin/${publicacionId}/approve-update`,
         {
@@ -350,19 +353,16 @@ export const PerfilUsuario = () => {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
-      
-
       const data = await response.json();
-     
 
       if (response.ok) {
         toast.success("Actualización aprobada exitosamente");
-       
+
         setPendingUpdates((prev) =>
-          prev.filter((item) => item._id !== publicacionId)
+          prev.filter((item) => item._id !== publicacionId),
         );
 
         setTimeout(() => {
@@ -377,11 +377,11 @@ export const PerfilUsuario = () => {
           throw new Error("Publicación no encontrada");
         } else if (response.status === 500) {
           throw new Error(
-            "Error interno del servidor. Contacte al administrador."
+            "Error interno del servidor. Contacte al administrador.",
           );
         } else {
           throw new Error(
-            data.message || `Error ${response.status} al aprobar actualización`
+            data.message || `Error ${response.status} al aprobar actualización`,
           );
         }
       }
@@ -389,7 +389,9 @@ export const PerfilUsuario = () => {
       console.error("❌ Error al aprobar actualización:", error);
 
       if (error.message.includes("Contacte al administrador")) {
-        toast.error("Error del servidor. Por favor, contacte al administrador.");
+        toast.error(
+          "Error del servidor. Por favor, contacte al administrador.",
+        );
       } else {
         toast.error(error.message);
       }
@@ -407,7 +409,7 @@ export const PerfilUsuario = () => {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
           body: JSON.stringify({ reason }),
-        }
+        },
       );
 
       const data = await response.json();
@@ -415,7 +417,7 @@ export const PerfilUsuario = () => {
       if (response.ok) {
         toast.success("Actualización rechazada");
         setPendingUpdates((prev) =>
-          prev.filter((item) => item._id !== publicacionId)
+          prev.filter((item) => item._id !== publicacionId),
         );
       } else {
         throw new Error(data.message || "Error al rechazar actualización");
@@ -481,102 +483,103 @@ export const PerfilUsuario = () => {
 
   // ✅ CAMBIO: ahora soporta Admin (1), Básico (2) y Premium (3)
   const actualizarMembresia = async (id, opcion) => {
-  const token = localStorage.getItem("token");
+    const token = localStorage.getItem("token");
 
-  const promesa = (async () => {
-    // ✅ ADMIN: usar el endpoint que ya sabes que funciona (versión vieja)
-    if (opcion === "admin") {
-      const res = await fetch(`${API_URL}/usuario/${id}`, {
+    const promesa = (async () => {
+      // ✅ ADMIN: usar el endpoint que ya sabes que funciona (versión vieja)
+      if (opcion === "admin") {
+        const res = await fetch(`${API_URL}/usuario/${id}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ tipoUsuario: 1 }),
+        });
+
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(payload?.message || `Error ${res.status}`);
+
+        const usuarioActualizado = payload?.data ?? payload;
+
+        //  ACTUALIZAR EL CONTEXTO SI ES EL USUARIO ACTUAL
+        if (user?._id === id && updateUser) {
+          updateUser({
+            ...usuarioActualizado,
+            plan: usuarioActualizado.plan || null,
+          });
+        }
+
+        return {
+          ...usuarioActualizado,
+          plan: usuarioActualizado.plan || null,
+        };
+      }
+
+      // ✅ BÁSICO / PREMIUM: usar /membresia
+      let tipoUsuario = 2;
+      let plan;
+
+      if (opcion === "basico") {
+        tipoUsuario = 2;
+      } else if (opcion === "premium_mensual") {
+        tipoUsuario = 3;
+        plan = "mensual";
+      } else if (opcion === "premium_anual") {
+        tipoUsuario = 3;
+        plan = "anual";
+      }
+
+      const body = tipoUsuario === 3 ? { tipoUsuario, plan } : { tipoUsuario };
+
+      const res = await fetch(`${API_URL}/usuario/${id}/membresia`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ tipoUsuario: 1 }),
+        body: JSON.stringify(body),
       });
 
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.message || `Error ${res.status}`);
-      
+
       const usuarioActualizado = payload?.data ?? payload;
-      
+
       //  ACTUALIZAR EL CONTEXTO SI ES EL USUARIO ACTUAL
       if (user?._id === id && updateUser) {
         updateUser({
           ...usuarioActualizado,
-          plan: usuarioActualizado.plan || null
+          plan: usuarioActualizado.plan || null,
         });
       }
-      
+
       return {
         ...usuarioActualizado,
-        plan: usuarioActualizado.plan || null
+        plan: usuarioActualizado.plan || null,
       };
-    }
+    })();
 
-    // ✅ BÁSICO / PREMIUM: usar /membresia
-    let tipoUsuario = 2;
-    let plan;
-
-    if (opcion === "basico") {
-      tipoUsuario = 2;
-    } else if (opcion === "premium_mensual") {
-      tipoUsuario = 3;
-      plan = "mensual";
-    } else if (opcion === "premium_anual") {
-      tipoUsuario = 3;
-      plan = "anual";
-    }
-
-    const body = tipoUsuario === 3 ? { tipoUsuario, plan } : { tipoUsuario };
-
-    const res = await fetch(`${API_URL}/usuario/${id}/membresia`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body),
+    toast.promise(promesa, {
+      loading: "Actualizando tipo de usuario...",
+      success: "Tipo de usuario actualizado",
+      error: (e) => e.message || "Error al actualizar tipo de usuario",
     });
 
-    const payload = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(payload?.message || `Error ${res.status}`);
-    
-    const usuarioActualizado = payload?.data ?? payload;
-    
-    //  ACTUALIZAR EL CONTEXTO SI ES EL USUARIO ACTUAL
-    if (user?._id === id && updateUser) {
-      updateUser({
-        ...usuarioActualizado,
-        plan: usuarioActualizado.plan || null
-      });
+    try {
+      const usuarioActualizado = await promesa;
+      setUsuarios((prev) =>
+        prev.map((u) => (u._id === id ? usuarioActualizado : u)),
+      );
+
+      //  REFRESCAR DATOS DE LÍMITE SI ES EL USUARIO ACTUAL
+      if (user?._id === id) {
+        await cargarDatosLimite();
+      }
+    } catch (e) {
+      console.error(e);
     }
-    
-    return {
-      ...usuarioActualizado,
-      plan: usuarioActualizado.plan || null
-    };
-  })();
-
-  toast.promise(promesa, {
-    loading: "Actualizando tipo de usuario...",
-    success: "Tipo de usuario actualizado",
-    error: (e) => e.message || "Error al actualizar tipo de usuario",
-  });
-
-  try {
-    const usuarioActualizado = await promesa;
-    setUsuarios((prev) => prev.map((u) => (u._id === id ? usuarioActualizado : u)));
-    
-    //  REFRESCAR DATOS DE LÍMITE SI ES EL USUARIO ACTUAL
-    if (user?._id === id) {
-      await cargarDatosLimite();
-    }
-  } catch (e) {
-    console.error(e);
-  }
-};
-
+  };
 
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -593,7 +596,8 @@ export const PerfilUsuario = () => {
   const getTipoUsuarioSelectValue = (u) => {
     if (u?.tipoUsuario === 1) return "admin";
     if (u?.tipoUsuario === 2) return "basico";
-    if (u?.tipoUsuario === 3) return u?.plan === "anual" ? "premium_anual" : "premium_mensual";
+    if (u?.tipoUsuario === 3)
+      return u?.plan === "anual" ? "premium_anual" : "premium_mensual";
     return "basico";
   };
 
@@ -619,7 +623,7 @@ export const PerfilUsuario = () => {
               {update.titulo}
             </div>
           </div>
-        </div>
+        </div>,
       );
     }
 
@@ -638,7 +642,7 @@ export const PerfilUsuario = () => {
               {update.contenido}
             </div>
           </div>
-        </div>
+        </div>,
       );
     }
 
@@ -660,7 +664,7 @@ export const PerfilUsuario = () => {
               ₡{update.precio}
             </span>
           </div>
-        </div>
+        </div>,
       );
     }
 
@@ -670,7 +674,10 @@ export const PerfilUsuario = () => {
       update.precioEstudiante !== publicacion.precioEstudiante
     ) {
       cambios.push(
-        <div key="precioEstudiante" className="mb-3 p-3 bg-white rounded border">
+        <div
+          key="precioEstudiante"
+          className="mb-3 p-3 bg-white rounded border"
+        >
           <strong className="text-gray-800 block mb-2 text-sm font-semibold">
             Precio Estudiante:
           </strong>
@@ -688,7 +695,7 @@ export const PerfilUsuario = () => {
                 : "Eliminado"}
             </span>
           </div>
-        </div>
+        </div>,
       );
     }
 
@@ -719,7 +726,7 @@ export const PerfilUsuario = () => {
                 : "Eliminado"}
             </span>
           </div>
-        </div>
+        </div>,
       );
     }
 
@@ -739,7 +746,7 @@ export const PerfilUsuario = () => {
               {update.fechaEvento}
             </span>
           </div>
-        </div>
+        </div>,
       );
     }
 
@@ -759,7 +766,7 @@ export const PerfilUsuario = () => {
               {update.horaEvento}
             </span>
           </div>
-        </div>
+        </div>,
       );
     }
 
@@ -779,7 +786,7 @@ export const PerfilUsuario = () => {
               {update.telefono}
             </span>
           </div>
-        </div>
+        </div>,
       );
     }
 
@@ -803,7 +810,7 @@ export const PerfilUsuario = () => {
               {update.categoria?.nombre || "Categoría actualizada"}
             </span>
           </div>
-        </div>
+        </div>,
       );
     }
 
@@ -814,10 +821,7 @@ export const PerfilUsuario = () => {
         JSON.stringify(publicacion.enlacesExternos)
     ) {
       cambios.push(
-        <div
-          key="enlacesExternos"
-          className="mb-3 p-3 bg-white rounded border"
-        >
+        <div key="enlacesExternos" className="mb-3 p-3 bg-white rounded border">
           <strong className="text-gray-800 block mb-2 text-sm font-semibold">
             Enlaces Externos:
           </strong>
@@ -865,7 +869,7 @@ export const PerfilUsuario = () => {
                 Todos los enlaces serán eliminados
               </div>
             )}
-        </div>
+        </div>,
       );
     }
 
@@ -885,7 +889,7 @@ export const PerfilUsuario = () => {
             {publicacion.adjunto &&
               publicacion.adjunto.map((img, index) => {
                 const stillExists = update.adjunto.some(
-                  (newImg) => newImg.url === img.url || newImg.key === img.key
+                  (newImg) => newImg.url === img.url || newImg.key === img.key,
                 );
                 if (!stillExists) {
                   return (
@@ -915,7 +919,7 @@ export const PerfilUsuario = () => {
               const isNew =
                 !publicacion.adjunto ||
                 !publicacion.adjunto.some(
-                  (oldImg) => oldImg.url === img.url || oldImg.key === img.key
+                  (oldImg) => oldImg.url === img.url || oldImg.key === img.key,
                 );
               if (isNew) {
                 return (
@@ -945,7 +949,7 @@ export const PerfilUsuario = () => {
               const wasInOriginal =
                 publicacion.adjunto &&
                 publicacion.adjunto.some(
-                  (oldImg) => oldImg.url === img.url || oldImg.key === img.key
+                  (oldImg) => oldImg.url === img.url || oldImg.key === img.key,
                 );
               if (wasInOriginal) {
                 return (
@@ -967,7 +971,7 @@ export const PerfilUsuario = () => {
               return null;
             })}
           </div>
-        </div>
+        </div>,
       );
     }
 
@@ -987,7 +991,7 @@ export const PerfilUsuario = () => {
     >
       {/* Sección de perfil del usuario */}
       <div
-        className={`paginaUsuario flex flex-col items-center gap-4 w-full 
+        className={`paginaUsuario flex flex-col items-center gap-4 w-full
           ${
             user?.tipoUsuario === 2
               ? "items-center w-full max-w-md"
@@ -1022,9 +1026,7 @@ export const PerfilUsuario = () => {
 
               {/* Barra de progreso de publicaciones */}
               <div className="mb-4">
-                <LimitePublicaciones
-                  limiteData={limiteData} navBar={false}
-                />
+                <LimitePublicaciones limiteData={limiteData} navBar={false} />
               </div>
 
               {/* Botón para actualizar a Premium */}
@@ -1032,7 +1034,11 @@ export const PerfilUsuario = () => {
                 onClick={() => setModalPremiumAbierto(true)}
                 className="w-full px-4 py-3 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-bold rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                 </svg>
                 Actualizar a Premium
@@ -1048,37 +1054,51 @@ export const PerfilUsuario = () => {
           {user?.tipoUsuario === 3 && limiteData && (
             <div className="mt-6 w-full bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 backdrop-blur-sm rounded-xl p-4 border border-yellow-400/30">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-bold text-white">Tu Membresía Premium</h3>
+                <h3 className="text-lg font-bold text-white">
+                  Tu Membresía Premium
+                </h3>
                 <span className="px-3 py-1 bg-yellow-600 text-white text-xs font-semibold rounded-full">
-                  Premium {user?.plan === 'anual' ? 'Anual' : 'Mensual'}
+                  Premium {user?.plan === "anual" ? "Anual" : "Mensual"}
                 </span>
               </div>
-
-              
 
               {/* Información de vencimiento */}
               {limiteData.fechaVencimientoPremium && (
                 <div className="mb-3 p-3 bg-white/10 rounded-lg border border-white/20">
                   <div className="flex items-center gap-2 text-white mb-2">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                        clipRule="evenodd"
+                      />
                     </svg>
-                    <span className="text-sm font-semibold">Vencimiento del Plan</span>
+                    <span className="text-sm font-semibold">
+                      Vencimiento del Plan
+                    </span>
                   </div>
                   <p className="text-white text-sm">
-                    Tu plan {limiteData.plan === 'anual' ? 'anual' : 'mensual'} se vence el{" "}
+                    Tu plan {limiteData.plan === "anual" ? "anual" : "mensual"}{" "}
+                    se vence el{" "}
                     <span className="font-bold text-yellow-300">
-                      {new Date(limiteData.fechaVencimientoPremium).toLocaleDateString('es-ES', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
+                      {new Date(
+                        limiteData.fechaVencimientoPremium,
+                      ).toLocaleDateString("es-ES", {
+                        weekday: "long",
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
                       })}
                     </span>
                   </p>
                   {limiteData.premiumVencido && (
                     <p className="text-red-300 text-xs mt-2">
-                      ⚠️ Tu plan premium ha vencido. Por favor, renueva tu suscripción.
+                      ⚠️ Tu plan premium ha vencido. Por favor, renueva tu
+                      suscripción.
                     </p>
                   )}
                 </div>
@@ -1089,8 +1109,16 @@ export const PerfilUsuario = () => {
                 onClick={() => setModalPremiumAbierto(true)}
                 className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                <svg
+                  className="w-5 h-5"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                    clipRule="evenodd"
+                  />
                 </svg>
                 Renovar Plan Premium
               </button>
@@ -1118,11 +1146,11 @@ export const PerfilUsuario = () => {
             </div>
 
             <button
-            onClick={() => setModalAbierto(true)}
-            className="w-full px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
-          >
-            Cambiar contraseña
-          </button>
+              onClick={() => setModalAbierto(true)}
+              className="w-full px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+            >
+              Cambiar contraseña
+            </button>
           </div>
           <div>
             <button
@@ -1176,7 +1204,7 @@ export const PerfilUsuario = () => {
                 className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium text-sm"
               >
                 <FaListAlt className="w-4 h-4 mr-2" />
-                Gestionar Categorías
+                Gestionar Clasificaciones
               </Link>
 
               <button
@@ -1186,7 +1214,7 @@ export const PerfilUsuario = () => {
                 <FiSettings className="w-4 h-4 mr-2" />
                 Configurar Límites
               </button>
-              
+
               {/*  BOTÓN PARA CONFIGURAR PAGOS */}
               <button
                 onClick={() => setModalPagosAbierto(true)}
@@ -1211,11 +1239,14 @@ export const PerfilUsuario = () => {
               Contenido de la Página de Inicio
             </h2>
             <p className="text-sm text-gray-600 mb-4">
-              Configura aquí el eslogan y la frase motivacional que se muestran en la portada.
+              Configura aquí el eslogan y la frase motivacional que se muestran
+              en la portada.
             </p>
 
             {cargandoInicioContenido ? (
-              <p className="text-sm text-gray-500">Cargando contenido actual...</p>
+              <p className="text-sm text-gray-500">
+                Cargando contenido actual...
+              </p>
             ) : (
               <div className="space-y-3">
                 <div>
@@ -1227,7 +1258,10 @@ export const PerfilUsuario = () => {
                     maxLength={180}
                     value={inicioContenido.eslogan}
                     onChange={(e) =>
-                      setInicioContenido((prev) => ({ ...prev, eslogan: e.target.value }))
+                      setInicioContenido((prev) => ({
+                        ...prev,
+                        eslogan: e.target.value,
+                      }))
                     }
                     placeholder="Ej: Conectamos ideas, creamos comunidad."
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -1243,7 +1277,10 @@ export const PerfilUsuario = () => {
                     maxLength={280}
                     value={inicioContenido.frase}
                     onChange={(e) =>
-                      setInicioContenido((prev) => ({ ...prev, frase: e.target.value }))
+                      setInicioContenido((prev) => ({
+                        ...prev,
+                        frase: e.target.value,
+                      }))
                     }
                     placeholder="Ej: Cada publicación es una oportunidad de aprender y crecer juntos."
                     className="w-full px-3 py-2 border border-gray-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
@@ -1256,7 +1293,9 @@ export const PerfilUsuario = () => {
                   disabled={guardandoInicioContenido}
                   className="px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 font-medium disabled:opacity-60"
                 >
-                  {guardandoInicioContenido ? "Guardando..." : "Guardar contenido de inicio"}
+                  {guardandoInicioContenido
+                    ? "Guardando..."
+                    : "Guardar contenido de inicio"}
                 </button>
               </div>
             )}
@@ -1332,7 +1371,9 @@ export const PerfilUsuario = () => {
                       <thead>
                         <tr className="bg-gray-100">
                           <th className="text-left px-3 py-2 text-sm">Autor</th>
-                          <th className="text-left px-3 py-2 text-sm">Título</th>
+                          <th className="text-left px-3 py-2 text-sm">
+                            Título
+                          </th>
                           <th className="text-left px-3 py-2 text-sm">Tipo</th>
                           <th className="text-left px-3 py-2 text-sm">Fecha</th>
                           <th className="text-left px-3 py-2 text-sm">
@@ -1364,8 +1405,8 @@ export const PerfilUsuario = () => {
                                   item.tag === "evento"
                                     ? "bg-blue-100 text-blue-800"
                                     : item.tag === "emprendimiento"
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-gray-100 text-gray-800"
+                                      ? "bg-green-100 text-green-800"
+                                      : "bg-gray-100 text-gray-800"
                                 }`}
                               >
                                 {item.tag}
@@ -1439,8 +1480,8 @@ export const PerfilUsuario = () => {
                                     publicacion.tag === "evento"
                                       ? "bg-blue-100 text-blue-800"
                                       : publicacion.tag === "emprendimiento"
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-gray-100 text-gray-800"
+                                        ? "bg-green-100 text-green-800"
+                                        : "bg-gray-100 text-gray-800"
                                   }`}
                                 >
                                   {publicacion.tag}
@@ -1451,7 +1492,7 @@ export const PerfilUsuario = () => {
                                 {publicacion.autor?.nombre} •{" "}
                                 <strong> Solicitado:</strong>{" "}
                                 {new Date(
-                                  publicacion.lastEditRequest
+                                  publicacion.lastEditRequest,
                                 ).toLocaleDateString()}{" "}
                                 • <strong> Ediciones:</strong>{" "}
                                 {publicacion.editCount || 0}/3
@@ -1469,9 +1510,12 @@ export const PerfilUsuario = () => {
                               <button
                                 onClick={() => {
                                   const reason = prompt(
-                                    "Razón del rechazo (opcional):"
+                                    "Razón del rechazo (opcional):",
                                   );
-                                  rechazarActualizacion(publicacion._id, reason);
+                                  rechazarActualizacion(
+                                    publicacion._id,
+                                    reason,
+                                  );
                                 }}
                                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm whitespace-nowrap transition-colors flex-1 min-w-[100px]"
                               >
@@ -1541,14 +1585,13 @@ export const PerfilUsuario = () => {
                           >
                             <td className="px-3 py-2 min-w-[220px]">
                               <div className="text-sm font-medium text-gray-900 break-words">
-                                {(
-                                  item.subidoPor?.nombre
-                                    ? `${item.subidoPor.nombre} ${item.subidoPor.apellido || ""}`
-                                    : item.usuario?.nombre
+                                {(item.subidoPor?.nombre
+                                  ? `${item.subidoPor.nombre} ${item.subidoPor.apellido || ""}`
+                                  : item.usuario?.nombre
                                     ? `${item.usuario.nombre} ${item.usuario.apellido || ""}`
                                     : item.autor?.nombre
-                                    ? `${item.autor.nombre} ${item.autor.apellido || ""}`
-                                    : "Desconocido"
+                                      ? `${item.autor.nombre} ${item.autor.apellido || ""}`
+                                      : "Desconocido"
                                 ).trim()}
                               </div>
                               <div className="text-xs text-gray-600 break-words">
@@ -1567,7 +1610,8 @@ export const PerfilUsuario = () => {
                             </td>
                             <td className="px-3 py-2">
                               <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-800">
-                                {item.tipoArchivo?.split("/").pop() || "Archivo"}
+                                {item.tipoArchivo?.split("/").pop() ||
+                                  "Archivo"}
                               </span>
                             </td>
                             <td className="px-3 py-2">
@@ -1576,7 +1620,7 @@ export const PerfilUsuario = () => {
                             <td className="px-3 py-2">
                               {item.fechaSubida
                                 ? new Date(item.fechaSubida).toLocaleDateString(
-                                    "es-ES"
+                                    "es-ES",
                                   )
                                 : "Fecha no disponible"}
                             </td>
@@ -1679,16 +1723,19 @@ export const PerfilUsuario = () => {
                                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-black"
                                   value={getTipoUsuarioSelectValue(item)}
                                   onChange={(e) =>
-                                    actualizarMembresia(item._id, e.target.value)
+                                    actualizarMembresia(
+                                      item._id,
+                                      e.target.value,
+                                    )
                                   }
                                 >
                                   <option value="admin">Administrador</option>
                                   <option value="basico">Básico</option>
                                   <option value="premium_mensual">
-                                    Premium Mensual 
+                                    Premium Mensual
                                   </option>
                                   <option value="premium_anual">
-                                    Premium Anual 
+                                    Premium Anual
                                   </option>
                                 </select>
 
@@ -1698,7 +1745,7 @@ export const PerfilUsuario = () => {
                                     <>
                                       Vence:{" "}
                                       {new Date(
-                                        item.fechaVencimientoPremium
+                                        item.fechaVencimientoPremium,
                                       ).toLocaleDateString("es-CR")}
                                     </>
                                   ) : item.tipoUsuario === 1 ? (
