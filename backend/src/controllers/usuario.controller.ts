@@ -4,6 +4,7 @@ import { modelUsuario } from '../models/usuario.model';
 import { generarToken, verificarToken } from '../utils/jwt';
 import { hashPassword, comparePassword } from '../utils/bcryptjs';
 import { createTransport } from 'nodemailer';
+import { normalizeEncuestaInicio } from '../utils/encuestaInicio';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -102,7 +103,10 @@ export const updateUsuario = async (req: Request, res: Response): Promise<void> 
         if (usuario.password) {
             usuario.password = await hashPassword(usuario.password);
         }
-        const user = await modelUsuario.findByIdAndUpdate(id, usuario, { new: true });
+        if ((req.body as any).encuestaInicio !== undefined) {
+            (usuario as any).encuestaInicio = normalizeEncuestaInicio((req.body as any).encuestaInicio);
+        }
+        const user = await modelUsuario.findByIdAndUpdate(id, usuario, { new: true }).select('-password');
         res.status(200).json(user);
     } catch (error) {
         const err = error as Error;

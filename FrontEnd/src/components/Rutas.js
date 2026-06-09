@@ -28,11 +28,13 @@ import TerminosCondiciones from "./TerminosCondiciones"; // NUEVO
 import Tutoriales from "./tutoriales"; // NUEVO
 import ProyectosDestacados from "./proyectosDestacados"; // NUEVO
 import NotificacionesMovil from "./notificaciones/NotificacionesMovil";
+import EncuestaInicioModal from "./EncuestaInicioModal";
 
 export const Rutas = () => {
   return (
     <Router>
       <Navbar />
+      <EncuestaInicioModal />
       <Routes>
         <Route path="/" element={<InicioPrincipal />} />
         <Route path="/eventos" element={<LandingPage tag="evento" />} />

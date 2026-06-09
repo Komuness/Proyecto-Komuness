@@ -6,11 +6,11 @@ import { modelUsuario } from "../models/usuario.model";
 import { comparePassword, hashPassword } from "../utils/bcryptjs";
 import { generarToken } from "../utils/jwt";
 import { IUsuario } from "../interfaces/usuario.interface";
+import { normalizeEncuestaInicio } from "../utils/encuestaInicio";
 
 dotenv.config();
 
 const CONFIRMATION_TOKEN_HOURS = 48;
-
 const createMailTransport = () => {
     const user = String(process.env.MAIL_USER || "");
     const pass = String(process.env.MAIL_PASS || "");
@@ -139,6 +139,7 @@ export const registerUsuario = async (req: Request, res: Response): Promise<void
             password?: string;
             tipoUsuario?: number;
             codigo?: string;
+            encuestaInicio?: unknown;
         };
 
         const nombre = body.nombre ? String(body.nombre).trim() : "";
@@ -147,6 +148,7 @@ export const registerUsuario = async (req: Request, res: Response): Promise<void
         const password = body.password ? String(body.password) : "";
         const tipoUsuario = Number.isFinite(Number(body.tipoUsuario)) ? Number(body.tipoUsuario) : 2;
         const codigo = body.codigo && String(body.codigo).trim() ? String(body.codigo).trim() : "0";
+        const encuestaInicio = normalizeEncuestaInicio(body.encuestaInicio);
 
         if (!nombre || !apellido || !email || !password) {
             res.status(400).json({
@@ -187,6 +189,7 @@ export const registerUsuario = async (req: Request, res: Response): Promise<void
             password: hashedPassword,
             tipoUsuario,
             codigo,
+            encuestaInicio,
             emailConfirmado: false,
             tokenConfirmacion: tokenData.token,
             tokenConfirmacionExpira: tokenData.expiresAt
