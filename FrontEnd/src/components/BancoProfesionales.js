@@ -69,7 +69,7 @@ const BancoProfesionales = () => {
 
       const queryParams = search ? `?search=${encodeURIComponent(search)}` : '';
       const response = await fetch(
-        `${API_URL}/usuario?tipoUsuario=1,2,3${queryParams}`,
+        `${API_URL}/usuario/public`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -88,7 +88,7 @@ const BancoProfesionales = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   // Cargar estado del usuario actual - USAR PROFESIONALES_API_URL
   const cargarEstadoUsuario = useCallback(async () => {

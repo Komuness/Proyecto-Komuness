@@ -11,7 +11,8 @@ import {
   actualizarVencimientoPremium,
   actualizarMembresiaUsuarioAdmin,
   activarPremiumActual,
-  getTagsByUser
+  getTagsByUser,
+  getPublicUsuarios
 } from "../controllers/usuario.controller";
 import {
   loginUsuario,
@@ -38,10 +39,11 @@ router.get("/check", authMiddleware, checkAuth);
 
 // los siguientes endpoints son de uso exclusivo para el superadmin = 0
 router.post("/", authMiddleware, verificarRoles([0]), createUsuario);
-router.get("/", authMiddleware, verificarRoles([0, 1]), getUsuarios);
+router.get("/", authMiddleware, verificarRoles([0, 1, 2, 3]), getUsuarios);
+router.get("/public", authMiddleware, getPublicUsuarios);
 
+router.get("/etiquetas", authMiddleware, getTagsByUser);
 router.get("/:id", authMiddleware, verificarRoles([0]), getUsuarioById);
-router.get("/:id/etiquetas", authMiddleware, getTagsByUser);
 
 router.delete("/:id", authMiddleware, verificarRoles([0]), deleteUsuario);
 

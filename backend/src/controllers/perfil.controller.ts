@@ -153,8 +153,9 @@ export const obtenerMiPerfil = async (req: Request, res: Response): Promise<void
 export const crearOActualizarPerfil = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = (req as any).user._id;
-    const datosActualizados = req.body;
+    const { etiquetas, ...datosActualizados } = req.body;
 
+    console.log(etiquetas);
     // Verificar que el usuario existe
     const usuario = await modelUsuario.findById(userId);
     if (!usuario) {
@@ -162,6 +163,13 @@ export const crearOActualizarPerfil = async (req: Request, res: Response): Promi
       return;
     }
 
+    if (etiquetas !== undefined) {
+      usuario.encuestaInicio = usuario.encuestaInicio || {};
+      usuario.encuestaInicio.etiquetas = [];
+      usuario.encuestaInicio.etiquetas = etiquetas;
+      await usuario.save();
+    }
+    
     // Buscar perfil existente
     let perfil = await modelPerfil.findOne({ usuarioId: userId });
 

@@ -15,13 +15,16 @@ import {
   FaChevronUp,
   FaPlus,
   FaTrash,
+  FaTags 
 } from "react-icons/fa";
+import { SiHyperskill } from "react-icons/si";
 
 const EditarPerfil = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [openPopupOrganizacion, setOpenPopupOrganizacion] = useState(false);
+  const [etiquetas, setEtiquetas] = useState(null);
 
   // Secciones expandibles
   const [seccionesAbiertas, setSeccionesAbiertas] = useState({
@@ -30,6 +33,7 @@ const EditarPerfil = () => {
     formacion: false,
     experiencia: false,
     habilidades: false,
+    etiquetas: false,
     enlaces: false,
     archivos: false,
   });
@@ -48,6 +52,7 @@ const EditarPerfil = () => {
     formacionAcademica: [],
     experienciaLaboral: [],
     habilidades: [],
+    etiquetas: [],
     proyectos: [],
     urlPortafolio: "",
     redesSociales: {
@@ -88,12 +93,51 @@ const EditarPerfil = () => {
         ...data.data,
         redesSociales: data.data.redesSociales || perfil.redesSociales,
       });
+
+      //Agregar todas las etiquetas correctamente
+      fetchEtiquetas();
+
+
+      //Etiquetas seleccionadas por usuario
+      const responseTags = await fetch(
+        `${API_URL}/usuario/etiquetas`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      if (!responseTags.ok) {
+        throw new Error("Error al cargar las etiquetas del usuario");
+      }
+
+      const dataTags = await responseTags.json();
+
+      setPerfil((prev) => ({
+        ...prev,
+        etiquetas: [
+          ...dataTags.data.map((etiqueta) => etiqueta._id)
+        ]
+      }));
+      
     } catch (error) {
       toast.error("Error al cargar el perfil");
       console.error(error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchEtiquetas = async () => {
+      try {
+        const response = await fetch(`${API_URL}/elements/etiqueta?limit=100`);
+        const data = await response.json();
+        setEtiquetas(data.data || []);
+        
+      } catch (error) {
+        console.error("Error al cargar etiquetas:", error);
+      }
   };
 
   const toggleSeccion = (seccion) => {
@@ -229,6 +273,18 @@ const EditarPerfil = () => {
         i === index ? { ...item, [field]: value } : item,
       ),
     }));
+  };
+
+  const toggleEtiqueta = (id) => {
+    const selected = perfil.etiquetas || [];
+    const nextEtiquetas = selected.includes(id)
+      ? selected.filter((etiquetaId) => etiquetaId !== id)
+      : [...selected, id];
+
+    setPerfil((prev) => ({
+        ...prev,
+        etiquetas: nextEtiquetas,
+      }));
   };
 
   const handleGuardarCambios = async () => {
@@ -781,7 +837,7 @@ const EditarPerfil = () => {
                 className="form-section-header"
                 onClick={() => toggleSeccion("habilidades")}
               >
-                <h2>Habilidades</h2>
+                <h2><SiHyperskill />Habilidades</h2>
                 {seccionesAbiertas.habilidades ? (
                   <FaChevronUp />
                 ) : (
@@ -826,6 +882,50 @@ const EditarPerfil = () => {
                     ))}
                   </div>
                 </div>
+              )}
+            </div>
+
+            {/* Etiquetas */}
+            <div className="form-section">
+              <div
+                className="form-section-header"
+                onClick={() => toggleSeccion("etiquetas")}
+              >
+                <h2><FaTags />Etiquetas</h2>
+                {seccionesAbiertas.etiquetas ? (
+                  <FaChevronUp />
+                ) : (
+                  <FaChevronDown />
+                )}
+              </div>
+
+              {seccionesAbiertas.etiquetas && (
+                <div className="form-section-content">
+                  <div className="flex flex-wrap gap-2">
+                  {etiquetas.map((etiqueta) => {
+                    const active = perfil.etiquetas?.includes(etiqueta._id);
+                    return (
+                      <button
+                        key={etiqueta._id}
+                        type="button"
+                        onClick={() => toggleEtiqueta(etiqueta._id)}
+                        className={`rounded-full px-3 py-3 text-xs sm:text-sm font-semibold transition focus:outline-none ${
+                          active
+                            ? "bg-[#ffbf30] text-[#12141a]"
+                            : "bg-[#3492eb] text-[#f0f0f0] hover:bg-[#3492eb]"
+                        }`}
+                      >
+                        {etiqueta.nombre}
+                      </button>
+                    );
+                  })}
+                  {etiquetas.length === 0 && (
+                    <span className="text-xs text-gray-300">
+                      No hay etiquetas configuradas todavía.
+                    </span>
+                  )}
+                </div>
+              </div>
               )}
             </div>
 
