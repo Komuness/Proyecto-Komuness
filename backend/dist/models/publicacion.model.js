@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.modelPublicacion = void 0;
 const mongoose_1 = require("mongoose");
+const publicacionExpiration_1 = require("../utils/publicacionExpiration");
 //schema comentario
 const comentarioSchema = new mongoose_1.Schema({
     autor: {
@@ -101,6 +102,7 @@ const publicacionSchema = new mongoose_1.Schema({
     precioCiudadanoOro: { type: Number, required: false },
     enlacesExternos: { type: [enlaceExternoSchema], required: false },
     telefono: { type: String, required: false },
+    fechaExpiracion: { type: Date, required: false, index: true },
     ubicacion: { type: ubicacionSchema, required: false }, // Ubicación del evento
     // categorías de área
     categoria: { type: mongoose_1.Schema.Types.ObjectId, ref: 'Categoria', required: true },
@@ -132,5 +134,17 @@ const publicacionSchema = new mongoose_1.Schema({
     strict: true,
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
+});
+publicacionSchema.pre('save', function (next) {
+    var _a;
+    this.fechaExpiracion = (_a = (0, publicacionExpiration_1.calculatePublicationExpirationDate)(this)) !== null && _a !== void 0 ? _a : null;
+    next();
+});
+publicacionSchema.virtual('diasRestantes').get(function () {
+    return (0, publicacionExpiration_1.calculateRemainingDays)(this.fechaExpiracion);
+});
+publicacionSchema.virtual('estaCaducada').get(function () {
+    const diasRestantes = (0, publicacionExpiration_1.calculateRemainingDays)(this.fechaExpiracion);
+    return typeof diasRestantes === 'number' ? diasRestantes === 0 : false;
 });
 exports.modelPublicacion = (0, mongoose_1.model)('Publicacion', publicacionSchema);

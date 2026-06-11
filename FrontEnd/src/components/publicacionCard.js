@@ -256,14 +256,18 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
               <div className="card-details">
                 <h3 className="titulo">{publicacion.titulo}</h3>
                 <div className="tweet-content mb-2">
-                  <p className="theme-card-text">{publicacion.contenidoBreve}</p>
+                  <p className="theme-card-text">
+                    {publicacion.contenidoBreve}
+                  </p>
                 </div>
                 <hr className="my-3 w-full border-gray-300" />
                 <p className="fecha">
                   Creador por:{" "}
                   <span
                     className="theme-card-author-link cursor-pointer hover:underline"
-                    onClick={(e) => handleProfileClick(e, publicacion.autor?._id)}
+                    onClick={(e) =>
+                      handleProfileClick(e, publicacion.autor?._id)
+                    }
                   >
                     {publicacion.autor?.nombre || "Desconocido"}
                   </span>
@@ -273,59 +277,62 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
             )}
 
             {/* Otros (p.ej. evento) */}
-            {publicacion.tag !== "publicacion" && publicacion.tag !== "emprendimiento" && (
-              <div className="card-details">
-                <h3 className="titulo">{publicacion.titulo}</h3>     
-		            <div className="tweet-content mb-2">
-                  <p className="theme-card-text">{publicacion.contenidoBreve}</p>
+            {publicacion.tag !== "publicacion" &&
+              publicacion.tag !== "emprendimiento" && (
+                <div className="card-details">
+                  <h3 className="titulo">{publicacion.titulo}</h3>
+                  <div className="tweet-content mb-2">
+                    <p className="theme-card-text">
+                      {publicacion.contenidoBreve}
+                    </p>
+                  </div>
+                  <hr className="my-3 w-full border-gray-300" />
+                  <p className="fecha">
+                    Publicado por:{" "}
+                    <span
+                      className="theme-card-author-link cursor-pointer hover:underline"
+                      onClick={(e) =>
+                        handleProfileClick(e, publicacion.autor?._id)
+                      }
+                    >
+                      {publicacion.autor?.nombre || "Desconocido"}
+                    </span>
+                  </p>
+                  <p className="fecha">
+                    Fecha del evento:{" "}
+                    {formatFecha(publicacion.fechaEvento || publicacion.fecha)}
+                  </p>
                 </div>
-                <hr className="my-3 w-full border-gray-300" />
-		            <p className="fecha">
-                  Publicado por:{" "}
-                  <span
-                    className="theme-card-author-link cursor-pointer hover:underline"
-                    onClick={(e) => handleProfileClick(e, publicacion.autor?._id)}
-                  >
-                    {publicacion.autor?.nombre || "Desconocido"}
-                  </span>
-                </p>
-                <p className="fecha">
-                  Fecha del evento:{" "}
-                  {formatFecha(publicacion.fechaEvento || publicacion.fecha)}
-                </p>
-              </div>
-            )}
+              )}
 
             {/* Publicación estilo tweet */}
             {publicacion.tag === "publicacion" && (
               <div className="tweet">
                 <div className="tweet-header mb-2">
                   <div className="tweet-title">
-                      <h4
-                        className="title font-semibold"
-		      >
-                          {publicacion.titulo || "Sin título"}
-                      </h4>
-                      </div>
+                    <h4 className="title font-semibold">
+                      {publicacion.titulo || "Sin título"}
+                    </h4>
                   </div>
-                  <div className="tweet-content mb-2">
-                      <p className="theme-card-text">{publicacion.contenidoBreve}</p>
+                </div>
+                <div className="tweet-content mb-2">
+                  <p className="theme-card-text">
+                    {publicacion.contenidoBreve}
+                  </p>
+                </div>
+                <div className="tweet-footer mt-2">
+                  <div className="tweet-user">
+                    <h4
+                      className="user-name theme-card-author-link cursor-pointer hover:underline"
+                      onClick={(e) =>
+                        handleProfileClick(e, publicacion.autor?._id)
+                      }
+                    >
+                      Publicado por:{" "}
+                      <b>{publicacion.autor?.nombre || "Desconocido"} </b>
+                    </h4>
                   </div>
-		  <div className="tweet-footer mt-2">
-                    <div className="tweet-user">
-                      <h4
-                        className="user-name theme-card-author-link cursor-pointer hover:underline"
-                        onClick={(e) => handleProfileClick(e, publicacion.autor?._id)}
-                      >
-                          Publicado por: <b>{publicacion.autor?.nombre || "Desconocido"} </b>
-                      </h4>
-                    </div>
-                    <p className="tweet-date text-sm">
-                     Fecha: {formatFecha(publicacion.fecha)}
-                    </p>
-                  </div>      
-                  </div>
-                  <p className="tweet-date text-sm text-gray-600">
+                  <p className="tweet-date text-sm">
                     Fecha: {formatFecha(publicacion.fecha)}
                   </p>
                 </div>

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.uploadCV = exports.uploadFotoPerfil = exports.upload = void 0;
+exports.uploadCV = exports.uploadFotoPerfil = exports.uploadThemeBackground = exports.upload = void 0;
 const node_fs_1 = __importDefault(require("node:fs"));
 const node_path_1 = __importDefault(require("node:path"));
 const multer_1 = __importDefault(require("multer"));
@@ -37,6 +37,40 @@ exports.upload = (0, multer_1.default)({
         // pesa exactamente el límite (por ejemplo 200MB). Valor = configured MB + slack bytes.
         fileSize: (maxFileSizeMB * 1024 * 1024) + maxFileSizeSlackBytes,
         files: maxFilesPerUpload,
+    },
+});
+const themeStorage = multer_1.default.diskStorage({
+    destination: (_req, _file, cb) => {
+        const isProd = process.env.NODE_ENV === 'production';
+        const baseUploadsDir = process.env.UPLOAD_DIR || (isProd
+            ? '/srv/uploads'
+            : node_path_1.default.join(__dirname, '../tmp/uploads'));
+        const folder = node_path_1.default.join(baseUploadsDir, 'tematica');
+        if (!node_fs_1.default.existsSync(folder)) {
+            node_fs_1.default.mkdirSync(folder, { recursive: true });
+        }
+        cb(null, folder);
+    },
+    filename: (_req, file, cb) => {
+        const extension = node_path_1.default.extname(file.originalname).toLowerCase();
+        const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${extension}`;
+        cb(null, uniqueName);
+    }
+});
+const themeImageFilter = (_req, file, cb) => {
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    if (allowedMimeTypes.includes(file.mimetype)) {
+        cb(null, true);
+        return;
+    }
+    cb(new Error('Tipo de archivo no permitido. Solo se permiten imágenes JPG, PNG, WEBP o GIF.'));
+};
+exports.uploadThemeBackground = (0, multer_1.default)({
+    storage: themeStorage,
+    fileFilter: themeImageFilter,
+    limits: {
+        fileSize: 8 * 1024 * 1024,
+        files: 1,
     },
 });
 // Storage específico para perfiles de usuario
