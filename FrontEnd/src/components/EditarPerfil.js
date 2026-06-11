@@ -24,6 +24,7 @@ import {
   writeSessionDraft,
 } from "../utils/sessionDraftStorage";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import { SiHyperskill } from "react-icons/si";
 
 const PROFILE_DRAFT_PREFIX = "komuness:editar-perfil";
 
@@ -70,7 +71,6 @@ const mergePerfilDraft = (basePerfil, draft) => {
     },
   };
 };
-import { SiHyperskill } from "react-icons/si";
 
 const EditarPerfil = () => {
   const navigate = useNavigate();
