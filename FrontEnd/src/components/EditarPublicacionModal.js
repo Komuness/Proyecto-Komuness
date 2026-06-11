@@ -39,6 +39,10 @@ const getInitialDraftState = (publicacion) => ({
       publicacion.precioCiudadanoOro !== null
         ? publicacion.precioCiudadanoOro.toString()
         : "",
+    descuento:
+      publicacion.descuento !== undefined && publicacion.descuento !== null
+        ? publicacion.descuento.toString()
+        : "",
     telefono: publicacion.telefono || "",
     categoria: publicacion.categoria?._id || publicacion.categoria || "",
   },
@@ -68,6 +72,7 @@ export const EditarPublicacionModal = ({
     precioNegociable: false,
     precioEstudiante: "",
     precioCiudadanoOro: "",
+    descuento: "",
     telefono: "",
     categoria: "",
   });
@@ -113,6 +118,10 @@ export const EditarPublicacionModal = ({
           publicacion.precioCiudadanoOro !== undefined &&
           publicacion.precioCiudadanoOro !== null
             ? publicacion.precioCiudadanoOro.toString()
+            : "",
+        descuento:
+          publicacion.descuento !== undefined && publicacion.descuento !== null
+            ? publicacion.descuento.toString()
             : "",
         telefono: publicacion.telefono || "",
         categoria: publicacion.categoria?._id || publicacion.categoria || "",
@@ -251,6 +260,7 @@ export const EditarPublicacionModal = ({
         precioNegociable: formData.precioNegociable === true,
         precioEstudiante: formData.precioEstudiante || "",
         precioCiudadanoOro: formData.precioCiudadanoOro || "",
+        descuento: formData.descuento || "",
         telefono: formData.telefono || "",
         categoria: formData.categoria || "",
         enlacesExternos: enlacesValidos.length > 0 ? enlacesValidos : [],
@@ -272,6 +282,7 @@ export const EditarPublicacionModal = ({
       );
       data.append("precioEstudiante", formData.precioEstudiante || "");
       data.append("precioCiudadanoOro", formData.precioCiudadanoOro || "");
+      data.append("descuento", formData.descuento || "");
       data.append("telefono", formData.telefono || "");
       data.append("categoria", formData.categoria || "");
 
@@ -627,6 +638,29 @@ export const EditarPublicacionModal = ({
                       className="campo-input"
                       placeholder="Ej: 7000"
                     />
+                  </div>
+
+                  {/* Descuento */}
+                  <div className="campo-grupo">
+                    <label htmlFor="descuento" className="campo-label">
+                      Descuento (% - opcional):
+                    </label>
+                    <input
+                      id="descuento"
+                      type="number"
+                      name="descuento"
+                      value={formData.descuento}
+                      onChange={handleChange}
+                      className="campo-input"
+                      placeholder="Ej: 15 (para 15%)"
+                      min="0"
+                      max="100"
+                    />
+                    {formData.descuento && (
+                      <p className="texto-ayuda">
+                        Descuento: {formData.descuento}%
+                      </p>
+                    )}
                   </div>
                 </>
               )}

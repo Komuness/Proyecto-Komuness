@@ -1,0 +1,379 @@
+.admin-boletines-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #f5f5f5;
+    min-height: 100vh;
+}
+
+.admin-boletines-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.admin-boletines-header h1 {
+    flex: 1;
+    text-align: center;
+    color: #1e3a8a;
+    margin: 0;
+    font-size: 28px;
+}
+
+.btn-back {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background-color: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    color: #333;
+}
+
+.btn-back:hover {
+    background-color: #e0e0e0;
+}
+
+.btn-create {
+    padding: 10px 20px;
+    background-color: #1e3a8a;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.btn-create:hover {
+    background-color: #163073;
+}
+
+/* Formulario */
+.boletin-form-container {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.boletin-form-container h2 {
+    color: #1e3a8a;
+    margin-bottom: 20px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #333;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #333;
+    background-color: white;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 150px;
+}
+
+.form-group input[type="text"]:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #1e3a8a;
+    box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+}
+
+.usuarios-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.usuario-item {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    margin-bottom: 5px;
+}
+
+.usuario-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.usuario-item label {
+    margin: 0;
+    cursor: pointer;
+    font-weight: 400;
+    color: #333;
+}
+
+.roles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.role-item {
+    display: flex;
+    align-items: center;
+}
+
+.role-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.role-item label {
+    margin: 0;
+    cursor: pointer;
+    font-weight: 400;
+    color: #333;
+}
+
+.btn-submit {
+    padding: 12px 30px;
+    background-color: #1e3a8a;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.btn-submit:hover:not(:disabled) {
+    background-color: #163073;
+}
+
+.btn-submit:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Lista de boletines */
+.boletines-list {
+    background-color: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.boletines-list h2 {
+    color: #1e3a8a;
+    margin-bottom: 20px;
+}
+
+.loading,
+.empty-state {
+    text-align: center;
+    padding: 30px;
+    color: #333 !important;
+    font-size: 16px;
+}
+
+.boletines-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.boletines-table thead {
+    background-color: #f5f5f5;
+    border-bottom: 2px solid #ddd;
+}
+
+.boletines-table th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    color: #1e3a8a;
+}
+
+.boletines-table td {
+    padding: 12px;
+    border-bottom: 1px solid #ddd;
+    color: #333;
+}
+
+.boletines-table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+.estado-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.badge-borrador {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.badge-programado {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.badge-enviado {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.badge-cancelado {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+.acciones {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.btn-action {
+    padding: 8px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-edit {
+    background-color: #2196F3;
+    color: white;
+}
+
+.btn-edit:hover {
+    background-color: #0b7dda;
+}
+
+.btn-delete {
+    background-color: #f44336;
+    color: white;
+}
+
+.btn-delete:hover:not(:disabled) {
+    background-color: #da190b;
+}
+
+.btn-delete:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.btn-send {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.btn-send:hover:not(:disabled) {
+    background-color: #45a049;
+}
+
+.btn-send:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.sent-label {
+    padding: 6px 12px;
+    background-color: #d4edda;
+    color: #155724;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .admin-boletines-header {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .admin-boletines-header h1 {
+        font-size: 22px;
+    }
+
+    .boletines-table {
+        font-size: 14px;
+    }
+
+    .boletines-table th,
+    .boletines-table td {
+        padding: 8px;
+    }
+
+    .acciones {
+        gap: 4px;
+    }
+
+    .btn-action {
+        padding: 6px;
+        font-size: 14px;
+    }
+
+    .boletin-form-container {
+        padding: 15px;
+    }
+}
+
+@media (max-width: 480px) {
+    .admin-boletines-container {
+        padding: 10px;
+    }
+
+    .boletines-table {
+        font-size: 12px;
+    }
+
+    .boletines-table th,
+    .boletines-table td {
+        padding: 6px;
+    }
+
+    .estado-badge {
+        font-size: 10px;
+    }
+}

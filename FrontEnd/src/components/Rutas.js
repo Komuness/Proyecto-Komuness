@@ -18,6 +18,7 @@ import { NuevaContra } from "./nuevaContra";
 import { CrearUsuario } from "./crearUsuario";
 import CalendarView from "./Calendar";
 import AdminCategorias from "./adminCategorias";
+import AdminBoletines from "./adminBoletines";
 import AcercaDe from "./AcercaDe";
 import Footer from "./Footer";
 import CheckoutPremium from "./CheckoutPremium";
@@ -55,6 +56,7 @@ export const Rutas = () => {
         <Route path="/crearUsr" element={<CrearUsuario />} />
         <Route path="/calendario" element={<CalendarView />} />
         <Route path="/admin/categorias" element={<AdminCategorias />} />
+        <Route path="/admin/boletines" element={<AdminBoletines />} />
         <Route path="/acerca-de" element={<AcercaDe />} />
         <Route path="/checkout-premium" element={<CheckoutPremium />} />
         <Route path="/perfil/:id" element={<PerfilPublico />} />

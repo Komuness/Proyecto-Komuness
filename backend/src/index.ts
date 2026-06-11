@@ -28,6 +28,9 @@ import proyectosDestacadosRoutes from "./routes/proyectosDestacados.routes";
 import paypalRoutes from "./routes/paypal.routes";
 import bancoProfesionalesRoutes from "./routes/bancoProfesionales.routes";
 
+// Rutas de Boletines
+import boletinRoutes from "./routes/boletin.routes";
+
 const app: Express = express();
 dotenv.config();
 
@@ -107,6 +110,7 @@ app.use("/api/proyectos-destacados", proyectosDestacadosRoutes);
 app.use("/api/notificaciones", notificacionesRoutes);
 app.use("/api/paquetes-suscripcion", paqueteSuscripcionRoutes);
 app.use("/api/publicidad", publicidadRoutes);
+app.use("/api/boletines", boletinRoutes);
 
 /** Smoke test mínimo */
 app.get("/api/", (_req: Request, res: Response) => {

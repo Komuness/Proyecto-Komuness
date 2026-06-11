@@ -1,17 +1,36 @@
-const hasSessionStorage = () => {
-  if (typeof window === "undefined") return false;
-  try {
-    return typeof window.sessionStorage !== "undefined";
-  } catch {
-    return false;
-  }
+let cachedDraftStorage;
+
+const resolveStorage = () => {
+  if (typeof window === "undefined") return null;
+
+  const getSafeStorage = (type) => {
+    try {
+      const storage = window[type];
+      if (!storage) return null;
+      const testKey = "__komuness_draft_test__";
+      storage.setItem(testKey, "1");
+      storage.removeItem(testKey);
+      return storage;
+    } catch {
+      return null;
+    }
+  };
+
+  return getSafeStorage("localStorage") || getSafeStorage("sessionStorage");
+};
+
+const getDraftStorage = () => {
+  if (cachedDraftStorage !== undefined) return cachedDraftStorage;
+  cachedDraftStorage = resolveStorage();
+  return cachedDraftStorage;
 };
 
 export const readSessionDraft = (key, fallbackValue = null) => {
-  if (!hasSessionStorage() || !key) return fallbackValue;
+  const storage = getDraftStorage();
+  if (!storage || !key) return fallbackValue;
 
   try {
-    const rawValue = window.sessionStorage.getItem(key);
+    const rawValue = storage.getItem(key);
     if (!rawValue) return fallbackValue;
     return JSON.parse(rawValue);
   } catch {
@@ -20,20 +39,22 @@ export const readSessionDraft = (key, fallbackValue = null) => {
 };
 
 export const writeSessionDraft = (key, value) => {
-  if (!hasSessionStorage() || !key) return;
+  const storage = getDraftStorage();
+  if (!storage || !key) return;
 
   try {
-    window.sessionStorage.setItem(key, JSON.stringify(value));
+    storage.setItem(key, JSON.stringify(value));
   } catch {
     // Ignorar errores de storage (modo privado/cuota excedida)
   }
 };
 
 export const removeSessionDraft = (key) => {
-  if (!hasSessionStorage() || !key) return;
+  const storage = getDraftStorage();
+  if (!storage || !key) return;
 
   try {
-    window.sessionStorage.removeItem(key);
+    storage.removeItem(key);
   } catch {
     // Ignorar errores de storage
   }

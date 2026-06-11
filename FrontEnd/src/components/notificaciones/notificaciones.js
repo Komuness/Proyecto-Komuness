@@ -18,6 +18,8 @@ const Notificaciones = ({
     nombre: "",
     descripcion: "",
     fechaCaducidad: "",
+    tipo: "general",
+    formularioUrl: "",
   });
 
   const usuarioLogueado = useMemo(() => {
@@ -192,6 +194,11 @@ const Notificaciones = ({
       return;
     }
 
+    if (formData.tipo === "formulario" && !formData.formularioUrl.trim()) {
+      setError("La URL del formulario es obligatoria para notificaciones de tipo formulario.");
+      return;
+    }
+
     setEnviando(true);
     setError("");
 
@@ -199,7 +206,12 @@ const Notificaciones = ({
       const payload = {
         nombre: formData.nombre.trim(),
         descripcion: formData.descripcion.trim(),
+        tipo: formData.tipo,
       };
+
+      if (formData.formularioUrl) {
+        payload.formularioUrl = formData.formularioUrl.trim();
+      }
 
       if (formData.fechaCaducidad) {
         payload.fechaCaducidad = new Date(formData.fechaCaducidad).toISOString();
@@ -219,7 +231,7 @@ const Notificaciones = ({
         throw new Error(data?.message || "No se pudo enviar la notificación");
       }
 
-      setFormData({ nombre: "", descripcion: "", fechaCaducidad: "" });
+      setFormData({ nombre: "", descripcion: "", fechaCaducidad: "", tipo: "general", formularioUrl: "" });
       await cargarNotificaciones();
     } catch (err) {
       setError(err?.message || "Error al enviar notificación");
@@ -267,6 +279,21 @@ const Notificaciones = ({
               Enviar notificación general
             </h3>
             <div className="flex flex-col gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex-1">
+                  <label className="text-xs text-slate-300">Tipo:</label>
+                  <select
+                    className="w-full px-3 py-2 rounded text-black text-sm"
+                    value={formData.tipo}
+                    onChange={(e) =>
+                      setFormData((prev) => ({ ...prev, tipo: e.target.value }))
+                    }
+                  >
+                    <option value="general">General</option>
+                    <option value="formulario">Google Forms</option>
+                  </select>
+                </div>
+              </div>
               <input
                 className="px-3 py-2 rounded text-black text-sm"
                 placeholder="Título"
@@ -284,9 +311,20 @@ const Notificaciones = ({
                   setFormData((prev) => ({ ...prev, descripcion: e.target.value }))
                 }
               />
-              <div className="flex flex-col sm:flex-row gap-2">
+              {formData.tipo === "formulario" && (
                 <input
                   className="px-3 py-2 rounded text-black text-sm"
+                  type="url"
+                  placeholder="URL del Google Forms"
+                  value={formData.formularioUrl}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, formularioUrl: e.target.value }))
+                  }
+                />
+              )}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  className="px-3 py-2 rounded text-black text-sm flex-1"
                   type="date"
                   value={formData.fechaCaducidad}
                   onChange={(e) =>
@@ -332,7 +370,18 @@ const Notificaciones = ({
                       <span className="font-bold">{ntf.nombre}:</span>{" "}
                       {ntf.descripcion}
                     </p>
-                    <p className={`text-sm ${ntf?.visto ? "text-slate-400" : "text-slate-200"}`}>
+                    {ntf.tipo === "formulario" && ntf.formularioUrl && (
+                      <a
+                        href={ntf.formularioUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block mt-2 px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded transition-colors"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        📋 Abrir Formulario
+                      </a>
+                    )}
+                    <p className={`text-sm mt-2 ${ntf?.visto ? "text-slate-400" : "text-slate-200"}`}>
                       Fecha: {formatFecha(ntf.createdAt)}
                     </p>
                   </div>

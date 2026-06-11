@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { API_URL, BASE_URL } from "../utils/api";
 import { toast } from "react-hot-toast";
 import "../CSS/editarPerfil.css";
+import ConfirmDialog from "./ConfirmDialog";
 import SubidaArchivo from "./SubidaArchivo";
 import UserProfileAvatar from "./UserProfileAvatar";
 import {
@@ -17,13 +18,71 @@ import {
   FaTrash,
   FaTags 
 } from "react-icons/fa";
+import {
+  readSessionDraft,
+  removeSessionDraft,
+  writeSessionDraft,
+} from "../utils/sessionDraftStorage";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import { SiHyperskill } from "react-icons/si";
+
+const PROFILE_DRAFT_PREFIX = "komuness:editar-perfil";
+
+const getStoredUserId = () => {
+  if (typeof window === "undefined") return "";
+
+  try {
+    const storedUserId = localStorage.getItem("userId");
+    if (storedUserId) return storedUserId;
+
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    return user?._id || "";
+  } catch {
+    return "";
+  }
+};
+
+const getProfileDraftStorageKey = (userId) =>
+  `${PROFILE_DRAFT_PREFIX}:${userId || "anon"}`;
+
+const mergePerfilDraft = (basePerfil, draft) => {
+  if (!draft || !draft.perfil) return basePerfil;
+
+  const draftPerfil = draft.perfil;
+
+  return {
+    ...basePerfil,
+    ...draftPerfil,
+    formacionAcademica: Array.isArray(draftPerfil.formacionAcademica)
+      ? draftPerfil.formacionAcademica
+      : basePerfil.formacionAcademica,
+    experienciaLaboral: Array.isArray(draftPerfil.experienciaLaboral)
+      ? draftPerfil.experienciaLaboral
+      : basePerfil.experienciaLaboral,
+    habilidades: Array.isArray(draftPerfil.habilidades)
+      ? draftPerfil.habilidades
+      : basePerfil.habilidades,
+    proyectos: Array.isArray(draftPerfil.proyectos)
+      ? draftPerfil.proyectos
+      : basePerfil.proyectos,
+    redesSociales: {
+      ...basePerfil.redesSociales,
+      ...(draftPerfil.redesSociales || {}),
+    },
+  };
+};
 
 const EditarPerfil = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [openPopupOrganizacion, setOpenPopupOrganizacion] = useState(false);
+  const [draftCargado, setDraftCargado] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
+  const { dialog, confirm, handleConfirm, handleCancel } = useConfirmDialog();
+  const [draftStorageKey] = useState(() =>
+    getProfileDraftStorageKey(getStoredUserId()),
+  );
   const [etiquetas, setEtiquetas] = useState(null);
 
   // Secciones expandibles
@@ -72,9 +131,30 @@ const EditarPerfil = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (loading || !draftCargado || !hasChanges) return;
+
+    writeSessionDraft(draftStorageKey, { perfil });
+  }, [loading, draftCargado, draftStorageKey, perfil, hasChanges]);
+
   useEffect(() => {}, [perfil.fotoPerfil]);
 
   const cargarPerfil = async () => {
+    const savedDraft = readSessionDraft(draftStorageKey);
+    const shouldLoadDraft = savedDraft?.perfil
+      ? await confirm({
+          title: "Borrador encontrado",
+          message: "Hay un borrador guardado del perfil.",
+          hint: "Puedes cargarlo para continuar o descartarlo.",
+          confirmText: "Cargar borrador",
+          cancelText: "Descartar",
+        })
+      : false;
+
+    if (savedDraft?.perfil && !shouldLoadDraft) {
+      removeSessionDraft(draftStorageKey);
+    }
+
     try {
       setLoading(true);
       const response = await fetch(`${API_URL}/perfil/usuario/me`, {
@@ -88,6 +168,21 @@ const EditarPerfil = () => {
       }
 
       const data = await response.json();
+      setPerfil((prev) =>
+        mergePerfilDraft(
+          {
+            ...prev,
+            ...data.data,
+            redesSociales: data.data.redesSociales || prev.redesSociales,
+          },
+          shouldLoadDraft ? savedDraft : null,
+        ),
+      );
+      if (shouldLoadDraft) {
+        setHasChanges(true);
+      } else {
+        setHasChanges(false);
+      }
       setPerfil({
         ...perfil,
         ...data.data,
@@ -122,13 +217,19 @@ const EditarPerfil = () => {
       }));
       
     } catch (error) {
+      if (shouldLoadDraft && savedDraft?.perfil) {
+        setPerfil((prev) => mergePerfilDraft(prev, savedDraft));
+        setHasChanges(true);
+      }
       toast.error("Error al cargar el perfil");
       console.error(error);
     } finally {
       setLoading(false);
+      setDraftCargado(true);
     }
   };
 
+  const markHasChanges = () => setHasChanges(true);
   const fetchEtiquetas = async () => {
       try {
         const response = await fetch(`${API_URL}/elements/etiqueta?limit=100`);
@@ -149,6 +250,7 @@ const EditarPerfil = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
+    markHasChanges();
     setPerfil((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -157,6 +259,7 @@ const EditarPerfil = () => {
 
   const handleRedesSocialesChange = (e) => {
     const { name, value } = e.target;
+    markHasChanges();
     setPerfil((prev) => ({
       ...prev,
       redesSociales: {
@@ -168,6 +271,7 @@ const EditarPerfil = () => {
 
   // Formación académica
   const agregarFormacion = () => {
+    markHasChanges();
     setPerfil((prev) => ({
       ...prev,
       formacionAcademica: [
@@ -183,6 +287,7 @@ const EditarPerfil = () => {
   };
 
   const eliminarFormacion = (index) => {
+    markHasChanges();
     setPerfil((prev) => ({
       ...prev,
       formacionAcademica: prev.formacionAcademica.filter((_, i) => i !== index),
@@ -190,6 +295,7 @@ const EditarPerfil = () => {
   };
 
   const handleFormacionChange = (index, field, value) => {
+    markHasChanges();
     setPerfil((prev) => ({
       ...prev,
       formacionAcademica: prev.formacionAcademica.map((item, i) =>
@@ -200,6 +306,7 @@ const EditarPerfil = () => {
 
   // Experiencia laboral
   const agregarExperiencia = () => {
+    markHasChanges();
     setPerfil((prev) => ({
       ...prev,
       experienciaLaboral: [
@@ -216,6 +323,7 @@ const EditarPerfil = () => {
   };
 
   const eliminarExperiencia = (index) => {
+    markHasChanges();
     setPerfil((prev) => ({
       ...prev,
       experienciaLaboral: prev.experienciaLaboral.filter((_, i) => i !== index),
@@ -223,6 +331,7 @@ const EditarPerfil = () => {
   };
 
   const handleExperienciaChange = (index, field, value) => {
+    markHasChanges();
     setPerfil((prev) => ({
       ...prev,
       experienciaLaboral: prev.experienciaLaboral.map((item, i) =>
@@ -236,6 +345,7 @@ const EditarPerfil = () => {
 
   const agregarHabilidad = () => {
     if (nuevaHabilidad.trim()) {
+      markHasChanges();
       setPerfil((prev) => ({
         ...prev,
         habilidades: [...prev.habilidades, nuevaHabilidad.trim()],
@@ -245,6 +355,7 @@ const EditarPerfil = () => {
   };
 
   const eliminarHabilidad = (index) => {
+    markHasChanges();
     setPerfil((prev) => ({
       ...prev,
       habilidades: prev.habilidades.filter((_, i) => i !== index),
@@ -253,6 +364,7 @@ const EditarPerfil = () => {
 
   // Proyectos
   const agregarProyecto = () => {
+    markHasChanges();
     setPerfil((prev) => ({
       ...prev,
       proyectos: [...prev.proyectos, { nombre: "", url: "", descripcion: "" }],
@@ -260,6 +372,7 @@ const EditarPerfil = () => {
   };
 
   const eliminarProyecto = (index) => {
+    markHasChanges();
     setPerfil((prev) => ({
       ...prev,
       proyectos: prev.proyectos.filter((_, i) => i !== index),
@@ -267,6 +380,7 @@ const EditarPerfil = () => {
   };
 
   const handleProyectoChange = (index, field, value) => {
+    markHasChanges();
     setPerfil((prev) => ({
       ...prev,
       proyectos: prev.proyectos.map((item, i) =>
@@ -311,6 +425,8 @@ const EditarPerfil = () => {
       }
 
       toast.success("Perfil actualizado exitosamente");
+      removeSessionDraft(draftStorageKey);
+      setHasChanges(false);
 
       // Opcional: navegar al perfil público
       // navigate(`/perfil/${perfil.usuarioId}`);
@@ -349,6 +465,7 @@ const EditarPerfil = () => {
 
         return nuevoEstado;
       });
+      markHasChanges();
 
       // Recargar el perfil completo para asegurar sincronización
 
@@ -371,6 +488,7 @@ const EditarPerfil = () => {
 
         return nuevoEstado;
       });
+      markHasChanges();
 
       toast.success("Foto de perfil eliminada");
     } catch (error) {
@@ -382,15 +500,49 @@ const EditarPerfil = () => {
   };
 
   const handleCVSubido = (url) => {
+    markHasChanges();
     setPerfil((prev) => ({ ...prev, cvUrl: url }));
+  };
+
+  const handleCancelar = () => {
+    const resolveCancel = async () => {
+      if (hasChanges) {
+        const shouldSave = await confirm({
+          title: "Guardar borrador",
+          message: "Deseas guardar lo escrito para continuar después?",
+          hint: "Si descartas, se eliminará el borrador guardado.",
+          confirmText: "Guardar",
+          cancelText: "Descartar",
+        });
+
+        if (shouldSave) {
+          writeSessionDraft(draftStorageKey, { perfil });
+        } else {
+          removeSessionDraft(draftStorageKey);
+        }
+      } else {
+        removeSessionDraft(draftStorageKey);
+      }
+
+      navigate("/perfilUsuario");
+    };
+
+    resolveCancel();
   };
 
   if (loading) {
     return (
-      <div className="editar-perfil-loading">
-        <div className="spinner"></div>
-        <p>Cargando perfil...</p>
-      </div>
+      <>
+        <div className="editar-perfil-loading">
+          <div className="spinner"></div>
+          <p>Cargando perfil...</p>
+        </div>
+        <ConfirmDialog
+          dialog={dialog}
+          onConfirm={handleConfirm}
+          onCancel={handleCancel}
+        />
+      </>
     );
   }
 
@@ -1138,7 +1290,7 @@ const EditarPerfil = () => {
             <div className="form-actions">
               <button
                 type="button"
-                onClick={() => navigate("/perfilUsuario")}
+                onClick={handleCancelar}
                 className="btn-cancelar"
               >
                 Cancelar
@@ -1156,6 +1308,11 @@ const EditarPerfil = () => {
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        dialog={dialog}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
+      />
     </div>
   );
 };

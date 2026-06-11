@@ -64,7 +64,7 @@ function saveLibraryFileToDisk(file) {
         yield fs_1.default.promises.writeFile(absPath, file.buffer);
         // key relativa a /srv/uploads
         const relFromUploads = path_1.default.relative(getUploadsRoot(), absPath).split(path_1.default.sep).join('/');
-        const publicBase = process.env.PUBLIC_BASE_URL || 'http://localhost:5000';
+        const publicBase = process.env.PUBLIC_BASE_URL || 'http://159.54.148.238';
         const url = `${publicBase}/uploads/${relFromUploads}`;
         return {
             key: relFromUploads, // ejemplo: "biblioteca/2025/09/1694478123456_manual.pdf"

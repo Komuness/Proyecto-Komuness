@@ -8,6 +8,8 @@ export interface INotificacion extends Document {
     fechaCaducidad?: Date | null;
     recipientes: Types.ObjectId[];
     vistoPor: Types.ObjectId[];
+    tipo?: "general" | "formulario"; // tipo de notificación
+    formularioUrl?: string | null; // URL del Google Forms (solo para tipo formulario)
     createdAt: Date;
     updatedAt: Date;
 }

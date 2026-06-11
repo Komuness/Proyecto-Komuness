@@ -2,12 +2,14 @@ import { useState, useEffect } from "react";
 import { IoMdClose, IoMdRemove, IoMdAdd } from "react-icons/io";
 import { API_URL } from "../utils/api";
 import { toast } from "react-hot-toast";
-import CategoriaSelector from "../components/generic/categoriaSelector";
-import AlertaLimitePublicaciones from "../components/AlertaLimitePublicaciones";
-import "../CSS/formularioPublicacion.css";
-import MapaUbicacion from "../components/MapaUbicacion";
-import TextAreaComponent from "../components/TextAreaComponent";
+import CategoriaSelector from '../components/generic/categoriaSelector';
+import AlertaLimitePublicaciones from '../components/AlertaLimitePublicaciones';
+import '../CSS/formularioPublicacion.css';
+import MapaUbicacion from '../components/MapaUbicacion';
+import TextAreaComponent from '../components/TextAreaComponent';
+import ConfirmDialog from "../components/ConfirmDialog";
 import { useLockBodyScroll } from "../hooks/useLockBodyScroll";
+import { useConfirmDialog } from "../hooks/useConfirmDialog";
 import {
   readSessionDraft,
   removeSessionDraft,
@@ -48,6 +50,7 @@ const getInitialFormValues = (tag) => ({
   precioNegociable: false,
   precioEstudiante: "",
   precioCiudadanoOro: "",
+  descuento: "",
   telefono: "",
   categoria: "",
 });
@@ -61,9 +64,11 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
   const [mostrarAlerta, setMostrarAlerta] = useState(false);
   const [enlacesExternos, setEnlacesExternos] = useState(createDefaultEnlaces);
   const [ubicacion, setUbicacion] = useState(createDefaultUbicacion);
+  const { dialog, confirm, handleConfirm, handleCancel } = useConfirmDialog();
 
   const [formData, setFormData] = useState(() => getInitialFormValues(openTag));
   const [draftCargado, setDraftCargado] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const draftStorageKey = getCreateDraftStorageKey(openTag);
 
   useLockBodyScroll(isOpen);
@@ -71,63 +76,90 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
   useEffect(() => {
     if (!isOpen) {
       setDraftCargado(false);
+      setHasChanges(false);
       return;
     }
 
-    setDraftCargado(false);
-    const initialFormValues = getInitialFormValues(openTag);
-    const savedDraft = readSessionDraft(draftStorageKey);
+    let isActive = true;
 
-    if (savedDraft) {
-      setFormData({
-        ...initialFormValues,
-        ...(savedDraft.formData || {}),
-        archivos: [],
-      });
-      setEnlacesExternos(
-        Array.isArray(savedDraft.enlacesExternos) &&
-          savedDraft.enlacesExternos.length > 0
-          ? savedDraft.enlacesExternos
-          : createDefaultEnlaces(),
-      );
-      setUbicacion({
-        ...createDefaultUbicacion(),
-        ...(savedDraft.ubicacion || {}),
-      });
-    } else {
-      setFormData(initialFormValues);
-      setEnlacesExternos(createDefaultEnlaces());
-      setUbicacion(createDefaultUbicacion());
-    }
+    const loadDraft = async () => {
+      setDraftCargado(false);
+      const initialFormValues = getInitialFormValues(openTag);
+      const savedDraft = readSessionDraft(draftStorageKey);
 
-    setDraftCargado(true);
-  }, [isOpen, openTag, draftStorageKey]);
+      if (savedDraft) {
+        const shouldLoadDraft = await confirm({
+          title: "Borrador encontrado",
+          message: "Hay un borrador guardado de esta publicación.",
+          hint: "Puedes cargarlo para continuar o descartarlo.",
+          confirmText: "Cargar borrador",
+          cancelText: "Descartar",
+        });
+
+        if (!isActive) return;
+
+        if (shouldLoadDraft) {
+          setFormData({
+            ...initialFormValues,
+            ...(savedDraft.formData || {}),
+            archivos: [],
+          });
+          setEnlacesExternos(
+            Array.isArray(savedDraft.enlacesExternos) &&
+              savedDraft.enlacesExternos.length > 0
+              ? savedDraft.enlacesExternos
+              : createDefaultEnlaces(),
+          );
+          setUbicacion({
+            ...createDefaultUbicacion(),
+            ...(savedDraft.ubicacion || {}),
+          });
+          setHasChanges(true);
+        } else {
+          removeSessionDraft(draftStorageKey);
+          setFormData(initialFormValues);
+          setEnlacesExternos(createDefaultEnlaces());
+          setUbicacion(createDefaultUbicacion());
+          setHasChanges(false);
+        }
+      } else {
+        setFormData(initialFormValues);
+        setEnlacesExternos(createDefaultEnlaces());
+        setUbicacion(createDefaultUbicacion());
+        setHasChanges(false);
+      }
+
+      if (!isActive) return;
+      setDraftCargado(true);
+    };
+
+    loadDraft();
+
+    return () => {
+      isActive = false;
+    };
+  }, [isOpen, openTag, draftStorageKey, confirm]);
 
   useEffect(() => {
-    if (!isOpen || !draftCargado) return;
+    if (!isOpen || !draftCargado || !hasChanges) return;
 
     writeSessionDraft(draftStorageKey, {
       formData: getPersistedFormData(formData),
       enlacesExternos,
       ubicacion,
     });
-  }, [
-    isOpen,
-    draftCargado,
-    draftStorageKey,
-    formData,
-    enlacesExternos,
-    ubicacion,
-  ]);
+  }, [isOpen, draftCargado, draftStorageKey, formData, enlacesExternos, ubicacion, hasChanges]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     const normalizedValue = type === "checkbox" ? checked : value;
+    setHasChanges(true);
     setFormData((prev) => ({ ...prev, [name]: normalizedValue }));
   };
 
   const handlePrecioNegociableChange = (e) => {
     const checked = e.target.checked;
+    setHasChanges(true);
     setFormData((prev) => ({
       ...prev,
       precioNegociable: checked,
@@ -143,13 +175,14 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
 
   const handleImageChange = (e) => {
     const files = Array.from(e.target.files || []);
-    setFormData((prev) => ({
-      ...prev,
-      archivos: [...prev.archivos, ...files],
-    }));
+    if (files.length > 0) {
+      setHasChanges(true);
+    }
+    setFormData((prev) => ({ ...prev, archivos: [...prev.archivos, ...files] }));
   };
 
   const handleRemoveImage = (index) => {
+    setHasChanges(true);
     setFormData((prev) => ({
       ...prev,
       archivos: prev.archivos.filter((_, i) => i !== index),
@@ -160,20 +193,54 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
   const handleEnlaceChange = (index, field, value) => {
     const updatedEnlaces = [...enlacesExternos];
     updatedEnlaces[index][field] = value;
+    setHasChanges(true);
     setEnlacesExternos(updatedEnlaces);
   };
 
   const addEnlace = () => {
-    setEnlacesExternos([...enlacesExternos, { nombre: "", url: "" }]);
+    setHasChanges(true);
+    setEnlacesExternos([...enlacesExternos, { nombre: '', url: '' }]);
   };
 
   const removeEnlace = (index) => {
     if (enlacesExternos.length > 1) {
+      setHasChanges(true);
       setEnlacesExternos(enlacesExternos.filter((_, i) => i !== index));
     }
   };
 
-  // Filtrar enlaces válidos (con nombre y URL)
+  const handleUbicacionChange = (nuevaUbicacion) => {
+    setHasChanges(true);
+    setUbicacion(nuevaUbicacion);
+  };
+
+  const handleClose = async () => {
+    if (hasChanges) {
+      const shouldSave = await confirm({
+        title: "Guardar borrador",
+        message: "Deseas guardar lo escrito para continuar después?",
+        hint: "Si descartas, se eliminará el borrador guardado.",
+        confirmText: "Guardar",
+        cancelText: "Descartar",
+      });
+
+      if (shouldSave) {
+        writeSessionDraft(draftStorageKey, {
+          formData: getPersistedFormData(formData),
+          enlacesExternos,
+          ubicacion,
+        });
+      } else {
+        removeSessionDraft(draftStorageKey);
+      }
+    } else {
+      removeSessionDraft(draftStorageKey);
+    }
+
+    onClose?.();
+  };
+
+    // Filtrar enlaces válidos (con nombre y URL)
   const enlacesValidos = enlacesExternos.filter(
     (enlace) => enlace.nombre.trim() !== "" && enlace.url.trim() !== "",
   );
@@ -195,6 +262,7 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
     data.append("precioNegociable", String(formData.precioNegociable));
     data.append("precioEstudiante", formData.precioEstudiante || "");
     data.append("precioCiudadanoOro", formData.precioCiudadanoOro || "");
+    data.append("descuento", formData.descuento || "0");
     data.append("telefono", formData.telefono || "");
     data.append("categoria", formData.categoria || "");
 
@@ -282,11 +350,7 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
           <form onSubmit={handleSubmit} className="formulario-grid">
             {/* Header móvil */}
             <div className="formulario-mobile-header">
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-gray-600 text-2xl font-bold"
-              >
+              <button type="button" onClick={handleClose} className="text-gray-600 text-2xl font-bold">
                 <IoMdClose size={35} />
               </button>
               <button type="submit" className="boton-mobile">
@@ -456,6 +520,28 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
                         placeholder="Ej: 7000"
                       />
                     </div>
+
+                    {/* Descuento */}
+                    <div className="campo-grupo">
+                      <label className="campo-label">
+                        Descuento (% - opcional):
+                      </label>
+                      <input
+                        type="number"
+                        name="descuento"
+                        value={formData.descuento}
+                        onChange={handleChange}
+                        className="campo-input"
+                        placeholder="Ej: 15 (para 15%)"
+                        min="0"
+                        max="100"
+                      />
+                      {formData.descuento && (
+                        <p className="texto-ayuda">
+                          Descuento: {formData.descuento}%
+                        </p>
+                      )}
+                    </div>
                   </>
                 )}
               </div>
@@ -606,7 +692,7 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
                 {/* Mapa para seleccionar ubicación del evento */}
                 <div style={{ gridColumn: "1 / -1" }}>
                   <MapaUbicacion
-                    onLocationSelect={setUbicacion}
+                    onLocationSelect={handleUbicacionChange}
                     initialLocation={ubicacion}
                   />
                 </div>
@@ -615,7 +701,7 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
 
             {/* Botones desktop */}
             <div className="botones-desktop">
-              <button type="button" onClick={onClose} className="boton-volver">
+              <button type="button" onClick={handleClose} className="boton-volver">
                 Volver
               </button>
               <button type="submit" className="boton-publicar">
@@ -630,6 +716,12 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
       <AlertaLimitePublicaciones
         show={mostrarAlerta}
         onClose={() => setMostrarAlerta(false)}
+      />
+
+      <ConfirmDialog
+        dialog={dialog}
+        onConfirm={handleConfirm}
+        onCancel={handleCancel}
       />
     </>
   );

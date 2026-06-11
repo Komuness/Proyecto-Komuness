@@ -108,6 +108,15 @@ export const getNotificaciones = async (
   };
 };
 
+function isValidUrl(url: string): boolean {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const createNotificacion = async (
   req: Request,
   res: Response
@@ -120,6 +129,8 @@ export const createNotificacion = async (
       recipientes,
       publicacionId,
       fechaCaducidad,
+      tipo = "general",
+      formularioUrl,
     } = req.body || {};
 
     if (!nombre?.trim()) {
@@ -129,6 +140,32 @@ export const createNotificacion = async (
     if (!descripcion?.trim()) {
       res.status(400).json({ message: "La descripción es obligatoria" });
       return;
+    }
+
+    // Validar que solo admins creen notificaciones
+    const userTipo = Number((req as any).user?.tipoUsuario);
+    const isAdmin = userTipo === 0 || userTipo === 1;
+    if (!isAdmin) {
+      res.status(403).json({ message: "Solo administradores pueden crear notificaciones" });
+      return;
+    }
+
+    // Validar tipo de notificación
+    if (tipo !== "general" && tipo !== "formulario") {
+      res.status(400).json({ message: "Tipo de notificación inválido (general o formulario)" });
+      return;
+    }
+
+    // Si es formulario, validar URL
+    if (tipo === "formulario") {
+      if (!formularioUrl?.trim()) {
+        res.status(400).json({ message: "La URL del formulario es obligatoria para notificaciones de tipo formulario" });
+        return;
+      }
+      if (!isValidUrl(formularioUrl)) {
+        res.status(400).json({ message: "La URL del formulario es inválida" });
+        return;
+      }
     }
 
     if (destinatario && !mongoose.Types.ObjectId.isValid(destinatario)) {
@@ -155,8 +192,6 @@ export const createNotificacion = async (
       return;
     }
 
-    const userTipo = Number((req as any).user?.tipoUsuario);
-    const isAdmin = userTipo === 0 || userTipo === 1;
     const esGeneral = recipientesFinales.length === 0;
 
     const fechaCaducidadFinal =
@@ -169,6 +204,8 @@ export const createNotificacion = async (
       recipientes: recipientesFinales,
       publicacionId: publicacionId || null,
       fechaCaducidad: fechaCaducidadFinal,
+      tipo,
+      formularioUrl: tipo === "formulario" ? formularioUrl.trim() : null,
     });
 
     // para el destinatario en el frontend (cambiar luego el front)
@@ -227,7 +264,7 @@ export const updateNotificacion = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const { nombre, descripcion, fechaCaducidad, vistoPor, destinatario, recipientes, publicacionId } = req.body || {};
+    const { nombre, descripcion, fechaCaducidad, vistoPor, destinatario, recipientes, publicacionId, tipo, formularioUrl } = req.body || {};
 
     const data: any = {};
 
@@ -245,6 +282,22 @@ export const updateNotificacion = async (
         return;
       }
       data.descripcion = descripcion.trim();
+    }
+
+    if (tipo !== undefined) {
+      if (tipo !== "general" && tipo !== "formulario") {
+        res.status(400).json({ message: "Tipo de notificación inválido (general o formulario)" });
+        return;
+      }
+      data.tipo = tipo;
+    }
+
+    if (formularioUrl !== undefined) {
+      if (formularioUrl !== null && !isValidUrl(formularioUrl)) {
+        res.status(400).json({ message: "La URL del formulario es inválida" });
+        return;
+      }
+      data.formularioUrl = formularioUrl;
     }
 
     if (fechaCaducidad !== undefined) data.fechaCaducidad = fechaCaducidad;

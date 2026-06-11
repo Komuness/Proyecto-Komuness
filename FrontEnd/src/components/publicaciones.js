@@ -35,6 +35,7 @@ export const Publicaciones = ({ tag: propTag }) => {
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [tag, setTag] = useState(propTag);
+  const [mostrarPromo, setMostrarPromo] = useState(false); // Para subsección de promociones
   const limite = 12;
   const [formulario, setFormulario] = useState(false);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
@@ -122,14 +123,20 @@ export const Publicaciones = ({ tag: propTag }) => {
     if (mostrar === 3) {
       setCards(publicaciones);
     } else {
-      const newCards = publicaciones.filter((p) => {
+      let newCards = publicaciones.filter((p) => {
         if (mostrar === 0) return p.tag === "evento";
         if (mostrar === 1) return p.tag === "emprendimiento";
         return p.tag === "publicacion";
       });
+
+      // Si estamos en emprendimientos y mostrarPromo es true, filtrar solo descuentos
+      if (mostrar === 1 && mostrarPromo) {
+        newCards = newCards.filter((p) => p.descuento && p.descuento > 0);
+      }
+
       setCards(newCards);
     }
-  }, [mostrar, publicaciones]);
+  }, [mostrar, publicaciones, mostrarPromo]);
 
   const obtenerPublicaciones = async (
     tag,
@@ -578,6 +585,39 @@ export const Publicaciones = ({ tag: propTag }) => {
         </div>
       )}
 
+      {/* Subsección de Promociones para Emprendimientos */}
+      {mostrar === 1 && !searchFilter && (
+        <div className="px-4 py-4">
+          <div className="flex gap-3 justify-center mb-4">
+            <button
+              onClick={() => setMostrarPromo(false)}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                !mostrarPromo
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-600 text-white hover:bg-gray-700"
+              }`}
+            >
+              Emprendimientos
+            </button>
+            <button
+              onClick={() => setMostrarPromo(true)}
+              className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+                mostrarPromo
+                  ? "bg-red-600 text-white"
+                  : "bg-gray-600 text-white hover:bg-gray-700"
+              }`}
+            >
+              <span>🔥 Promociones</span>
+              {publicaciones.filter((p) => p.tag === "emprendimiento" && p.descuento && p.descuento > 0).length > 0 && (
+                <span className="inline-block bg-yellow-400 text-black text-xs font-bold px-2 py-0.5 rounded-full">
+                  {publicaciones.filter((p) => p.tag === "emprendimiento" && p.descuento && p.descuento > 0).length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div
         className={
           tag === "evento" ? "evento-card-container" : "card-container"
@@ -585,7 +625,9 @@ export const Publicaciones = ({ tag: propTag }) => {
       >
         {cards.length === 0 ? (
           <p className="text-white">
-            {searchFilter
+            {mostrar === 1 && mostrarPromo
+              ? "No hay promociones disponibles en este momento."
+              : searchFilter
               ? "No hay publicaciones que coincidan con tu búsqueda."
               : "No hay publicaciones para mostrar."}
           </p>
