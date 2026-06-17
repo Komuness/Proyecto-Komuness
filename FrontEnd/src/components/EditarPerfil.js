@@ -168,12 +168,13 @@ const EditarPerfil = () => {
       }
 
       const data = await response.json();
+      const { usuarioId, ...perfilData } = data.data;
       setPerfil((prev) =>
         mergePerfilDraft(
           {
             ...prev,
-            ...data.data,
-            redesSociales: data.data.redesSociales || prev.redesSociales,
+            ...perfilData,
+            redesSociales: perfilData.redesSociales || prev.redesSociales,
           },
           shouldLoadDraft ? savedDraft : null,
         ),
@@ -185,37 +186,19 @@ const EditarPerfil = () => {
       }
       setPerfil({
         ...perfil,
-        ...data.data,
-        redesSociales: data.data.redesSociales || perfil.redesSociales,
+        ...perfilData,
+        redesSociales: perfilData.redesSociales || perfil.redesSociales,
       });
+
+      setPerfil({
+        ...perfilData,
+        etiquetas: usuarioId.encuestaInicio.etiquetas,
+      });
+
 
       //Agregar todas las etiquetas correctamente
       fetchEtiquetas();
 
-
-      //Etiquetas seleccionadas por usuario
-      const responseTags = await fetch(
-        `${API_URL}/usuario/etiquetas`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
-      );
-
-      if (!responseTags.ok) {
-        throw new Error("Error al cargar las etiquetas del usuario");
-      }
-
-      const dataTags = await responseTags.json();
-
-      setPerfil((prev) => ({
-        ...prev,
-        etiquetas: [
-          ...dataTags.data.map((etiqueta) => etiqueta._id)
-        ]
-      }));
-      
     } catch (error) {
       if (shouldLoadDraft && savedDraft?.perfil) {
         setPerfil((prev) => mergePerfilDraft(prev, savedDraft));

@@ -42,7 +42,7 @@ router.post("/", authMiddleware, verificarRoles([0]), createUsuario);
 router.get("/", authMiddleware, verificarRoles([0, 1, 2, 3]), getUsuarios);
 router.get("/public", authMiddleware, getPublicUsuarios);
 
-router.get("/etiquetas", authMiddleware, getTagsByUser);
+router.get("/:id/etiquetas", getTagsByUser);
 router.get("/:id", authMiddleware, verificarRoles([0]), getUsuarioById);
 
 router.delete("/:id", authMiddleware, verificarRoles([0]), deleteUsuario);

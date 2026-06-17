@@ -4,7 +4,7 @@ import { BiLoaderAlt } from "react-icons/bi";
 
 const UserProfileAvatar = ({
   currentImage,
-  defaultImage = "https://via.placeholder.com/200x200/cccccc/666666?text=Sin+Foto",
+  defaultImage = "https://media.defense.gov/2023/Jul/05/2003253160/-1/-1/0/230705-F-XW046-1001.PNG",
   onImageChange,
   onImageDelete,
   size = "medium",

@@ -114,7 +114,7 @@ export const obtenerMiPerfil = async (req: Request, res: Response): Promise<void
   try {
     const userId = (req as any).user._id;
 
-    let perfil = await modelPerfil.findOne({ usuarioId: userId }).populate('usuarioId', 'nombre apellido email');
+    let perfil = await modelPerfil.findOne({ usuarioId: userId }).populate('usuarioId', 'nombre apellido email encuestaInicio.etiquetas');
 
     // Si no existe perfil, crear uno vacío
     if (!perfil) {
@@ -131,6 +131,7 @@ export const obtenerMiPerfil = async (req: Request, res: Response): Promise<void
         formacionAcademica: [],
         experienciaLaboral: [],
         habilidades: [],
+        etiquetas: [],
         proyectos: [],
         redesSociales: {}
       });

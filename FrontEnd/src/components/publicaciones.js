@@ -219,7 +219,6 @@ export const Publicaciones = ({ tag: propTag }) => {
 
       const data = await response.json();
       setPublicidad(data.data || []);
-      console.log(data.data);
     } catch (error) {
       console.error("Error:", error);
       toast.error("Error al cargar publicidad");

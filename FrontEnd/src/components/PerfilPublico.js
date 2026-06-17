@@ -47,12 +47,7 @@ const PerfilPublico = () => {
 
       //Obtener etiquetas
       const responseTags = await fetch(
-        `${API_URL}/usuario/etiquetas`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
+        `${API_URL}/usuario/${id}/etiquetas`
       );
       const dataTags = await responseTags.json();
       setEtiquetas(dataTags.data);

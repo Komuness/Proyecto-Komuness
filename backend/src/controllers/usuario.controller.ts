@@ -113,7 +113,7 @@ export const getUsuarioById = async (req: Request, res: Response): Promise<void>
 // Controlador para obtener etiquetas
 export const getTagsByUser = async (req: Request, res: Response): Promise<void> => {
     try {
-        const id = (req as any).user._id;;
+        const id = req.params.id;
         // INCLUIR plan en la consulta
         const usuario = await modelUsuario.findById(id)
             .select("encuestaInicio.etiquetas")
