@@ -23,6 +23,7 @@ const usuario_routes_1 = __importDefault(require("./routes/usuario.routes"));
 const publicaciones_routes_1 = __importDefault(require("./routes/publicaciones.routes"));
 const biblioteca_routes_1 = __importDefault(require("./routes/biblioteca.routes"));
 const element_routes_1 = __importDefault(require("./routes/element.routes"));
+const categoriaPreferencia_routes_1 = __importDefault(require("./routes/categoriaPreferencia.routes"));
 const configuracion_routes_1 = __importDefault(require("./routes/configuracion.routes"));
 const files_routes_1 = __importDefault(require("./routes/files.routes"));
 const seccionAcerca_routes_1 = __importDefault(require("./routes/seccionAcerca.routes"));
@@ -36,6 +37,8 @@ const proyectosDestacados_routes_1 = __importDefault(require("./routes/proyectos
 // Rutas de PayPal
 const paypal_routes_1 = __importDefault(require("./routes/paypal.routes"));
 const bancoProfesionales_routes_1 = __importDefault(require("./routes/bancoProfesionales.routes"));
+// Rutas de Boletines
+const boletin_routes_1 = __importDefault(require("./routes/boletin.routes"));
 const app = (0, express_1.default)();
 dotenv_1.default.config();
 app.disable("x-powered-by");
@@ -80,6 +83,7 @@ app.use("/api/usuario", usuario_routes_1.default);
 app.use("/api/publicaciones", publicaciones_routes_1.default);
 app.use("/api/biblioteca", biblioteca_routes_1.default);
 app.use("/api/elements", element_routes_1.default);
+app.use('/api/categoria-preferencias', categoriaPreferencia_routes_1.default);
 app.use("/api", files_routes_1.default);
 app.use("/api/acerca-de", seccionAcerca_routes_1.default);
 app.use("/api/perfil", perfil_routes_1.default);
@@ -90,6 +94,7 @@ app.use("/api/proyectos-destacados", proyectosDestacados_routes_1.default);
 app.use("/api/notificaciones", notificaciones_routes_1.default);
 app.use("/api/paquetes-suscripcion", paqueteSuscripcion_routes_1.default);
 app.use("/api/publicidad", publicidad_routes_1.default);
+app.use("/api/boletines", boletin_routes_1.default);
 /** Smoke test mínimo */
 app.get("/api/", (_req, res) => {
     res.send("Hello World");

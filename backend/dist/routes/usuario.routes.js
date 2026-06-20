@@ -17,7 +17,9 @@ router.post("/reenviar-confirmacion", auth_controller_1.reenviarConfirmacionUsua
 router.get("/check", auth_middleware_1.authMiddleware, usuario_controller_1.checkAuth);
 // los siguientes endpoints son de uso exclusivo para el superadmin = 0
 router.post("/", auth_middleware_1.authMiddleware, (0, roles_middleware_1.verificarRoles)([0]), usuario_controller_1.createUsuario);
-router.get("/", auth_middleware_1.authMiddleware, (0, roles_middleware_1.verificarRoles)([0, 1]), usuario_controller_1.getUsuarios);
+router.get("/", auth_middleware_1.authMiddleware, (0, roles_middleware_1.verificarRoles)([0, 1, 2, 3]), usuario_controller_1.getUsuarios);
+router.get("/public", auth_middleware_1.authMiddleware, usuario_controller_1.getPublicUsuarios);
+router.get("/:id/etiquetas", usuario_controller_1.getTagsByUser);
 router.get("/:id", auth_middleware_1.authMiddleware, (0, roles_middleware_1.verificarRoles)([0]), usuario_controller_1.getUsuarioById);
 router.delete("/:id", auth_middleware_1.authMiddleware, (0, roles_middleware_1.verificarRoles)([0]), usuario_controller_1.deleteUsuario);
 // Endpoints para administradores: gestion de limites y premium

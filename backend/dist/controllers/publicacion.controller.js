@@ -284,6 +284,11 @@ const createPublicacionA = (req, res) => __awaiter(void 0, void 0, void 0, funct
     var _a, _b, _c, _d, _e;
     try {
         const publicacion = req.body;
+        const user = req.user;
+        if (!user) {
+            res.status(401).json({ message: "No autorizado" });
+            return;
+        }
         // 🔴 Autor siempre desde el token
         const userId = (_a = req.user) === null || _a === void 0 ? void 0 : _a._id;
         if (!userId) {
@@ -509,7 +514,9 @@ const updatePublicacion = (req, res) => __awaiter(void 0, void 0, void 0, functi
     try {
         const { id } = req.params;
         const updatedData = Object.assign({}, req.body);
-        const publicacionActual = yield publicacion_model_1.modelPublicacion.findById(id);
+        const publicacionActual = yield publicacion_model_1.modelPublicacion
+            .findById(id)
+            .populate("autor", "nombre apellido");
         if (!publicacionActual) {
             res.status(404).json({ message: "Publicacion no encontrada" });
             return;
@@ -570,6 +577,22 @@ const updatePublicacion = (req, res) => __awaiter(void 0, void 0, void 0, functi
         if (!publicacion) {
             res.status(404).json({ message: "Publicación no encontrada" });
             return;
+        }
+        //Notificación a usuarios suscritos a categoría
+        const autor = publicacionActual.autor;
+        if (!publicacionActual.publicado && updatedData.publicado === true) {
+            const nombreAutor = [autor.nombre, autor.apellido].filter(Boolean).join(" ").trim();
+            try {
+                yield (0, notificacion_service_1.notificarNuevaPublicacion)({
+                    autor: nombreAutor,
+                    contenidoBreve: publicacionActual.contenidoBreve,
+                    publicacionId: id,
+                    categoriaId: publicacionActual.categoria.toString()
+                });
+            }
+            catch (notificacionError) {
+                console.warn('No se pudo crear notificación de publicación', notificacionError);
+            }
         }
         res.status(200).json(publicacion);
     }
@@ -891,23 +914,25 @@ const searchPublicacionesAvanzada = (req, res) => __awaiter(void 0, void 0, void
             query.tag = tag;
         if (categoria)
             query.categoria = categoria;
+        const numericOffset = Number(offset);
+        const numericLimit = Number(limit);
         const [publicaciones, totalPublicaciones] = yield Promise.all([
             publicacion_model_1.modelPublicacion
                 .find(query)
                 .populate("autor", "nombre")
                 .populate("categoria", "nombre estado")
                 .sort({ createdAt: -1 })
-                .skip(Number(offset))
-                .limit(Number(limit)),
+                .skip(numericOffset)
+                .limit(numericLimit),
             publicacion_model_1.modelPublicacion.countDocuments(query),
         ]);
         res.status(200).json({
             data: publicaciones,
             pagination: {
-                offset: Number(offset),
-                limit: Number(limit),
+                offset: numericOffset,
+                limit: numericLimit,
                 total: totalPublicaciones,
-                pages: Math.ceil(totalPublicaciones / Math.max(Number(limit), 1)),
+                pages: Math.ceil(totalPublicaciones / Math.max(numericLimit, 1)),
             },
             searchTerm: q,
         });

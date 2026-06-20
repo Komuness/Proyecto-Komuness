@@ -12,12 +12,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.activarPremiumActual = exports.actualizarMembresiaUsuarioAdmin = exports.actualizarVencimientoPremium = exports.actualizarLimiteUsuario = exports.checkAuth = exports.registerUsuario = exports.loginUsuario = exports.deleteUsuario = exports.updateUsuario = exports.getUsuarioById = exports.getUsuarios = exports.createUsuario = void 0;
+exports.activarPremiumActual = exports.actualizarMembresiaUsuarioAdmin = exports.actualizarVencimientoPremium = exports.actualizarLimiteUsuario = exports.checkAuth = exports.registerUsuario = exports.loginUsuario = exports.deleteUsuario = exports.updateUsuario = exports.getTagsByUser = exports.getUsuarioById = exports.getPublicUsuarios = exports.getUsuarios = exports.createUsuario = void 0;
 exports.enviarCorreoRecuperacion = enviarCorreoRecuperacion;
 const usuario_model_1 = require("../models/usuario.model");
 const jwt_1 = require("../utils/jwt");
 const bcryptjs_1 = require("../utils/bcryptjs");
 const nodemailer_1 = require("nodemailer");
+const encuestaInicio_1 = require("../utils/encuestaInicio");
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 // Controlador para crear un usuario
@@ -66,6 +67,21 @@ const getUsuarios = (req, res) => __awaiter(void 0, void 0, void 0, function* ()
     }
 });
 exports.getUsuarios = getUsuarios;
+// Controlador para obtener todos los usuarios
+const getPublicUsuarios = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const usuarios = yield usuario_model_1.modelUsuario.find().select('nombre apellido');
+        res.status(200).json({
+            success: true,
+            data: usuarios
+        });
+    }
+    catch (error) {
+        const err = error;
+        res.status(500).json({ success: false, message: err.message });
+    }
+});
+exports.getPublicUsuarios = getPublicUsuarios;
 // Controlador para obtener un usuario por su id
 const getUsuarioById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -93,6 +109,38 @@ const getUsuarioById = (req, res) => __awaiter(void 0, void 0, void 0, function*
     }
 });
 exports.getUsuarioById = getUsuarioById;
+// Controlador para obtener etiquetas
+const getTagsByUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    try {
+        const id = req.params.id;
+        // INCLUIR plan en la consulta
+        const usuario = yield usuario_model_1.modelUsuario.findById(id)
+            .select("encuestaInicio.etiquetas")
+            .populate("encuestaInicio.etiquetas")
+            .lean();
+        const etiquetas = (_b = (_a = usuario === null || usuario === void 0 ? void 0 : usuario.encuestaInicio) === null || _a === void 0 ? void 0 : _a.etiquetas) !== null && _b !== void 0 ? _b : [];
+        if (!usuario) {
+            res.status(404).json({
+                success: false,
+                message: 'Usuario no encontrado'
+            });
+            return;
+        }
+        res.status(200).json({
+            message: "Etiquetas obtenidas correctamente",
+            data: etiquetas
+        });
+    }
+    catch (error) {
+        const err = error;
+        res.status(500).json({
+            success: false,
+            message: err.message
+        });
+    }
+});
+exports.getTagsByUser = getTagsByUser;
 // Controlador para actualizar un usuario
 const updateUsuario = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -102,7 +150,10 @@ const updateUsuario = (req, res) => __awaiter(void 0, void 0, void 0, function* 
         if (usuario.password) {
             usuario.password = yield (0, bcryptjs_1.hashPassword)(usuario.password);
         }
-        const user = yield usuario_model_1.modelUsuario.findByIdAndUpdate(id, usuario, { new: true });
+        if (req.body.encuestaInicio !== undefined) {
+            usuario.encuestaInicio = (0, encuestaInicio_1.normalizeEncuestaInicio)(req.body.encuestaInicio);
+        }
+        const user = yield usuario_model_1.modelUsuario.findByIdAndUpdate(id, usuario, { new: true }).select('-password');
         res.status(200).json(user);
     }
     catch (error) {

@@ -58,6 +58,7 @@ const publicacionUpdateSchema = new mongoose_1.Schema({
     precioNegociable: { type: Boolean, required: false, default: false },
     precioEstudiante: { type: Number, required: false },
     precioCiudadanoOro: { type: Number, required: false },
+    descuento: { type: Number, required: false, default: 0, min: 0, max: 100 },
     enlacesExternos: { type: [enlaceExternoSchema], required: false },
     telefono: { type: String, required: false },
     ubicacion: { type: ubicacionSchema, required: false },
@@ -100,6 +101,7 @@ const publicacionSchema = new mongoose_1.Schema({
     precioNegociable: { type: Boolean, required: false, default: false },
     precioEstudiante: { type: Number, required: false },
     precioCiudadanoOro: { type: Number, required: false },
+    descuento: { type: Number, required: false, default: 0, min: 0, max: 100 }, // Porcentaje de descuento
     enlacesExternos: { type: [enlaceExternoSchema], required: false },
     telefono: { type: String, required: false },
     fechaExpiracion: { type: Date, required: false, index: true },
