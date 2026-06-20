@@ -89,7 +89,6 @@ export const getElements = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { page = 1, limit = 10 } = req.query;
     const { tipo } = req.params;
 
     if (!isTipoElemento(tipo)) {
@@ -101,16 +100,9 @@ export const getElements = async (
 
     const model = models[tipo];
 
-    const skip = (Number(page) - 1) * Number(limit);
-    const [elementos, total] = await Promise.all([
-      model.find().skip(skip).limit(Number(limit)),
-      model.countDocuments(),
-    ]);
+    const elementos = await model.find();
 
     res.json({
-      total,
-      page: Number(page),
-      limit: Number(limit),
       data: elementos,
     });
   } catch (error) {
