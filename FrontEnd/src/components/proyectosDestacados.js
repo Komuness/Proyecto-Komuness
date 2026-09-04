@@ -165,7 +165,7 @@ export const ProyectosDestacados = () => {
           className="w-full max-w-6xl bg-white/10 rounded-xl p-4"
         >
           {/* Nombre */}
-          <h2 className="text-4xl text-white font-semibold flex items-center gap-2 justify-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl text-white font-semibold flex items-center gap-2 justify-center text-center">
             {proyecto.nombre}
           </h2>
 
@@ -181,7 +181,7 @@ export const ProyectosDestacados = () => {
           {/* Video o enlace, solo si tiene url */}
           {proyecto.url && (
             <div className="mt-5">
-              <h3 className="text-3xl text-white font-semibold flex gap-2">
+              <h3 className="text-xl sm:text-2xl md:text-3xl text-white font-semibold flex gap-2">
                 Video del proyecto:
               </h3>
               {isYouTube(proyecto.url) ? (
@@ -211,7 +211,7 @@ export const ProyectosDestacados = () => {
 
           {/* Botones admin */}
           {esAdmin && (
-            <div className="flex gap-3 mt-5">
+            <div className="flex flex-wrap gap-3 mt-5">
               <button
                 onClick={() => abrirModalEditar(proyecto)}
                 className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium px-4 py-2 rounded-lg shadow"

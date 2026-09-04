@@ -222,7 +222,7 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
 
           {/* Espacio de imagen para publicaciones NO 'publicacion' */}
           {!esPublicacion && (
-            <div className="imagen h-48 bg-gray-200 flex items-center justify-center">
+            <div className="imagen bg-gray-200 flex items-center justify-center">
               {tieneImagenes ? (
                 <img
                   src={publicacion.adjunto[0]?.url}
@@ -240,7 +240,7 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
 
           {/* Espacio de imagen para publicaciones de tipo 'publicacion' */}
           {esPublicacion && (
-            <div className="imagen h-48 flex items-center justify-center">
+            <div className="imagen flex items-center justify-center">
               {tieneImagenes ? (
                 <img
                   src={publicacion.adjunto[0]?.url}

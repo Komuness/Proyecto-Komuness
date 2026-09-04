@@ -490,9 +490,9 @@ const quitarDelBanco = async (perfilId) => {
       // MAP USUARIOS
       <div className="tab-table-container mx-auto w-[80%] h-full flex flex-col">
         {usuariosFiltrados && usuariosFiltrados.length > 0 ? (
-          <div className="flex-1 overflow-y-auto w-full flex justify-center" style={{ maxHeight: "400px" }}>
+          <div className="flex-1 overflow-y-auto overflow-x-auto w-full flex justify-start sm:justify-center" style={{ maxHeight: "400px" }}>
             <div className="min-w-full">
-              <table className="responsive-table min-w-full">
+              <table className="responsive-table min-w-[320px]">
                 <thead className="sticky top-0 bg-gray-100">
                   <tr>
                     <th className="text-left px-3 py-2 min-w-[120px]">

@@ -205,6 +205,7 @@ export const AdminCategorias = () => {
           <h1 className="admin-categorias-title">
             Administración de Clasificaciones
           </h1>
+          <div className="admin-categorias-header-spacer" aria-hidden="true" />
         </div>
 
         {/*opciones*/}

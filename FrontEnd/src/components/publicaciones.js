@@ -472,7 +472,7 @@ export const Publicaciones = ({ tag: propTag }) => {
         {publicidad && publicidad.length > 0 && (
           <div className="w-full max-w-[1920px] relative bg-gray-800 rounded-2xl shadow-2xl overflow-hidden py-4">
             {/*CARRUSEL*/}
-            <div className="relative w-[1920px] h-[540px] max-w-full mx-auto rounded-xl">
+            <div className="relative w-full h-[160px] sm:h-[260px] md:h-[380px] lg:h-[540px] max-w-[1920px] mx-auto rounded-xl">
               {/*Imagen*/}
               <img
                 src={publicidad[currentPublicidadIndex]?.imagen}
@@ -484,14 +484,14 @@ export const Publicaciones = ({ tag: propTag }) => {
                 <>
                   <button
                     onClick={prevPublicidad}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full"
+                    className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 sm:p-3 rounded-full text-sm sm:text-base"
                   >
                     <FaChevronLeft />
                   </button>
 
                   <button
                     onClick={nextPublicidad}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full"
+                    className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 sm:p-3 rounded-full text-sm sm:text-base"
                   >
                     <FaChevronRight />
                   </button>

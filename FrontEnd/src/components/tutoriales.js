@@ -163,7 +163,7 @@ export const Tutoriales = () => {
           className="w-full max-w-6xl bg-white/10 rounded-xl p-4"
         >
           {/* Nombre */}
-          <h2 className="text-4xl text-white font-semibold flex items-center gap-2 justify-center">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl text-white font-semibold flex items-center gap-2 justify-center text-center">
             {tutorial.nombre}
           </h2>
 
@@ -179,7 +179,7 @@ export const Tutoriales = () => {
           {/* Video o enlace, solo si tiene url */}
           {tutorial.url && (
             <div className="mt-5">
-              <h3 className="text-3xl text-white font-semibold flex gap-2">
+              <h3 className="text-xl sm:text-2xl md:text-3xl text-white font-semibold flex gap-2">
                 Video del tutorial:
               </h3>
               {isYouTube(tutorial.url) ? (
@@ -209,7 +209,7 @@ export const Tutoriales = () => {
 
           {/* Botones admin */}
           {esAdmin && (
-            <div className="flex gap-3 mt-5">
+            <div className="flex flex-wrap gap-3 mt-5">
               <button
                 onClick={() => abrirModalEditar(tutorial)}
                 className="bg-yellow-500 hover:bg-yellow-600 text-white text-sm font-medium px-4 py-2 rounded-lg shadow"

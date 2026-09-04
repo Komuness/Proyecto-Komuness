@@ -420,6 +420,7 @@ export const AdminBoletines = () => {
                 ) : boletines.length === 0 ? (
                     <p className="empty-state">No hay boletines creados</p>
                 ) : (
+                    <div className="boletines-table-wrapper">
                     <table className="boletines-table">
                         <thead>
                             <tr>
@@ -485,6 +486,7 @@ export const AdminBoletines = () => {
                             ))}
                         </tbody>
                     </table>
+                    </div>
                 )}
             </div>
         </div>
