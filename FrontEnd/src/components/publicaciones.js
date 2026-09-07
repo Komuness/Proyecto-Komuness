@@ -467,12 +467,12 @@ export const Publicaciones = ({ tag: propTag }) => {
         </div>
       </div>
 
-      {/*PUBLICIDAD*/}
-      <div className="w-full flex flex-col items-center justify-center gap-2 py-4 mt-4 rounded-xl bg-white/10">
-        {publicidad && publicidad.length > 0 && (
-          <div className="w-full max-w-[1920px] relative bg-gray-800 rounded-2xl shadow-2xl overflow-hidden py-4">
-            {/*CARRUSEL*/}
-            <div className="relative w-full h-[160px] sm:h-[260px] md:h-[380px] lg:h-[540px] max-w-[1920px] mx-auto rounded-xl">
+{/*PUBLICIDAD*/}
+        <div className="w-full flex flex-col items-center justify-center gap-2 py-4 px-3 sm:px-6 md:px-10 lg:px-16 mt-4 rounded-xl bg-white/10">
+          {publicidad && publicidad.length > 0 && (
+            <div className="w-full max-w-[1920px] mx-auto relative bg-gray-800 rounded-2xl shadow-2xl overflow-hidden py-4">
+              {/*CARRUSEL*/}
+              <div className="relative w-full max-w-full h-[200px] sm:h-[260px] md:h-[360px] lg:h-[540px] mx-auto rounded-xl">
               {/*Imagen*/}
               <img
                 src={publicidad[currentPublicidadIndex]?.imagen}
