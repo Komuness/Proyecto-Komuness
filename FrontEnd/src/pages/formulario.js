@@ -314,7 +314,7 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
       throw new Error("Respuesta inesperada del servidor.");
     }
 
-    if (!response.ok) {
+    if (!response.ok || result?.success === false) {
       const error = new Error(
         result?.message || result?.mensaje || "Error al enviar publicación.",
       );
