@@ -19,6 +19,7 @@ import LimitePublicaciones from "./limiteDePublicaciones";
 import PublicidadModal from "./publicidadModal";
 import DateFilter from "./generic/dateFilter";
 import PriceFilter from "./generic/priceFilter";
+import CarruselGenerico from "./CarruselGenerico";
 
 // Base de API robusta (evita /api/api)
 const RAW = process.env.REACT_APP_BACKEND_URL || window.location.origin;
@@ -35,7 +36,6 @@ export const Publicaciones = ({ tag: propTag }) => {
   const [paginaActual, setPaginaActual] = useState(1);
   const [totalPaginas, setTotalPaginas] = useState(1);
   const [tag, setTag] = useState(propTag);
-  const [mostrarPromo, setMostrarPromo] = useState(false); // Para subsección de promociones
   const limite = 12;
   const [formulario, setFormulario] = useState(false);
   const [showLimitAlert, setShowLimitAlert] = useState(false);
@@ -53,6 +53,13 @@ export const Publicaciones = ({ tag: propTag }) => {
   const searchFilter = isSearch ? searchTerm : null;
   const [limiteData, setLimiteData] = useState(null);
   const [selectedPub, setSelectedPub] = useState(null);
+
+  // El carrusel se muestra siempre que no haya una búsqueda activa
+  // (los filtros de categoría/fecha/precio se aplican dentro del carrusel)
+  const mostrarCarrusel =
+    tag === "evento" ||
+    tag === "emprendimiento" ||
+    tag === "publicacion";
 
   //Estado del banco de profesionales
   const [estadoUsuario, setEstadoUsuario] = useState(null);
@@ -129,14 +136,9 @@ export const Publicaciones = ({ tag: propTag }) => {
         return p.tag === "publicacion";
       });
 
-      // Si estamos en emprendimientos y mostrarPromo es true, filtrar solo descuentos
-      if (mostrar === 1 && mostrarPromo) {
-        newCards = newCards.filter((p) => p.descuento && p.descuento > 0);
-      }
-
       setCards(newCards);
     }
-  }, [mostrar, publicaciones, mostrarPromo]);
+  }, [mostrar, publicaciones]);
 
   const obtenerPublicaciones = async (
     tag,
@@ -584,70 +586,50 @@ export const Publicaciones = ({ tag: propTag }) => {
         </div>
       )}
 
-      {/* Subsección de Promociones para Emprendimientos */}
-      {mostrar === 1 && !searchFilter && (
-        <div className="px-4 py-4">
-          <div className="flex gap-3 justify-center mb-4">
-            <button
-              onClick={() => setMostrarPromo(false)}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors ${
-                !mostrarPromo
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-600 text-white hover:bg-gray-700"
-              }`}
-            >
-              Emprendimientos
-            </button>
-            <button
-              onClick={() => setMostrarPromo(true)}
-              className={`px-6 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
-                mostrarPromo
-                  ? "bg-red-600 text-white"
-                  : "bg-gray-600 text-white hover:bg-gray-700"
-              }`}
-            >
-              <span>🔥 Promociones</span>
-              {publicaciones.filter((p) => p.tag === "emprendimiento" && p.descuento && p.descuento > 0).length > 0 && (
-                <span className="inline-block bg-yellow-400 text-black text-xs font-bold px-2 py-0.5 rounded-full">
-                  {publicaciones.filter((p) => p.tag === "emprendimiento" && p.descuento && p.descuento > 0).length}
-                </span>
-              )}
-            </button>
-          </div>
-        </div>
+      {/* Carrusel: aplica los filtros de categoría/fecha/precio del encabezado */}
+      {mostrarCarrusel && !searchFilter && (
+        <CarruselGenerico
+          tipo={tag}
+          filtros={{
+            categoria: categoriaFilter,
+            fecha: fechaFilter,
+            precioMin: precioMin,
+            precioMax: precioMax,
+          }}
+        />
       )}
 
-      <div
-        className={
-          tag === "evento" ? "evento-card-container" : "card-container"
-        }
-      >
-        {cards.length === 0 ? (
-          <p className="text-white">
-            {mostrar === 1 && mostrarPromo
-              ? "No hay promociones disponibles en este momento."
-              : searchFilter
-              ? "No hay publicaciones que coincidan con tu búsqueda."
-              : "No hay publicaciones para mostrar."}
-          </p>
-        ) : (
-          cards.map((publicacion) =>
-            tag === "evento" ? (
-              <EventoCard
-                key={publicacion._id}
-                publicacion={publicacion}
-                onDeleteClick={(pub) => setSelectedPub(pub)}
-              />
-            ) : (
-              <PublicacionCard
-                key={publicacion._id}
-                publicacion={publicacion}
-                onDeleteClick={(pub) => setSelectedPub(pub)}
-              />
-            ),
-          )
-        )}
-      </div>
+      {(!mostrarCarrusel || searchFilter) && (
+        <div
+          className={
+            tag === "evento" ? "evento-card-container" : "card-container"
+          }
+        >
+          {cards.length === 0 ? (
+            <p className="text-white">
+              {searchFilter
+                ? "No hay publicaciones que coincidan con tu búsqueda."
+                : "No hay publicaciones para mostrar."}
+            </p>
+          ) : (
+            cards.map((publicacion) =>
+              tag === "evento" ? (
+                <EventoCard
+                  key={publicacion._id}
+                  publicacion={publicacion}
+                  onDeleteClick={(pub) => setSelectedPub(pub)}
+                />
+              ) : (
+                <PublicacionCard
+                  key={publicacion._id}
+                  publicacion={publicacion}
+                  onDeleteClick={(pub) => setSelectedPub(pub)}
+                />
+              ),
+            )
+          )}
+        </div>
+      )}
 
       <PublicacionModal
         name={selectedPub?.titulo}
@@ -658,46 +640,48 @@ export const Publicaciones = ({ tag: propTag }) => {
         onClose={() => setSelectedPub(null)}
       />
 
-      <div className="w-full flex justify-center mt-6 gap-2 flex-wrap pb-6">
-        {paginaActual > 1 && (
-          <button
-            onClick={() => handlePagination(paginaActual - 1)}
-            className="px-3 py-1 rounded bg-yellow-500 hover:bg-yellow-600 text-white"
-          >
-            « Anterior
-          </button>
-        )}
+      {(!mostrarCarrusel || searchFilter) && (
+        <div className="w-full flex justify-center mt-6 gap-2 flex-wrap pb-6">
+          {paginaActual > 1 && (
+            <button
+              onClick={() => handlePagination(paginaActual - 1)}
+              className="px-3 py-1 rounded bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              « Anterior
+            </button>
+          )}
 
-        {Array.from({ length: totalPaginas }, (_, i) => i + 1)
-          .filter(
-            (p) =>
-              p === 1 ||
-              p === totalPaginas ||
-              (p >= paginaActual - 2 && p <= paginaActual + 2),
-          )
-          .map((p, i, arr) => (
-            <React.Fragment key={p}>
-              {i > 0 && p - arr[i - 1] > 1 && (
-                <span className="px-2 py-1 text-gray-500">...</span>
-              )}
-              <button
-                onClick={() => handlePagination(p)}
-                className={`px-3 py-1 rounded text-sm ${p === paginaActual ? "bg-[#5445FF] text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
-              >
-                {p}
-              </button>
-            </React.Fragment>
-          ))}
+          {Array.from({ length: totalPaginas }, (_, i) => i + 1)
+            .filter(
+              (p) =>
+                p === 1 ||
+                p === totalPaginas ||
+                (p >= paginaActual - 2 && p <= paginaActual + 2),
+            )
+            .map((p, i, arr) => (
+              <React.Fragment key={p}>
+                {i > 0 && p - arr[i - 1] > 1 && (
+                  <span className="px-2 py-1 text-gray-500">...</span>
+                )}
+                <button
+                  onClick={() => handlePagination(p)}
+                  className={`px-3 py-1 rounded text-sm ${p === paginaActual ? "bg-[#5445FF] text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"}`}
+                >
+                  {p}
+                </button>
+              </React.Fragment>
+            ))}
 
-        {paginaActual < totalPaginas && (
-          <button
-            onClick={() => handlePagination(paginaActual + 1)}
-            className="px-3 py-1 rounded bg-yellow-500 hover:bg-yellow-600 text-white"
-          >
-            Siguiente »
-          </button>
-        )}
-      </div>
+          {paginaActual < totalPaginas && (
+            <button
+              onClick={() => handlePagination(paginaActual + 1)}
+              className="px-3 py-1 rounded bg-yellow-500 hover:bg-yellow-600 text-white"
+            >
+              Siguiente »
+            </button>
+          )}
+        </div>
+      )}
 
       {(esAdmin || estadoUsuario?.enBancoProfesionales) && (
         <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex items-center gap-3">
