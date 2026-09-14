@@ -225,23 +225,33 @@ const quitarDelBanco = async (perfilId) => {
   };
 
   //Imprime lo que hace falta
-  const ImprimirErroresDePerfil = async (data) => {
-    toast(
-      <div>
-        <div style={{ fontWeight: 600, marginBottom: 6 }}>
-          ⚠️ Te falta en tu perfil:
-        </div>
-
-        <ul style={{paddingLeft: 18, listStyleType: 'disc' }}>
-          {data?.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      </div>,
-      {
-        className: 'toast-warning'
+  const ImprimirErroresDePerfil = (data) => {
+    try {
+      if (!Array.isArray(data) || data.length === 0) {
+        toast.error('Debes completar tu perfil antes de unirte al banco');
+        return;
       }
-    );
+
+      toast(
+        <div>
+          <div style={{ fontWeight: 600, marginBottom: 6 }}>
+            ⚠️ Te falta en tu perfil:
+          </div>
+
+          <ul style={{paddingLeft: 18, listStyleType: 'disc' }}>
+            {data.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>,
+        {
+          className: 'toast-warning'
+        }
+      );
+    } catch (error) {
+      console.error('Error al mostrar los errores de perfil:', error);
+      toast.error('Debes completar tu perfil antes de unirte al banco');
+    }
   };
 
   // Búsqueda en tiempo real con debounce
