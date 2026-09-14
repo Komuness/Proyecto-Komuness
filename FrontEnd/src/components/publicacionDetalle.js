@@ -24,6 +24,9 @@ import CategoriaBadge from "./generic/categoriaBadge";
 import ProfileErrorModal from "./ProfileErrorModal";
 import "../CSS/publicacionDetalle.css";
 import { obtenerEtiquetaExpiracion } from "../utils/publicacionExpiracion";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
 export const PublicacionDetalle = () => {
   const navigate = useNavigate();
@@ -95,7 +98,16 @@ export const PublicacionDetalle = () => {
   // Estados para el modal de error de perfil
   const [showProfileError, setShowProfileError] = useState(false);
   const [errorType, setErrorType] = useState("private");
+  delete L.Icon.Default.prototype._getIconUrl;
 
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl:
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+    iconUrl:
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+    shadowUrl:
+      "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png",
+  });
   useEffect(() => {
     const obtenerPublicacion = async () => {
       try {
@@ -502,25 +514,91 @@ export const PublicacionDetalle = () => {
                 )}
 
                 {/* Ubicación del evento */}
-                {publicacion?.ubicacion && (
-                  <div className="publicacion-info-item">
-                    <span className="publicacion-info-label">Ubicación:</span>
-                    <div className="publicacion-info-value">
-                      <div>{publicacion.ubicacion.direccion}</div>
-                      <a
-                        href={
-                          publicacion.ubicacion.mapLink ||
-                          `https://www.openstreetmap.org/?mlat=${publicacion.ubicacion.latitude}&mlon=${publicacion.ubicacion.longitude}#map=16/${publicacion.ubicacion.latitude}/${publicacion.ubicacion.longitude}`
-                        }
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-300 hover:text-blue-200 underline"
-                      >
-                        Ver en mapa
-                      </a>
-                    </div>
-                  </div>
-                )}
+                  {publicacion?.ubicacion?.latitude &&
+                    publicacion?.ubicacion?.longitude && (
+                      <div className="publicacion-info-item">
+
+                        <span className="publicacion-info-label">
+                          Ubicación:
+                        </span>
+
+                        <div className="publicacion-info-value">
+
+                          <div>
+                            {publicacion.ubicacion.direccion}
+                          </div>
+
+                          {/* MAPA */}
+                          <div
+                            style={{
+                              width: "100%",
+                              height: "300px",
+                              marginTop: "10px",
+                              borderRadius: "12px",
+                              overflow: "hidden",
+                            }}
+                          >
+                            <MapContainer
+                              center={[
+                                publicacion.ubicacion.latitude,
+                                publicacion.ubicacion.longitude,
+                              ]}
+                              zoom={16}
+                              scrollWheelZoom={false}
+                              style={{
+                                width: "100%",
+                                height: "100%",
+                              }}
+                            >
+
+                              <TileLayer
+                                attribution="&copy; OpenStreetMap contributors"
+                                url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+                              />
+
+                              <Marker
+                                position={[
+                                  publicacion.ubicacion.latitude,
+                                  publicacion.ubicacion.longitude,
+                                ]}
+                              >
+
+                                <Popup>
+
+                                  <strong>
+                                    {publicacion.ubicacion.direccion}
+                                  </strong>
+
+                                  <br />
+
+                                  <a
+                                    href={`https://www.google.com/maps/search/?api=1&query=${publicacion.ubicacion.latitude},${publicacion.ubicacion.longitude}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                  >
+                                    Abrir en Google Maps
+                                  </a>
+
+                                </Popup>
+
+                              </Marker>
+
+                            </MapContainer>
+                          </div>
+
+                          {/* Botón Google Maps */}
+                          <a
+                            href={`https://www.google.com/maps/search/?api=1&query=${publicacion.ubicacion.latitude},${publicacion.ubicacion.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-300 hover:text-blue-200 underline"
+                          >
+                            Ver en Google Maps
+                          </a>
+
+                        </div>
+                      </div>
+                    )}
 
                 {/* Fecha de publicación */}
                 {publicacion.fecha && (
