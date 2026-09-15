@@ -41,7 +41,7 @@ export interface IPublicacion {
   pendingUpdate?: IPublicacionUpdate; // Datos pendientes de aprobación
   lastEditRequest?: string; // Fecha de última solicitud de edición
   editHistory?: IEditHistory[]; // Historial de cambios
-
+  recordatorioEnviado?: boolean; // Si ya se notificó al autor que su publicación está por vencer
 
   createdAt?: string;
   updatedAt?: string;

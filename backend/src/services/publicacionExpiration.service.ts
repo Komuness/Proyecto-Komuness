@@ -2,8 +2,10 @@ import { modelPublicacion } from '../models/publicacion.model';
 import { IAdjunto } from '../interfaces/publicacion.interface';
 import { calculatePublicationExpirationDate } from '../utils/publicacionExpiration';
 import { deleteGridFSFile } from '../utils/gridfs';
+import { createNotificacion as createNotificacionService } from './notificacion.service';
 
 const DEFAULT_JOB_INTERVAL_MS = 60 * 60 * 1000;
+const DEFAULT_REMINDER_DAYS_BEFORE = 3;
 
 let expirationJobStarted = false;
 
@@ -25,6 +27,44 @@ export async function syncMissingPublicationExpirations(): Promise<number> {
   }
 
   return updatedCount;
+}
+
+export async function enviarRecordatoriosExpiracion(referencia: Date = new Date()): Promise<number> {
+  const diasAntes = Number(process.env.RECORDATORIO_DIAS_ANTES || DEFAULT_REMINDER_DAYS_BEFORE);
+
+  const limiteSuperior = new Date(referencia);
+  limiteSuperior.setDate(limiteSuperior.getDate() + diasAntes);
+
+  const publicacionesPorVencer = await modelPublicacion.find({
+    tag: { $in: ['publicacion', 'evento'] },
+    fechaExpiracion: { $gt: referencia, $lte: limiteSuperior },
+    recordatorioEnviado: { $ne: true },
+  });
+
+  let enviados = 0;
+
+  for (const publicacion of publicacionesPorVencer) {
+    try {
+      await createNotificacionService({
+        nombre: 'Tu publicación está por vencer',
+        descripcion: `"${publicacion.titulo}" vencerá pronto. Revisa si deseas renovarla o editarla.`,
+        recipientes: [publicacion.autor.toString()],
+        publicacionId: publicacion._id.toString(),
+        tipo: 'recordatorio',
+      });
+
+      await modelPublicacion.updateOne(
+        { _id: publicacion._id },
+        { recordatorioEnviado: true }
+      );
+
+      enviados += 1;
+    } catch (error) {
+      console.warn('[Publicaciones][recordatorio] No se pudo notificar:', publicacion._id, error);
+    }
+  }
+
+  return enviados;
 }
 
 export async function purgeExpiredPublicaciones(referencia: Date = new Date()): Promise<number> {
@@ -54,6 +94,7 @@ export async function purgeExpiredPublicaciones(referencia: Date = new Date()): 
 
 export async function runPublicationExpirationMaintenance(): Promise<void> {
   await syncMissingPublicationExpirations();
+  await enviarRecordatoriosExpiracion();
   await purgeExpiredPublicaciones();
 }
 

@@ -13,7 +13,7 @@ type CreateNotificacionInput = {
   recipientes?: string[];
   publicacionId?: string;
   fechaCaducidad?: Date | null;
-  tipo?: "general" | "formulario";
+  tipo?: "general" | "formulario" | "recordatorio";
   formularioUrl?: string | null;
 };
 

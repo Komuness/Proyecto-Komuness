@@ -141,8 +141,12 @@ const publicacionSchema = new Schema(
     editHistory: { 
       type: [editHistorySchema], 
       default: [] 
+    },
+    recordatorioEnviado: {
+      type: Boolean,
+      default: false
     }
-  },
+    },
   { 
     timestamps: true,
     validateBeforeSave: true,
