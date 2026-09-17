@@ -125,7 +125,8 @@ export const CarruselGenerico = ({ tipo, filtros }) => {
   const hayFiltros = Boolean(
     filtros &&
       (filtros.categoria ||
-        filtros.fecha ||
+        filtros.fechaInicio ||
+        filtros.fechaFin ||
         filtros.precioMin ||
         filtros.precioMax)
   );
@@ -147,8 +148,11 @@ export const CarruselGenerico = ({ tipo, filtros }) => {
         if (filtros?.categoria) {
           params.set("categoria", filtros.categoria);
         }
-        if (filtros?.fecha) {
-          params.set("fecha", filtros.fecha);
+        if (filtros?.fechaInicio) {
+          params.set("fechaInicio", filtros.fechaInicio);
+        }
+        if (filtros?.fechaFin) {
+          params.set("fechaFin", filtros.fechaFin);
         }
         if (filtros?.precioMin) {
           params.set("precioMin", String(filtros.precioMin));

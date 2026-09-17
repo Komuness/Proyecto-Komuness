@@ -96,7 +96,8 @@ export const BuscadorPublicaciones = () => {
 
     // Mantener filtros actuales
     const categoria = searchParams.get("categoria");
-    const fecha = searchParams.get("fecha");
+    const fechaInicio = searchParams.get("fechaInicio");
+    const fechaFin = searchParams.get("fechaFin");
 
     const newSearchParams = new URLSearchParams();
 
@@ -104,8 +105,12 @@ export const BuscadorPublicaciones = () => {
       newSearchParams.set("categoria", categoria);
     }
 
-    if (fecha) {
-      newSearchParams.set("fecha", fecha);
+    if (fechaInicio) {
+      newSearchParams.set("fechaInicio", fechaInicio);
+    }
+
+    if (fechaFin) {
+      newSearchParams.set("fechaFin", fechaFin);
     }
 
     newSearchParams.set("q", searchTerm.trim());

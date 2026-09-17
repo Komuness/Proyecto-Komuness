@@ -45,7 +45,8 @@ export const Publicaciones = ({ tag: propTag }) => {
 
   const categoriaFilter = searchParams.get("categoria");
   const searchTerm = searchParams.get("q");
-  const fechaFilter = searchParams.get("fecha");
+  const fechaInicioFilter = searchParams.get("fechaInicio");
+  const fechaFinFilter = searchParams.get("fechaFin");
   const precioMin = searchParams.get("precioMin");
   const precioMax = searchParams.get("precioMax");
 
@@ -120,11 +121,21 @@ export const Publicaciones = ({ tag: propTag }) => {
     if (tag)
       obtenerPublicaciones(tag, 1, limite, searchFilter, {
         categoria: categoriaFilter,
-        fecha: fechaFilter,
+        fechaInicio: fechaInicioFilter,
+        fechaFin: fechaFinFilter,
         precioMin: precioMin,
         precioMax: precioMax,
       });
-  }, [tag, categoriaFilter, searchFilter, fechaFilter, precioMin, precioMax, user]);
+  }, [
+    tag,
+    categoriaFilter,
+    searchFilter,
+    fechaInicioFilter,
+    fechaFinFilter,
+    precioMin,
+    precioMax,
+    user,
+  ]);
 
   useEffect(() => {
     if (mostrar === 3) {
@@ -147,7 +158,8 @@ export const Publicaciones = ({ tag: propTag }) => {
     searchTerm = null,
     filters = {
       categoria: null,
-      fecha: null,
+      fechaInicio: null,
+      fechaFin: null,
       precioMin: null,
       precioMax: null,
       etiquetas: null,
@@ -340,7 +352,8 @@ export const Publicaciones = ({ tag: propTag }) => {
   const handlePagination = (newPage) => {
     obtenerPublicaciones(tag, newPage, limite, searchFilter, {
       categoria: categoriaFilter,
-      fecha: fechaFilter,
+      fechaInicio: fechaInicioFilter,
+      fechaFin: fechaFinFilter,
       precioMin: precioMin,
       precioMax: precioMax,
     });
@@ -592,7 +605,8 @@ export const Publicaciones = ({ tag: propTag }) => {
           tipo={tag}
           filtros={{
             categoria: categoriaFilter,
-            fecha: fechaFilter,
+            fechaInicio: fechaInicioFilter,
+            fechaFin: fechaFinFilter,
             precioMin: precioMin,
             precioMax: precioMax,
           }}

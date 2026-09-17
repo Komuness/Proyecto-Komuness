@@ -54,6 +54,38 @@ function parseBoolean(input: any): boolean | undefined {
   return undefined;
 }
 
+// Construye el filtro de fecha para publicaciones/eventos/emprendimientos.
+// Si solo se da fechaInicio, filtra ese día puntual. Si se dan ambas, filtra el rango (inclusivo).
+// Eventos usan fechaEvento (string "YYYY-MM-DD", comparable lexicográficamente);
+// publicaciones/emprendimientos usan el rango de createdAt.
+function buildFechaFilter(
+  fechaInicio: string | undefined,
+  fechaFin: string | undefined,
+  tag: string | undefined,
+): { field: Record<string, any> } | { or: Record<string, any>[] } | null {
+  if (!fechaInicio && !fechaFin) return null;
+
+  const inicioStr = fechaInicio || (fechaFin as string);
+  const finStr = fechaFin || (fechaInicio as string);
+
+  const inicioDate = new Date(inicioStr);
+  const finDate = new Date(finStr);
+  finDate.setDate(finDate.getDate() + 1);
+
+  const filtroEvento = { fechaEvento: { $gte: inicioStr, $lte: finStr } };
+  const filtroNoEvento = { createdAt: { $gte: inicioDate, $lt: finDate } };
+
+  if (tag === "evento") return { field: filtroEvento };
+  if (tag) return { field: filtroNoEvento };
+
+  return {
+    or: [
+      { tag: "evento", ...filtroEvento },
+      { tag: { $ne: "evento" }, ...filtroNoEvento },
+    ],
+  };
+}
+
 function parseMoneda(input: any): "CRC" | "USD" | undefined {
   if (input === undefined || input === null) return undefined;
   if (typeof input !== "string") return undefined;
@@ -498,36 +530,28 @@ export const getPublicacionesByTag = async (
   try {
     const offset = parseInt(req.query.offset as string) || 0;
     const limit = parseInt(req.query.limit as string) || 10;
-    const { tag, publicado, categoria, fecha, precioMin, precioMax } =
+    const { tag, publicado, categoria, fechaInicio, fechaFin, precioMin, precioMax } =
       req.query as {
         tag?: string;
         publicado?: string;
         categoria?: string;
-        fecha?: string;
+        fechaInicio?: string;
+        fechaFin?: string;
         precioMin?: number;
         precioMax?: number;
       };
 
-    const query: any = { ...buildActivePublicationQuery() };
+    const query: any = { $and: [buildActivePublicationQuery()] };
     if (tag) query.tag = tag;
     if (publicado !== undefined) query.publicado = publicado === "true";
     if (categoria) query.categoria = categoria;
 
-    if (fecha) {
-      if (tag === "evento") {
-        // fechaEvento
-        query.fechaEvento = fecha;
+    const fechaFiltro = buildFechaFilter(fechaInicio, fechaFin, tag);
+    if (fechaFiltro) {
+      if ("field" in fechaFiltro) {
+        Object.assign(query, fechaFiltro.field);
       } else {
-        // publicaciones/emprendimientos
-        const inicio = new Date(fecha);
-        const fin = new Date(fecha);
-
-        fin.setDate(fin.getDate() + 1);
-
-        query.createdAt = {
-          $gte: inicio,
-          $lt: fin,
-        };
+        query.$and.push({ $or: fechaFiltro.or });
       }
     }
 
@@ -1140,7 +1164,16 @@ export const searchPublicacionesAvanzada = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { q, tag, categoria, offset = 0, limit = 12 } = req.query;
+    const { q, tag, categoria, fechaInicio, fechaFin, offset = 0, limit = 12 } =
+      req.query as {
+        q?: string;
+        tag?: string;
+        categoria?: string;
+        fechaInicio?: string;
+        fechaFin?: string;
+        offset?: string | number;
+        limit?: string | number;
+      };
 
     const query: any = {
       publicado: true,
@@ -1160,6 +1193,15 @@ export const searchPublicacionesAvanzada = async (
     // Filtros adicionales
     if (tag) query.tag = tag;
     if (categoria) query.categoria = categoria;
+
+    const fechaFiltro = buildFechaFilter(fechaInicio, fechaFin, tag);
+    if (fechaFiltro) {
+      if ("field" in fechaFiltro) {
+        Object.assign(query, fechaFiltro.field);
+      } else {
+        query.$and.push({ $or: fechaFiltro.or });
+      }
+    }
 
     const numericOffset = Number(offset);
     const numericLimit = Number(limit);
