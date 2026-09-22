@@ -20,7 +20,6 @@ const gridfs_1 = require("../utils/gridfs");
 const publicacionExpiration_1 = require("../utils/publicacionExpiration");
 const mail_1 = require("../utils/mail"); // usa el mismo transporter que recuperación
 const usuario_model_1 = require("../models/usuario.model"); // ← Modelo de usuarios
-const perfil_model_1 = require("../models/perfil.model");
 const notificacion_service_1 = require("../services/notificacion.service");
 const LOG_ON = process.env.LOG_PUBLICACION === "1";
 // Utilidad: normaliza precio (string → number | undefined)
@@ -52,6 +51,31 @@ function parseBoolean(input) {
             return false;
     }
     return undefined;
+}
+// Construye el filtro de fecha para publicaciones/eventos/emprendimientos.
+// Si solo se da fechaInicio, filtra ese día puntual. Si se dan ambas, filtra el rango (inclusivo).
+// Eventos usan fechaEvento (string "YYYY-MM-DD", comparable lexicográficamente);
+// publicaciones/emprendimientos usan el rango de createdAt.
+function buildFechaFilter(fechaInicio, fechaFin, tag) {
+    if (!fechaInicio && !fechaFin)
+        return null;
+    const inicioStr = fechaInicio || fechaFin;
+    const finStr = fechaFin || fechaInicio;
+    const inicioDate = new Date(inicioStr);
+    const finDate = new Date(finStr);
+    finDate.setDate(finDate.getDate() + 1);
+    const filtroEvento = { fechaEvento: { $gte: inicioStr, $lte: finStr } };
+    const filtroNoEvento = { createdAt: { $gte: inicioDate, $lt: finDate } };
+    if (tag === "evento")
+        return { field: filtroEvento };
+    if (tag)
+        return { field: filtroNoEvento };
+    return {
+        or: [
+            Object.assign({ tag: "evento" }, filtroEvento),
+            Object.assign({ tag: { $ne: "evento" } }, filtroNoEvento),
+        ],
+    };
 }
 function parseMoneda(input) {
     if (input === undefined || input === null)
@@ -295,22 +319,6 @@ const createPublicacionA = (req, res) => __awaiter(void 0, void 0, void 0, funct
             res.status(401).json({ ok: false, message: "Usuario no autenticado" });
             return;
         }
-        //3.5.2 - Validación de usuarios dentro del banco
-        const perfil = yield perfil_model_1.modelPerfil.findOne({ usuarioId: userId });
-        if (!perfil) {
-            res.status(200).json({
-                success: false,
-                message: "El perfil público no existe",
-            });
-            return;
-        }
-        if (!(perfil === null || perfil === void 0 ? void 0 : perfil.enBancoProfesionales)) {
-            res.status(200).json({
-                success: false,
-                message: "Este usuario no está en el banco de profesionales",
-            });
-            return;
-        }
         // --- Recolectar archivos desde Multer (array o fields) ---
         let files = [];
         if (Array.isArray(req.files)) {
@@ -399,28 +407,21 @@ const getPublicacionesByTag = (req, res) => __awaiter(void 0, void 0, void 0, fu
     try {
         const offset = parseInt(req.query.offset) || 0;
         const limit = parseInt(req.query.limit) || 10;
-        const { tag, publicado, categoria, fecha, precioMin, precioMax } = req.query;
-        const query = Object.assign({}, (0, publicacionExpiration_1.buildActivePublicationQuery)());
+        const { tag, publicado, categoria, fechaInicio, fechaFin, precioMin, precioMax } = req.query;
+        const query = { $and: [(0, publicacionExpiration_1.buildActivePublicationQuery)()] };
         if (tag)
             query.tag = tag;
         if (publicado !== undefined)
             query.publicado = publicado === "true";
         if (categoria)
             query.categoria = categoria;
-        if (fecha) {
-            if (tag === "evento") {
-                // fechaEvento
-                query.fechaEvento = fecha;
+        const fechaFiltro = buildFechaFilter(fechaInicio, fechaFin, tag);
+        if (fechaFiltro) {
+            if ("field" in fechaFiltro) {
+                Object.assign(query, fechaFiltro.field);
             }
             else {
-                // publicaciones/emprendimientos
-                const inicio = new Date(fecha);
-                const fin = new Date(fecha);
-                fin.setDate(fin.getDate() + 1);
-                query.createdAt = {
-                    $gte: inicio,
-                    $lt: fin,
-                };
+                query.$and.push({ $or: fechaFiltro.or });
             }
         }
         if (precioMin || precioMax) {
@@ -895,7 +896,7 @@ exports.searchPublicacionesByTitulo = searchPublicacionesByTitulo;
 // Búsqueda avanzada con filtros
 const searchPublicacionesAvanzada = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { q, tag, categoria, offset = 0, limit = 12 } = req.query;
+        const { q, tag, categoria, fechaInicio, fechaFin, offset = 0, limit = 12 } = req.query;
         const query = {
             publicado: true,
             $and: [(0, publicacionExpiration_1.buildActivePublicationQuery)()],
@@ -914,6 +915,15 @@ const searchPublicacionesAvanzada = (req, res) => __awaiter(void 0, void 0, void
             query.tag = tag;
         if (categoria)
             query.categoria = categoria;
+        const fechaFiltro = buildFechaFilter(fechaInicio, fechaFin, tag);
+        if (fechaFiltro) {
+            if ("field" in fechaFiltro) {
+                Object.assign(query, fechaFiltro.field);
+            }
+            else {
+                query.$and.push({ $or: fechaFiltro.or });
+            }
+        }
         const numericOffset = Number(offset);
         const numericLimit = Number(limit);
         const [publicaciones, totalPublicaciones] = yield Promise.all([

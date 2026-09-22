@@ -19,7 +19,7 @@ if (BASE.endsWith("/api")) {
 
 // EN DESARROLLO: Forzar localhost:5000
 // EN PRODUCCIÓN: Usar el dominio configurado en el .env
-const FINAL_BASE_URL = BASE;
+const FINAL_BASE_URL = isDevelopment ? "http://localhost:5000" : BASE;
 
 // Exportar URLs
 export const BASE_URL = FINAL_BASE_URL; // p.ej. "http://localhost:5000" o "https://komuness.duckdns.org"

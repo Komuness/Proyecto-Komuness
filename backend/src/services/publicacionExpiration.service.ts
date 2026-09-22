@@ -93,9 +93,23 @@ export async function purgeExpiredPublicaciones(referencia: Date = new Date()): 
 }
 
 export async function runPublicationExpirationMaintenance(): Promise<void> {
-  await syncMissingPublicationExpirations();
-  await enviarRecordatoriosExpiracion();
-  await purgeExpiredPublicaciones();
+  try {
+    await syncMissingPublicationExpirations();
+  } catch (error) {
+    console.error('[Publicaciones][expiracion] Error en sincronización:', error);
+  }
+
+  try {
+    await enviarRecordatoriosExpiracion();
+  } catch (error) {
+    console.error('[Publicaciones][recordatorio] Error al enviar recordatorios:', error);
+  }
+
+  try {
+    await purgeExpiredPublicaciones();
+  } catch (error) {
+    console.error('[Publicaciones][expiracion] Error al purgar vencidas:', error);
+  }
 }
 
 export function startPublicationExpirationJob(): void {

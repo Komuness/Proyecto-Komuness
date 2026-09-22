@@ -140,19 +140,22 @@ const Notificaciones = ({
       case "recordatorio":
         return {
           borderClass: "border-amber-400",
-          icon: <AiOutlineClockCircle className="w-4 h-4 text-amber-300" />,
+          icon: AiOutlineClockCircle,
+          iconClass: "text-amber-300",
           label: "Recordatorio",
         };
       case "formulario":
         return {
           borderClass: "border-green-500",
           icon: null,
+          iconClass: "",
           label: "Formulario",
         };
       default:
         return {
           borderClass: "border-slate-500",
           icon: null,
+          iconClass: "",
           label: null,
         };
     }
