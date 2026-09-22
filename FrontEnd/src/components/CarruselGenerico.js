@@ -39,8 +39,8 @@ const MESES = [
 
 const CONFIG_TIPOS = {
   evento: {
-    titulo: "Actividades Culturales",
-    subtitulo: "Conoce los próximos eventos y actividades de la comunidad",
+    titulo: "Eventos",
+    subtitulo: "Conoce los próximos eventos de la comunidad",
     placeholder: "🎭",
     ver: "Ver evento",
     singular: "evento",
