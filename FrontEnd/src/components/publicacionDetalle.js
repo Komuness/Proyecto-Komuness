@@ -631,6 +631,16 @@ export const PublicacionDetalle = () => {
                   </span>
                 </div>
 
+                {/* COMUNIDAD */}
+                {publicacion.comunidad && (
+                  <div className="publicacion-info-item">
+                    <span className="publicacion-info-label">Comunidad:</span>
+                    <span className="publicacion-info-value">
+                      {publicacion.comunidad}
+                    </span>
+                  </div>
+                )}
+
                 {/* TELÉFONO */}
                 {telefono && (
                   <div className="publicacion-info-item">

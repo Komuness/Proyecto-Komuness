@@ -66,6 +66,7 @@ export const requestUpdatePublicacion = async (req: Request, res: Response): Pro
     if (req.body.horaEvento !== undefined) updateData.horaEvento = req.body.horaEvento;
     if (req.body.telefono !== undefined) updateData.telefono = req.body.telefono;
     if (req.body.categoria !== undefined) updateData.categoria = req.body.categoria;
+    if (req.body.comunidad !== undefined) updateData.comunidad = req.body.comunidad;
 
     // Procesar precios con validación
     if (req.body.precio !== undefined) {
@@ -302,6 +303,7 @@ function mapUpdateFields(updateFields: Omit<IPublicacionUpdate, 'requestedAt' | 
   if (updateFields.precioCiudadanoOro !== undefined) mapped.precioCiudadanoOro = updateFields.precioCiudadanoOro;
   if (updateFields.telefono !== undefined) mapped.telefono = updateFields.telefono;
   if (updateFields.categoria !== undefined) mapped.categoria = updateFields.categoria;
+  if (updateFields.comunidad !== undefined) mapped.comunidad = updateFields.comunidad;
   if (updateFields.enlacesExternos !== undefined) mapped.enlacesExternos = updateFields.enlacesExternos;
   if (updateFields.adjunto !== undefined) mapped.adjunto = updateFields.adjunto;
   
@@ -410,6 +412,11 @@ export const approveUpdate = async (req: Request, res: Response): Promise<void> 
     if (updateFields.categoria !== undefined) {
       publicacion.categoria = updateFields.categoria as any;
       camposActualizados.push('categoría');
+    }
+
+    if (updateFields.comunidad !== undefined && updateFields.comunidad !== publicacion.comunidad) {
+      publicacion.comunidad = updateFields.comunidad;
+      camposActualizados.push('comunidad');
     }
 
     //  Manejo de enlacesExternos

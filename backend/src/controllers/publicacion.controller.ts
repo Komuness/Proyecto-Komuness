@@ -114,6 +114,13 @@ function parseTelefono(input: any): string | undefined {
   return trimmed || undefined;
 }
 
+// función para validar comunidad
+function parseComunidad(input: any): string | undefined {
+  if (typeof input !== "string") return undefined;
+  const trimmed = input.trim().slice(0, 100);
+  return trimmed || undefined;
+}
+
 // función para validar enlaces externos
 function parseEnlacesExternos(input: any): IEnlaceExterno[] | undefined {
   if (!input) return undefined;
@@ -309,6 +316,7 @@ export const createPublicacion = async (
     const telefono = parseTelefono(body.telefono);
     const enlacesExternos = parseEnlacesExternos(body.enlacesExternos);
     const ubicacion = parseUbicacion(body.ubicacion);
+    const comunidad = parseComunidad(body.comunidad);
     const monedaData = getMonedaData(body.moneda, body.monedaSimbolo);
 
     const pricing = validateAndNormalizePricing(
@@ -337,6 +345,7 @@ export const createPublicacion = async (
       telefono,
       enlacesExternos,
       ubicacion,
+      comunidad,
     } as IPublicacion;
 
     const nuevaPublicacion = new modelPublicacion(publicacion);
@@ -440,6 +449,7 @@ export const createPublicacionA = async (
       (publicacion as any).enlacesExternos,
     );
     const ubicacion = parseUbicacion((publicacion as any).ubicacion);
+    const comunidad = parseComunidad((publicacion as any).comunidad);
     const monedaData = getMonedaData(
       (publicacion as any).moneda,
       (publicacion as any).monedaSimbolo,
@@ -484,6 +494,7 @@ export const createPublicacionA = async (
       telefono,
       enlacesExternos,
       ubicacion,
+      comunidad,
     });
 
     const savePost = await nuevaPublicacion.save();
@@ -1022,6 +1033,7 @@ export const filterPublicaciones = async (
         $or: [
           { titulo: { $regex: texto as string, $options: "i" } },
           { contenido: { $regex: texto as string, $options: "i" } },
+          { comunidad: { $regex: texto as string, $options: "i" } },
         ],
       });
       hasSearchCriteria = true;
@@ -1180,12 +1192,13 @@ export const searchPublicacionesAvanzada = async (
       $and: [buildActivePublicationQuery()],
     };
 
-    // Búsqueda por texto en título o contenido
+    // Búsqueda por texto en título, contenido o comunidad
     if (q && typeof q === "string" && q.trim() !== "") {
       query.$and.push({
         $or: [
           { titulo: { $regex: q.trim(), $options: "i" } },
           { contenido: { $regex: q.trim(), $options: "i" } },
+          { comunidad: { $regex: q.trim(), $options: "i" } },
         ],
       });
     }

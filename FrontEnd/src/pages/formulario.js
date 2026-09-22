@@ -53,6 +53,7 @@ const getInitialFormValues = (tag) => ({
   descuento: "",
   telefono: "",
   categoria: "",
+  comunidad: "",
 });
 
 const getPersistedFormData = (formData) => {
@@ -265,6 +266,7 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
     data.append("descuento", formData.descuento || "0");
     data.append("telefono", formData.telefono || "");
     data.append("categoria", formData.categoria || "");
+    data.append("comunidad", formData.comunidad || "");
 
     // Agregar ubicación como JSON si es un evento
     if (formData.tag === "evento" && ubicacion) {
@@ -399,6 +401,20 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
                 selectedCategoria={formData.categoria}
                 onCategoriaChange={handleChange}
                 required={true}
+              />
+            </div>
+
+            {/* Comunidad */}
+            <div className="campo-grupo">
+              <label className="campo-label">Comunidad (opcional):</label>
+              <input
+                type="text"
+                name="comunidad"
+                value={formData.comunidad}
+                onChange={handleChange}
+                maxLength={100}
+                className="campo-input"
+                placeholder="Ej: San José Centro, Heredia, Barrio Escalante"
               />
             </div>
 

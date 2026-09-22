@@ -465,6 +465,13 @@ export const CarruselGenerico = ({ tipo, filtros }) => {
                           </span>
                         )}
 
+                        {item.comunidad && (
+                          <span className="carrusel-card-fecha">
+                            <FaMapMarkerAlt />
+                            {item.comunidad}
+                          </span>
+                        )}
+
                         <p className="carrusel-card-contenido">
                           {item.contenidoBreve ||
                             item.contenido ||
