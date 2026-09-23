@@ -21,7 +21,6 @@ import {
 } from "../utils/publicacionExpiration";
 import { sendEmail } from "../utils/mail"; // usa el mismo transporter que recuperación
 import { modelUsuario } from "../models/usuario.model"; // ← Modelo de usuarios
-import { modelPerfil } from "../models/perfil.model";
 import {
   createComentarioPublicacionNotificacion,
   createRespuestaComentarioNotificacion,
@@ -55,6 +54,38 @@ function parseBoolean(input: any): boolean | undefined {
   return undefined;
 }
 
+// Construye el filtro de fecha para publicaciones/eventos/emprendimientos.
+// Si solo se da fechaInicio, filtra ese día puntual. Si se dan ambas, filtra el rango (inclusivo).
+// Eventos usan fechaEvento (string "YYYY-MM-DD", comparable lexicográficamente);
+// publicaciones/emprendimientos usan el rango de createdAt.
+function buildFechaFilter(
+  fechaInicio: string | undefined,
+  fechaFin: string | undefined,
+  tag: string | undefined,
+): { field: Record<string, any> } | { or: Record<string, any>[] } | null {
+  if (!fechaInicio && !fechaFin) return null;
+
+  const inicioStr = fechaInicio || (fechaFin as string);
+  const finStr = fechaFin || (fechaInicio as string);
+
+  const inicioDate = new Date(inicioStr);
+  const finDate = new Date(finStr);
+  finDate.setDate(finDate.getDate() + 1);
+
+  const filtroEvento = { fechaEvento: { $gte: inicioStr, $lte: finStr } };
+  const filtroNoEvento = { createdAt: { $gte: inicioDate, $lt: finDate } };
+
+  if (tag === "evento") return { field: filtroEvento };
+  if (tag) return { field: filtroNoEvento };
+
+  return {
+    or: [
+      { tag: "evento", ...filtroEvento },
+      { tag: { $ne: "evento" }, ...filtroNoEvento },
+    ],
+  };
+}
+
 function parseMoneda(input: any): "CRC" | "USD" | undefined {
   if (input === undefined || input === null) return undefined;
   if (typeof input !== "string") return undefined;
@@ -80,6 +111,13 @@ function getMonedaData(
 function parseTelefono(input: any): string | undefined {
   if (typeof input !== "string") return undefined;
   const trimmed = input.trim();
+  return trimmed || undefined;
+}
+
+// función para validar comunidad
+function parseComunidad(input: any): string | undefined {
+  if (typeof input !== "string") return undefined;
+  const trimmed = input.trim().slice(0, 100);
   return trimmed || undefined;
 }
 
@@ -278,6 +316,7 @@ export const createPublicacion = async (
     const telefono = parseTelefono(body.telefono);
     const enlacesExternos = parseEnlacesExternos(body.enlacesExternos);
     const ubicacion = parseUbicacion(body.ubicacion);
+    const comunidad = parseComunidad(body.comunidad);
     const monedaData = getMonedaData(body.moneda, body.monedaSimbolo);
 
     const pricing = validateAndNormalizePricing(
@@ -306,6 +345,7 @@ export const createPublicacion = async (
       telefono,
       enlacesExternos,
       ubicacion,
+      comunidad,
     } as IPublicacion;
 
     const nuevaPublicacion = new modelPublicacion(publicacion);
@@ -366,25 +406,6 @@ export const createPublicacionA = async (
       return;
     }
 
-    //3.5.2 - Validación de usuarios dentro del banco
-    const perfil = await modelPerfil.findOne({ usuarioId: userId });
-
-    if (!perfil) {
-      res.status(200).json({
-        success: false,
-        message: "El perfil público no existe",
-      });
-      return;
-    }
-
-    if (!perfil?.enBancoProfesionales) {
-      res.status(200).json({
-        success: false,
-        message: "Este usuario no está en el banco de profesionales",
-      });
-      return;
-    }
-
     // --- Recolectar archivos desde Multer (array o fields) ---
     let files: Express.Multer.File[] = [];
     if (Array.isArray(req.files)) {
@@ -428,6 +449,7 @@ export const createPublicacionA = async (
       (publicacion as any).enlacesExternos,
     );
     const ubicacion = parseUbicacion((publicacion as any).ubicacion);
+    const comunidad = parseComunidad((publicacion as any).comunidad);
     const monedaData = getMonedaData(
       (publicacion as any).moneda,
       (publicacion as any).monedaSimbolo,
@@ -472,6 +494,7 @@ export const createPublicacionA = async (
       telefono,
       enlacesExternos,
       ubicacion,
+      comunidad,
     });
 
     const savePost = await nuevaPublicacion.save();
@@ -518,36 +541,28 @@ export const getPublicacionesByTag = async (
   try {
     const offset = parseInt(req.query.offset as string) || 0;
     const limit = parseInt(req.query.limit as string) || 10;
-    const { tag, publicado, categoria, fecha, precioMin, precioMax } =
+    const { tag, publicado, categoria, fechaInicio, fechaFin, precioMin, precioMax } =
       req.query as {
         tag?: string;
         publicado?: string;
         categoria?: string;
-        fecha?: string;
+        fechaInicio?: string;
+        fechaFin?: string;
         precioMin?: number;
         precioMax?: number;
       };
 
-    const query: any = { ...buildActivePublicationQuery() };
+    const query: any = { $and: [buildActivePublicationQuery()] };
     if (tag) query.tag = tag;
     if (publicado !== undefined) query.publicado = publicado === "true";
     if (categoria) query.categoria = categoria;
 
-    if (fecha) {
-      if (tag === "evento") {
-        // fechaEvento
-        query.fechaEvento = fecha;
+    const fechaFiltro = buildFechaFilter(fechaInicio, fechaFin, tag);
+    if (fechaFiltro) {
+      if ("field" in fechaFiltro) {
+        Object.assign(query, fechaFiltro.field);
       } else {
-        // publicaciones/emprendimientos
-        const inicio = new Date(fecha);
-        const fin = new Date(fecha);
-
-        fin.setDate(fin.getDate() + 1);
-
-        query.createdAt = {
-          $gte: inicio,
-          $lt: fin,
-        };
+        query.$and.push({ $or: fechaFiltro.or });
       }
     }
 
@@ -1018,6 +1033,7 @@ export const filterPublicaciones = async (
         $or: [
           { titulo: { $regex: texto as string, $options: "i" } },
           { contenido: { $regex: texto as string, $options: "i" } },
+          { comunidad: { $regex: texto as string, $options: "i" } },
         ],
       });
       hasSearchCriteria = true;
@@ -1160,19 +1176,29 @@ export const searchPublicacionesAvanzada = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { q, tag, categoria, offset = 0, limit = 12 } = req.query;
+    const { q, tag, categoria, fechaInicio, fechaFin, offset = 0, limit = 12 } =
+      req.query as {
+        q?: string;
+        tag?: string;
+        categoria?: string;
+        fechaInicio?: string;
+        fechaFin?: string;
+        offset?: string | number;
+        limit?: string | number;
+      };
 
     const query: any = {
       publicado: true,
       $and: [buildActivePublicationQuery()],
     };
 
-    // Búsqueda por texto en título o contenido
+    // Búsqueda por texto en título, contenido o comunidad
     if (q && typeof q === "string" && q.trim() !== "") {
       query.$and.push({
         $or: [
           { titulo: { $regex: q.trim(), $options: "i" } },
           { contenido: { $regex: q.trim(), $options: "i" } },
+          { comunidad: { $regex: q.trim(), $options: "i" } },
         ],
       });
     }
@@ -1180,6 +1206,15 @@ export const searchPublicacionesAvanzada = async (
     // Filtros adicionales
     if (tag) query.tag = tag;
     if (categoria) query.categoria = categoria;
+
+    const fechaFiltro = buildFechaFilter(fechaInicio, fechaFin, tag);
+    if (fechaFiltro) {
+      if ("field" in fechaFiltro) {
+        Object.assign(query, fechaFiltro.field);
+      } else {
+        query.$and.push({ $or: fechaFiltro.or });
+      }
+    }
 
     const numericOffset = Number(offset);
     const numericLimit = Number(limit);

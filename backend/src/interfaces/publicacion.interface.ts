@@ -28,8 +28,9 @@ export interface IPublicacion {
   precioCiudadanoOro?: number;   
   descuento?: number; // Porcentaje de descuento (0-100)
   enlacesExternos?: IEnlaceExterno[]; 
-  telefono?: string;            
+  telefono?: string;
   ubicacion?: IUbicacion; // Ubicación del evento
+  comunidad?: string; // Comunidad/localidad a la que pertenece la publicación
   categoria: string | Types.ObjectId;
   fechaExpiracion?: string | Date | null;
   diasRestantes?: number | null;
@@ -41,7 +42,7 @@ export interface IPublicacion {
   pendingUpdate?: IPublicacionUpdate; // Datos pendientes de aprobación
   lastEditRequest?: string; // Fecha de última solicitud de edición
   editHistory?: IEditHistory[]; // Historial de cambios
-
+  recordatorioEnviado?: boolean; // Si ya se notificó al autor que su publicación está por vencer
 
   createdAt?: string;
   updatedAt?: string;
@@ -120,6 +121,7 @@ export interface IPublicacionUpdate {
   enlacesExternos?: IEnlaceExterno[];
   telefono?: string;
   ubicacion?: IUbicacion; // Ubicación del evento para actualización
+  comunidad?: string; // Comunidad/localidad a la que pertenece la publicación
   categoria?: string | Types.ObjectId;  // ← Permitir ambos tipos
   adjunto?: IAdjunto[];
   requestedAt: string;

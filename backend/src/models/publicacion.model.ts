@@ -67,6 +67,7 @@ const publicacionUpdateSchema = new Schema<IPublicacionUpdate>({
   enlacesExternos: { type: [enlaceExternoSchema], required: false },
   telefono: { type: String, required: false },
   ubicacion: { type: ubicacionSchema, required: false },
+  comunidad: { type: String, required: false, trim: true, maxlength: 100 },
   categoria: { type: Schema.Types.ObjectId, ref: 'Categoria', required: false },
   adjunto: { type: [adjuntoSchema], required: false },
   requestedAt: { type: String, required: true },
@@ -116,6 +117,7 @@ const publicacionSchema = new Schema(
     telefono: { type: String, required: false },
     fechaExpiracion: { type: Date, required: false, index: true },
     ubicacion: { type: ubicacionSchema, required: false }, // Ubicación del evento
+    comunidad: { type: String, required: false, trim: true, maxlength: 100, index: true }, // Comunidad/localidad de la publicación
 
     // categorías de área
     categoria: { type: Schema.Types.ObjectId, ref: 'Categoria', required: true },
@@ -141,8 +143,12 @@ const publicacionSchema = new Schema(
     editHistory: { 
       type: [editHistorySchema], 
       default: [] 
+    },
+    recordatorioEnviado: {
+      type: Boolean,
+      default: false
     }
-  },
+    },
   { 
     timestamps: true,
     validateBeforeSave: true,

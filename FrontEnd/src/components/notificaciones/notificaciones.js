@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { AiOutlineClose } from "react-icons/ai";
+import { AiOutlineClockCircle } from "react-icons/ai";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../../utils/api";
 
@@ -132,6 +133,32 @@ const Notificaciones = ({
       dateStyle: "medium",
       timeStyle: "short",
     });
+  };
+
+  const getTipoConfig = (tipo) => {
+    switch (tipo) {
+      case "recordatorio":
+        return {
+          borderClass: "border-amber-400",
+          icon: AiOutlineClockCircle,
+          iconClass: "text-amber-300",
+          label: "Recordatorio",
+        };
+      case "formulario":
+        return {
+          borderClass: "border-green-500",
+          icon: null,
+          iconClass: "",
+          label: "Formulario",
+        };
+      default:
+        return {
+          borderClass: "border-slate-500",
+          icon: null,
+          iconClass: "",
+          label: null,
+        };
+    }
   };
 
   const eliminarNotificacion = async (id, options = {}) => {
@@ -358,32 +385,46 @@ const Notificaciones = ({
           <p className="text-sm text-slate-200">No tienes notificaciones.</p>
         ) : (
           <div className="flex flex-col gap-2">
-            {ntfs.map((ntf) => (
+
+            {ntfs.map((ntf) => {
+              const tipoConfig = getTipoConfig(ntf.tipo);
+              const TipoIcon = tipoConfig.icon;
+
+              return (
               <div
-                className="p-3 rounded-lg cursor-pointer border border-slate-500 bg-slate-700 transition-colors"
-                key={ntf._id}
-                onClick={() => handleNotificacionClick(ntf)}
-              >
+                className={`p-3 rounded-lg cursor-pointer border bg-slate-700 transition-colors ${tipoConfig.borderClass}`}
+                  key={ntf._id}
+                  onClick={() => handleNotificacionClick(ntf)}
+                >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <p className={ntf?.visto ? "text-slate-400" : "text-white"}>
-                      <span className="font-bold">{ntf.nombre}:</span>{" "}
-                      {ntf.descripcion}
-                    </p>
-                    {ntf.tipo === "formulario" && ntf.formularioUrl && (
-                      <a
-                        href={ntf.formularioUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-block mt-2 px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded transition-colors"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        📋 Abrir Formulario
-                      </a>
-                    )}
+                    <div className="min-w-0 flex-1">
+                      {TipoIcon && (
+                        <div className="flex items-center gap-1 mb-1">
+                          <TipoIcon className={`w-4 h-4 ${tipoConfig.iconClass}`} />
+                          <span className={`text-xs font-semibold ${tipoConfig.iconClass}`}>
+                            {tipoConfig.label}
+                          </span>
+                        </div>
+                      )}
+                      <p className={ntf?.visto ? "text-slate-400" : "text-white"}>
+                        <span className="font-bold">{ntf.nombre}:</span>{" "}
+                        {ntf.descripcion}
+                      </p>
+                      {ntf.tipo === "formulario" && ntf.formularioUrl && (
+                        <a
+                          href={ntf.formularioUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-block mt-2 px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold rounded transition-colors"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Abrir Formulario
+                        </a>
+                      )}
                     <p className={`text-sm mt-2 ${ntf?.visto ? "text-slate-400" : "text-slate-200"}`}>
-                      Fecha: {formatFecha(ntf.createdAt)}
+                        Fecha: {formatFecha(ntf.createdAt)}
                     </p>
+
                   </div>
                   <div className="flex items-center gap-2">
                     {!ntf?.visto && (
@@ -407,7 +448,8 @@ const Notificaciones = ({
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

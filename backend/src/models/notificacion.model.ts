@@ -10,7 +10,7 @@ const notificacionSchema = new Schema<INotificacion>(
     publicacionId: { type: Schema.Types.ObjectId, ref: "Publicacion", required: false, default: null },
     fechaCaducidad: { type: Date, required: false, default: null },
     vistoPor: [{ type: Schema.Types.ObjectId, ref: "Usuario", default: [] }],
-    tipo: { type: String, enum: ["general", "formulario"], default: "general" },
+    tipo: { type: String, enum: ["general", "formulario", "recordatorio"], default: "general" },
     formularioUrl: { type: String, required: false, default: null },
   },
   {

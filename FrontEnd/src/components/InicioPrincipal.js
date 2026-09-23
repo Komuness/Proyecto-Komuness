@@ -1,81 +1,79 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { FaFacebookF, FaInstagram } from "react-icons/fa";
-import logo from "../images/logo.png";
-import { API_URL } from "../utils/api";
 import "../CSS/inicioPrincipal.css";
 
-export const InicioPrincipal = () => {
-  const [eslogan, setEslogan] = useState("");
-  const [frase, setFrase] = useState("");
-  const [redes, setRedes] = useState({
-    facebook: "https://www.facebook.com/komuness",
-    instagram: "https://www.instagram.com/komunesscr/",
-  });
-  const [cargando, setCargando] = useState(true);
-
-  useEffect(() => {
-    const cargarContenidoInicio = async () => {
-      try {
-        setCargando(true);
-        const [contenidoRes, acercaRes] = await Promise.all([
-          fetch(`${API_URL}/configuracion/inicio-contenido`),
-          fetch(`${API_URL}/acerca-de`),
-        ]);
-
-        const contenidoData = await contenidoRes.json().catch(() => ({}));
-        const acercaData = await acercaRes.json().catch(() => ({}));
-
-        setEslogan(contenidoData?.data?.eslogan || "");
-        setFrase(contenidoData?.data?.frase || "");
-
-        setRedes((prev) => ({
-          facebook: acercaData?.contactos?.facebook || prev.facebook,
-          instagram: acercaData?.contactos?.instagram || prev.instagram,
-        }));
-      } catch (error) {
-        console.error("Error al cargar contenido de inicio:", error);
-      } finally {
-        setCargando(false);
-      }
-    };
-
-    cargarContenidoInicio();
-  }, []);
+export const InicioPrincipal = ({ inicioData, acercaData, cargando, heroImage }) => {
+  const eslogan = inicioData?.eslogan || "";
+  const frase = inicioData?.frase || "";
+  const redes = {
+    facebook: acercaData?.contactos?.facebook || "https://www.facebook.com/komuness",
+    instagram: acercaData?.contactos?.instagram || "https://www.instagram.com/komunesscr/",
+  };
 
   return (
-    <main className="inicio-principal-wrapper">
-      <section className="inicio-principal-card">
-        <img src={logo} alt="Logo Komuness" className="inicio-principal-logo" />
-        <h1 className="inicio-principal-eslogan">
-          {eslogan || "[Espacio para eslogan de Komuness]"}
-        </h1>
-
-        <div className="inicio-principal-frase-box">
-          {cargando ? (
-            <p>Cargando frase...</p>
-          ) : (
-            <p>{frase || "Aqui aparecera una frase motivacional creada por administracion."}</p>
-          )}
+    <main className="hero-wrapper">
+      {/* Región del patrón: el mismo fondo del sitio se ve tanto dentro
+          como alrededor del cuadro, en un área de tamaño normal (no
+          estirada por toda la página) para que no pierda calidad. */}
+      <div className="hero-pattern-region">
+        <div
+          className="hero-frame"
+          style={heroImage ? { backgroundImage: `url(${heroImage})` } : undefined}
+        >
+          <div className="hero-frame-overlay" />
+          <span className="hero-frame-word">Komuness</span>
         </div>
 
-        <div className="inicio-principal-redes" aria-label="Redes sociales de Komuness">
-          {redes.facebook && (
-            <a href={redes.facebook} target="_blank" rel="noreferrer" aria-label="Facebook de Komuness">
-              <FaFacebookF />
-            </a>
-          )}
-          {redes.instagram && (
-            <a href={redes.instagram} target="_blank" rel="noreferrer" aria-label="Instagram de Komuness">
-              <FaInstagram />
-            </a>
-          )}
+        {/* Línea decorativa con un único indicador circular */}
+        <div className="hero-divider" aria-hidden="true">
+          <span className="hero-divider-line" />
+          <span className="hero-divider-dot" />
+          <span className="hero-divider-line" />
         </div>
+      </div>
 
-        <div className="inicio-principal-actions">
-          <Link to="/publicaciones" className="inicio-principal-btn">
+      {/* Banda sólida: presentación (título + descripción breve) */}
+      <section className="hero-copy-band">
+        <div className="hero-copy">
+          <h1 className="hero-copy-title">
+            {eslogan || "Comunidad, arte y cooperación en un mismo espacio"}
+          </h1>
+          <p className="hero-copy-text">
+            {cargando
+              ? "Cargando..."
+              : frase ||
+                "Aquí aparecerá una frase motivacional creada por administración."}
+          </p>
+
+          <div className="hero-copy-redes" aria-label="Redes sociales de Komuness">
+            {redes.facebook && (
+              <a
+                href={redes.facebook}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Facebook de Komuness"
+              >
+                <FaFacebookF />
+              </a>
+            )}
+            {redes.instagram && (
+              <a
+                href={redes.instagram}
+                target="_blank"
+                rel="noreferrer"
+                aria-label="Instagram de Komuness"
+              >
+                <FaInstagram />
+              </a>
+            )}
+          </div>
+
+          <Link to="/publicaciones" className="hero-copy-btn">
             Ir a publicaciones
           </Link>
+
+          <span className="hero-copy-divider" aria-hidden="true" />
         </div>
       </section>
     </main>

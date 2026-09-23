@@ -45,6 +45,7 @@ const getInitialDraftState = (publicacion) => ({
         : "",
     telefono: publicacion.telefono || "",
     categoria: publicacion.categoria?._id || publicacion.categoria || "",
+    comunidad: publicacion.comunidad || "",
   },
   enlacesExternos:
     publicacion.enlacesExternos && publicacion.enlacesExternos.length > 0
@@ -75,6 +76,7 @@ export const EditarPublicacionModal = ({
     descuento: "",
     telefono: "",
     categoria: "",
+    comunidad: "",
   });
 
   const [enlacesExternos, setEnlacesExternos] = useState([
@@ -125,6 +127,7 @@ export const EditarPublicacionModal = ({
             : "",
         telefono: publicacion.telefono || "",
         categoria: publicacion.categoria?._id || publicacion.categoria || "",
+        comunidad: publicacion.comunidad || "",
       });
 
       // Inicializar enlaces externos
@@ -263,6 +266,7 @@ export const EditarPublicacionModal = ({
         descuento: formData.descuento || "",
         telefono: formData.telefono || "",
         categoria: formData.categoria || "",
+        comunidad: formData.comunidad || "",
         enlacesExternos: enlacesValidos.length > 0 ? enlacesValidos : [],
         imagenesMantenidas: imagenesMantenidas,
         nuevasImagenesCount: nuevasImagenes.length,
@@ -285,6 +289,7 @@ export const EditarPublicacionModal = ({
       data.append("descuento", formData.descuento || "");
       data.append("telefono", formData.telefono || "");
       data.append("categoria", formData.categoria || "");
+      data.append("comunidad", formData.comunidad || "");
 
       //  Siempre enviar enlaces externos, incluso si está vacío
       data.append("enlacesExternos", JSON.stringify(enlacesValidos));
@@ -521,6 +526,23 @@ export const EditarPublicacionModal = ({
               selectedCategoria={formData.categoria}
               onCategoriaChange={handleChange}
               required={true}
+            />
+          </div>
+
+          {/* Comunidad */}
+          <div className="campo-grupo">
+            <label htmlFor="comunidad" className="campo-label">
+              Comunidad (opcional):
+            </label>
+            <input
+              type="text"
+              id="comunidad"
+              name="comunidad"
+              value={formData.comunidad}
+              onChange={handleChange}
+              maxLength={100}
+              className="campo-input"
+              placeholder="Ej: San José Centro, Heredia, Barrio Escalante"
             />
           </div>
 

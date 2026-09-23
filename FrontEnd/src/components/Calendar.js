@@ -4,16 +4,12 @@ import { Calendar, momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/es';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { useNavigate } from 'react-router-dom';
 import { IoMdArrowRoundBack } from "react-icons/io";
 import '../CSS/calendar.css';
+import EventoDetalleModal from './EventoDetalleModal';
+import { API_URL } from '../utils/api';
 
 moment.locale('es');
-
-// Base de API robusta (evita /api/api)
-const RAW = process.env.REACT_APP_BACKEND_URL || window.location.origin;
-const BASE = (RAW || '').replace(/\/+$/, '');
-const API = BASE.endsWith('/api') ? BASE : `${BASE}/api`;
 
 const localizer = momentLocalizer(moment);
 
@@ -75,15 +71,15 @@ export const CalendarView = () => {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('month');
   const [categoryLegend, setCategoryLegend] = useState([]);
+  const [selectedEvento, setSelectedEvento] = useState(null);
+  const [modalAbierto, setModalAbierto] = useState(false);
 
   const [currentDate, setCurrentDate] = useState(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate());
   });
 
-  const navigate = useNavigate();
-
-  useEffect(() => { 
+  useEffect(() => {
     fetchEvents(currentDate); 
   }, [currentDate]);
 
@@ -95,7 +91,7 @@ export const CalendarView = () => {
       const endOfMonth = dateMoment.endOf('month').format('YYYY-MM-DD');
 
       const response = await fetch(
-        `${API}/publicaciones/eventos/calendario?startDate=${startOfMonth}&endDate=${endOfMonth}`
+        `${API_URL}/publicaciones/eventos/calendario?startDate=${startOfMonth}&endDate=${endOfMonth}`
       );
       if (!response.ok) throw new Error('Error al cargar eventos');
 
@@ -146,8 +142,14 @@ export const CalendarView = () => {
     }
   };
 
-  const handleSelectEvent = (event) => { 
-    navigate(`/publicaciones/${event.id}`); 
+  const handleSelectEvent = (event) => {
+    setSelectedEvento(event.resource);
+    setModalAbierto(true);
+  };
+
+  const handleCerrarModal = () => {
+    setModalAbierto(false);
+    setSelectedEvento(null);
   };
   
   const handleNavigate = (newDate) => { 
@@ -244,6 +246,12 @@ export const CalendarView = () => {
           }}
         />
       </div>
+
+      <EventoDetalleModal
+        evento={selectedEvento}
+        isOpen={modalAbierto}
+        onClose={handleCerrarModal}
+      />
     </div>
   );
 };
