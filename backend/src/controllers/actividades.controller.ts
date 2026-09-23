@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { modelActividad } from "../models/actividad.model";
+import { notificarNuevaActividad } from "../services/notificacion.service";
 
 // Crea la actividad — cualquier usuario logueado
 export const createActividad = async (
@@ -11,19 +12,27 @@ export const createActividad = async (
       req.body;
 
     if (!nombre?.trim()) {
-      res.status(400).json({ message: "El nombre de la actividad es obligatorio" });
+      res
+        .status(400)
+        .json({ message: "El nombre de la actividad es obligatorio" });
       return;
     }
     if (!descripcion?.trim()) {
-      res.status(400).json({ message: "La descripción de la actividad es obligatoria" });
+      res
+        .status(400)
+        .json({ message: "La descripción de la actividad es obligatoria" });
       return;
     }
     if (!fecha) {
-      res.status(400).json({ message: "La fecha de la actividad es obligatoria" });
+      res
+        .status(400)
+        .json({ message: "La fecha de la actividad es obligatoria" });
       return;
     }
     if (!hora) {
-      res.status(400).json({ message: "La hora de la actividad es obligatoria" });
+      res
+        .status(400)
+        .json({ message: "La hora de la actividad es obligatoria" });
       return;
     }
     if (!ubicacionEscrita?.trim()) {
@@ -35,7 +44,9 @@ export const createActividad = async (
       !Array.isArray(ubicacion.coordinates) ||
       ubicacion.coordinates.length !== 2
     ) {
-      res.status(400).json({ message: "La ubicación geográfica es obligatoria" });
+      res
+        .status(400)
+        .json({ message: "La ubicación geográfica es obligatoria" });
       return;
     }
 
@@ -56,6 +67,18 @@ export const createActividad = async (
     });
 
     const saved = await nuevaActividad.save();
+
+    try {
+      await notificarNuevaActividad({
+        actividadId: (saved._id as any ).toString(),
+        nombreActividad: saved.nombre,
+        descripcionActividad: saved.descripcion,
+        ubicacionEscrita: saved.ubicacionEscrita,
+      });
+    } catch (notifError) {
+      console.error("Error al notificar nueva actividad:", notifError);
+    }
+
     res.status(201).json(saved);
   } catch (error: any) {
     console.error(error);
@@ -99,9 +122,14 @@ export const getActividadesCerca = async (
           $near: {
             $geometry: {
               type: "Point",
-              coordinates: [parseFloat(lng as string), parseFloat(lat as string)],
+              coordinates: [
+                parseFloat(lng as string),
+                parseFloat(lat as string),
+              ],
             },
-            $maxDistance: maxDistancia ? parseInt(maxDistancia as string) : 5000,
+            $maxDistance: maxDistancia
+              ? parseInt(maxDistancia as string)
+              : 5000,
           },
         },
       })
@@ -138,24 +166,34 @@ export const updateActividad = async (
     const esAdmin = tipoUsuario === 0 || tipoUsuario === 1;
 
     if (!esDueño && !esAdmin) {
-      res.status(403).json({ message: "No tenés permiso para editar esta actividad" });
+      res
+        .status(403)
+        .json({ message: "No tenés permiso para editar esta actividad" });
       return;
     }
 
     if (!nombre?.trim()) {
-      res.status(400).json({ message: "El nombre de la actividad es obligatorio" });
+      res
+        .status(400)
+        .json({ message: "El nombre de la actividad es obligatorio" });
       return;
     }
     if (!descripcion?.trim()) {
-      res.status(400).json({ message: "La descripción de la actividad es obligatoria" });
+      res
+        .status(400)
+        .json({ message: "La descripción de la actividad es obligatoria" });
       return;
     }
     if (!fecha) {
-      res.status(400).json({ message: "La fecha de la actividad es obligatoria" });
+      res
+        .status(400)
+        .json({ message: "La fecha de la actividad es obligatoria" });
       return;
     }
     if (!hora) {
-      res.status(400).json({ message: "La hora de la actividad es obligatoria" });
+      res
+        .status(400)
+        .json({ message: "La hora de la actividad es obligatoria" });
       return;
     }
     if (!ubicacionEscrita?.trim()) {
@@ -208,7 +246,9 @@ export const deleteActividad = async (
     const esAdmin = tipoUsuario === 0 || tipoUsuario === 1;
 
     if (!esDueño && !esAdmin) {
-      res.status(403).json({ message: "No tenés permiso para eliminar esta actividad" });
+      res
+        .status(403)
+        .json({ message: "No tenés permiso para eliminar esta actividad" });
       return;
     }
 

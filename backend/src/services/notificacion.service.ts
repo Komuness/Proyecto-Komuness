@@ -1,9 +1,12 @@
 import mongoose from "mongoose";
 import { modelNotificacion } from "../models/notificacion.model";
-import { modelCategoria } from "../models/categoria.model"
-import { modelCategoriaPreferencia } from "../models/categoriaPreferencia.model"
-import { IPublicacionNotification } from "../interfaces/publicacion.interface"
+import { modelCategoria } from "../models/categoria.model";
+import { modelCategoriaPreferencia } from "../models/categoriaPreferencia.model";
+import { IPublicacionNotification } from "../interfaces/publicacion.interface";
 
+// ==========================================
+// Tipos
+// ==========================================
 
 type CreateNotificacionInput = {
   nombre: string;
@@ -26,13 +29,37 @@ type CreateComentarioPublicacionNotificacionInput = {
   nombreComentarista: string;
 };
 
+type CreateRespuestaComentarioNotificacionInput = {
+  // Compatibilidad
+  destinatarioId?: string;
+  recipientes?: string[];
+  publicacionId: string;
+  tituloPublicacion: string;
+  nombreRespondedor: string;
+};
+
+type NotificarNuevaActividadInput = {
+  actividadId: string;
+  nombreActividad: string;
+  descripcionActividad: string;
+  ubicacionEscrita: string;
+};
+
+// ==========================================
+// Utils
+// ==========================================
+
 function ensureObjectId(id: string, fieldName: string): void {
   if (!mongoose.Types.ObjectId.isValid(id)) {
     throw new Error(`${fieldName} inválido`);
   }
 }
 
-export async function createNotificacion( input: CreateNotificacionInput ) {
+// ==========================================
+// Notificación genérica
+// ==========================================
+
+export async function createNotificacion(input: CreateNotificacionInput) {
   const {
     nombre,
     descripcion,
@@ -46,8 +73,7 @@ export async function createNotificacion( input: CreateNotificacionInput ) {
 
   // Compatibilidad
   const recipientesFinales =
-    recipientes ||
-    (destinatarioId ? [destinatarioId] : []);
+    recipientes || (destinatarioId ? [destinatarioId] : []);
 
   if (recipientesFinales.length > 0) {
     recipientesFinales.forEach((id, index) => {
@@ -73,6 +99,10 @@ export async function createNotificacion( input: CreateNotificacionInput ) {
   return nuevaNotificacion.save();
 }
 
+// ==========================================
+// Notificaciones de Publicaciones (comentarios / respuestas)
+// ==========================================
+
 export async function createComentarioPublicacionNotificacion(
   input: CreateComentarioPublicacionNotificacionInput
 ) {
@@ -84,31 +114,17 @@ export async function createComentarioPublicacionNotificacion(
     nombreComentarista,
   } = input;
 
-  const tituloSeguro =
-    tituloPublicacion?.trim() || "tu publicación";
-
-  const autorSeguro =
-    nombreComentarista?.trim() || "Un usuario";
+  const tituloSeguro = tituloPublicacion?.trim() || "tu publicación";
+  const autorSeguro = nombreComentarista?.trim() || "Un usuario";
 
   return createNotificacion({
     destinatarioId,
     recipientes,
     publicacionId,
-
     nombre: "Nuevo comentario en tu publicación",
-
     descripcion: `${autorSeguro} comentó en "${tituloSeguro}"`,
   });
 }
-type CreateRespuestaComentarioNotificacionInput = {
-  // Compatibilidad
-  destinatarioId?: string;
-  recipientes?: string[];
-
-  publicacionId: string;
-  tituloPublicacion: string;
-  nombreRespondedor: string;
-};
 
 export async function createRespuestaComentarioNotificacion(
   input: CreateRespuestaComentarioNotificacionInput
@@ -121,46 +137,45 @@ export async function createRespuestaComentarioNotificacion(
     nombreRespondedor,
   } = input;
 
-  const tituloSeguro =
-    tituloPublicacion?.trim() || "tu publicación";
-
-  const autorSeguro =
-    nombreRespondedor?.trim() || "Un usuario";
+  const tituloSeguro = tituloPublicacion?.trim() || "tu publicación";
+  const autorSeguro = nombreRespondedor?.trim() || "Un usuario";
 
   return createNotificacion({
     destinatarioId,
     recipientes,
     publicacionId,
-
     nombre: "Nueva respuesta a tu comentario",
-
-    descripcion:
-      `${autorSeguro} respondió tu comentario en "${tituloSeguro}"`,
+    descripcion: `${autorSeguro} respondió tu comentario en "${tituloSeguro}"`,
   });
 }
 
-export const obtenerUsuariosPorCategoria = async (
-  categoriaId: string
-) => {
+// ==========================================
+// Notificaciones de Nueva Publicación (por categoría)
+// ==========================================
+
+export const obtenerUsuariosPorCategoria = async (categoriaId: string) => {
   const usuarios = await modelCategoriaPreferencia
     .find({ categoriaId })
     .select("usuarioId -_id");
 
-  return usuarios.map(u => u.usuarioId);
+  return usuarios.map((u) => u.usuarioId);
 };
 
 export const notificarNuevaPublicacion = async (
   publicacion: IPublicacionNotification
 ) => {
+  const seguidores = await obtenerUsuariosPorCategoria(
+    publicacion.categoriaId.toString()
+  );
 
-  const seguidores = await obtenerUsuariosPorCategoria(publicacion.categoriaId.toString());
-
-  const categoria = await modelCategoria.findById(
-    publicacion.categoriaId
-  ).select("nombre");
+  const categoria = await modelCategoria
+    .findById(publicacion.categoriaId)
+    .select("nombre");
 
   if (seguidores.length === 0) {
-    console.log(`No hay usuarios suscritos a la categoría ${publicacion.categoriaId}`);
+    console.log(
+      `No hay usuarios suscritos a la categoría ${publicacion.categoriaId}`
+    );
     return;
   }
 
@@ -168,6 +183,25 @@ export const notificarNuevaPublicacion = async (
     nombre: `Nueva publicación (${categoria?.nombre})`,
     descripcion: `${publicacion.contenidoBreve} - ${publicacion.autor}`,
     recipientes: seguidores,
-    publicacionId: publicacion.publicacionId
+    publicacionId: publicacion.publicacionId,
+  });
+};
+
+// ==========================================
+// Notificaciones de Nueva Actividad
+// ==========================================
+
+export const notificarNuevaActividad = async (
+  input: NotificarNuevaActividadInput
+) => {
+  const { nombreActividad, descripcionActividad, ubicacionEscrita } = input;
+
+  // Por ahora, notificación general para toda la comunidad (recipientes: [])
+  await modelNotificacion.create({
+    nombre: `Nueva actividad: ${nombreActividad}`,
+    descripcion: `${descripcionActividad} — ${ubicacionEscrita}`,
+    recipientes: [],
+    publicacionId: null,
+    tipo: "general",
   });
 };
