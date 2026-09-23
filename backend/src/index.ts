@@ -23,6 +23,7 @@ import notificacionesRoutes from "./routes/notificaciones.routes";
 import paqueteSuscripcionRoutes from "./routes/paqueteSuscripcion.routes";
 import publicidadRoutes from "./routes/publicidad.routes";
 import proyectosDestacadosRoutes from "./routes/proyectosDestacados.routes";
+import actividadesRoutes from "./routes/actividades.routes";
 
 // Rutas de PayPal
 import paypalRoutes from "./routes/paypal.routes";
@@ -111,6 +112,7 @@ app.use("/api/notificaciones", notificacionesRoutes);
 app.use("/api/paquetes-suscripcion", paqueteSuscripcionRoutes);
 app.use("/api/publicidad", publicidadRoutes);
 app.use("/api/boletines", boletinRoutes);
+app.use("/api/actividades", actividadesRoutes);
 
 /** Smoke test mínimo */
 app.get("/api/", (_req: Request, res: Response) => {
