@@ -236,6 +236,11 @@ export const deleteNotificacion = async (
       return;
     }
 
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(404).json({ message: "No se encontró la notificación" });
+      return;
+    }
+
     const userTipo = Number((req as any).user?.tipoUsuario);
     const isAdmin = userTipo === 0 || userTipo === 1;
 

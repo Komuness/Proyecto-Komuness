@@ -434,17 +434,19 @@ const Notificaciones = ({
                         title="Notificacion no vista"
                       />
                     )}
-                    <button
-                      className="text-slate-100 hover:text-red-300 transition-colors"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        eliminarNotificacion(ntf._id);
-                      }}
-                      aria-label="Eliminar notificación"
-                      title="Eliminar notificación"
-                    >
-                      <AiOutlineClose className="w-5 h-5" />
-                    </button>
+                    {esAdmin && (
+                      <button
+                        className="text-slate-100 hover:text-red-300 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          eliminarNotificacion(ntf._id);
+                        }}
+                        aria-label="Eliminar notificación"
+                        title="Eliminar notificación"
+                      >
+                        <AiOutlineClose className="w-5 h-5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
