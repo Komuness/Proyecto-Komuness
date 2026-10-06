@@ -17,18 +17,18 @@ if (BASE.endsWith("/api")) {
   BASE = BASE.slice(0, -4);
 }
 
-// EN DESARROLLO: Forzar localhost:5000
+// EN DESARROLLO: Usar REACT_APP_BACKEND_URL si está definida, si no localhost:5000
+// (en macOS el puerto 5000 lo ocupa AirPlay Receiver y responde 403)
 // EN PRODUCCIÓN: Usar el dominio configurado en el .env
-const FINAL_BASE_URL = isDevelopment ? "http://localhost:5000" : BASE;
+const DEV_BASE = process.env.REACT_APP_BACKEND_URL ? BASE : "http://localhost:5000";
+const FINAL_BASE_URL = isDevelopment ? DEV_BASE : BASE;
 
 // Exportar URLs
 export const BASE_URL = FINAL_BASE_URL; // p.ej. "http://localhost:5000" o "https://komuness.duckdns.org"
 export const API_URL = `${BASE_URL}/api`; // p.ej. "http://localhost:5000/api"
 
 // URL ESPECÍFICA para banco de profesionales - Mantener compatibilidad
-export const PROFESIONALES_API_URL = isDevelopment
-  ? "http://localhost:5000/api"
-  : `${BASE}/api`;
+export const PROFESIONALES_API_URL = `${FINAL_BASE_URL}/api`;
 
 // Debugging
 console.log("=== CONFIGURACIÓN DE API (CORREGIDA) ===");
