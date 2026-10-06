@@ -863,7 +863,7 @@ const EditarPerfil = () => {
                               ⓘ
                             </button>
                             {openPopupOrganizacion && (
-                              <div className="absolute left-0 top-full mt-2 w-64 rounded border bg-white p-2 shadow">
+                              <div className="absolute left-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] rounded border bg-white p-2 shadow">
                                 Incluye empresas, instituciones o proyectos
                                 relacionados, aunque no haya existido
                                 contratación directa en la organización.

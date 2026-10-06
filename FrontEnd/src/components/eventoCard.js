@@ -257,6 +257,9 @@ export const EventoCard = ({ publicacion, onDeleteClick }) => {
                   {publicacion.autor?.nombre || "Desconocido"}
                 </span>
               </p>
+              {publicacion.comunidad && (
+                <p className="fecha">Comunidad: {publicacion.comunidad}</p>
+              )}
             </div>
 
             {etiquetaExpiracion && (

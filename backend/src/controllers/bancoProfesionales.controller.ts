@@ -2,16 +2,20 @@ import { Request, Response } from 'express';
 import { modelPerfil } from '../models/perfil.model';
 import { modelUsuario } from '../models/usuario.model';
 
+const escapeRegExp = (value: string): string => {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
 /**
  * Obtener listado de profesionales aprobados para el banco
  * @route GET /api/banco-profesionales
  */
 export const obtenerProfesionales = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { search, page = 1, limit = 12 } = req.query;
-    
+    const { search, provincia, canton, page = 1, limit = 12 } = req.query;
+
     // Construir query base - solo perfiles que están en el banco y son públicos
-    const query: any = { 
+    const query: any = {
       enBancoProfesionales: true,
       perfilPublico: true
     };
@@ -24,6 +28,16 @@ export const obtenerProfesionales = async (req: Request, res: Response): Promise
         { ocupacionPrincipal: { $regex: search, $options: 'i' } },
         { especialidad: { $regex: search, $options: 'i' } }
       ];
+    }
+
+    // Filtro por provincia (coincidencia exacta, insensible a mayúsculas/acentos de caja)
+    if (provincia && typeof provincia === 'string' && provincia.trim() !== '') {
+      query.provincia = { $regex: `^${escapeRegExp(provincia.trim())}$`, $options: 'i' };
+    }
+
+    // Filtro por cantón/zona (coincidencia parcial)
+    if (canton && typeof canton === 'string' && canton.trim() !== '') {
+      query.canton = { $regex: escapeRegExp(canton.trim()), $options: 'i' };
     }
 
     const pageNum = parseInt(page as string);

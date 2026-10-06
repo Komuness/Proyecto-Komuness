@@ -129,6 +129,10 @@ const publicacionSchema = new mongoose_1.Schema({
     editHistory: {
         type: [editHistorySchema],
         default: []
+    },
+    recordatorioEnviado: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true,

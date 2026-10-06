@@ -222,7 +222,7 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
 
           {/* Espacio de imagen para publicaciones NO 'publicacion' */}
           {!esPublicacion && (
-            <div className="imagen h-48 bg-gray-200 flex items-center justify-center">
+            <div className="imagen bg-gray-200 flex items-center justify-center">
               {tieneImagenes ? (
                 <img
                   src={publicacion.adjunto[0]?.url}
@@ -240,7 +240,7 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
 
           {/* Espacio de imagen para publicaciones de tipo 'publicacion' */}
           {esPublicacion && (
-            <div className="imagen h-48 flex items-center justify-center">
+            <div className="imagen flex items-center justify-center">
               {tieneImagenes ? (
                 <img
                   src={publicacion.adjunto[0]?.url}
@@ -282,6 +282,9 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
                   </span>
                 </p>
                 <p className="fecha">Fecha: {formatFecha(publicacion.fecha)}</p>
+                {publicacion.comunidad && (
+                  <p className="fecha">Comunidad: {publicacion.comunidad}</p>
+                )}
               </div>
             )}
 
@@ -311,6 +314,9 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
                     Fecha del evento:{" "}
                     {formatFecha(publicacion.fechaEvento || publicacion.fecha)}
                   </p>
+                  {publicacion.comunidad && (
+                    <p className="fecha">Comunidad: {publicacion.comunidad}</p>
+                  )}
                 </div>
               )}
 
@@ -344,6 +350,11 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
                   <p className="tweet-date text-sm">
                     Fecha: {formatFecha(publicacion.fecha)}
                   </p>
+                  {publicacion.comunidad && (
+                    <p className="tweet-date text-sm">
+                      Comunidad: {publicacion.comunidad}
+                    </p>
+                  )}
                 </div>
               </div>
             )}

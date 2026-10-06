@@ -207,8 +207,13 @@
     font-size: 16px;
 }
 
+.boletines-table-wrapper {
+    overflow-x: auto;
+}
+
 .boletines-table {
     width: 100%;
+    min-width: 640px;
     border-collapse: collapse;
 }
 

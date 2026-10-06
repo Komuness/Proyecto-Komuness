@@ -21,6 +21,16 @@ import {
 } from 'react-icons/fa';
 import '../CSS/bancoProfesionales.css';
 
+const PROVINCIAS_CR = [
+  'San José',
+  'Alajuela',
+  'Cartago',
+  'Heredia',
+  'Guanacaste',
+  'Puntarenas',
+  'Limón',
+];
+
 const BancoProfesionales = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -28,6 +38,8 @@ const BancoProfesionales = () => {
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [provinciaFilter, setProvinciaFilter] = useState('');
+  const [cantonFilter, setCantonFilter] = useState('');
   const [estadoUsuario, setEstadoUsuario] = useState(null);
   const [cargandoEstado, setCargandoEstado] = useState(false);
   const [cargandoToggle, setCargandoToggle] = useState(false);
@@ -43,14 +55,18 @@ const BancoProfesionales = () => {
   });
 
   // Cargar profesionales - USAR PROFESIONALES_API_URL
-  const cargarProfesionales = useCallback(async (search = '') => {
+  const cargarProfesionales = useCallback(async (search = '', provincia = '', canton = '') => {
     try {
       setLoading(true);
-      const queryParams = search ? `?search=${encodeURIComponent(search)}` : '';
-      const response = await fetch(`${PROFESIONALES_API_URL}/banco-profesionales${queryParams}`); 
-      
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      if (provincia) params.set('provincia', provincia);
+      if (canton) params.set('canton', canton);
+      const queryParams = params.toString() ? `?${params.toString()}` : '';
+      const response = await fetch(`${PROFESIONALES_API_URL}/banco-profesionales${queryParams}`);
+
       if (!response.ok) throw new Error('Error al cargar profesionales');
-      
+
       const data = await response.json();
       setProfesionales(data);
     } catch (error) {
@@ -148,7 +164,7 @@ const BancoProfesionales = () => {
       toast.success(data.message);
       
       // Recargar lista si se unió o retiró
-      cargarProfesionales(searchTerm);
+      cargarProfesionales(searchTerm, provinciaFilter, cantonFilter);
 
     } catch (error) {
       console.error('Error:', error);
@@ -182,7 +198,7 @@ const quitarDelBanco = async (perfilId) => {
     toast.success('Profesional retirado del banco exitosamente');
     
     // Recargar lista
-    cargarProfesionales(searchTerm);
+    cargarProfesionales(searchTerm, provinciaFilter, cantonFilter);
   } catch (error) {
     console.error('Error detallado:', error);
     toast.error(error.message || 'Error al retirar del banco');
@@ -249,11 +265,11 @@ const quitarDelBanco = async (perfilId) => {
     if(activeTab !== 'profesionales') return;
 
     const timeoutId = setTimeout(() => {
-      cargarProfesionales(searchTerm);
+      cargarProfesionales(searchTerm, provinciaFilter, cantonFilter);
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, cargarProfesionales]);
+  }, [searchTerm, provinciaFilter, cantonFilter, cargarProfesionales]);
 
   // Cargar estado del usuario al montar
   useEffect(() => {
@@ -303,8 +319,8 @@ const quitarDelBanco = async (perfilId) => {
         )}
       </div>
 
-      {/* Barra de búsqueda */}
-      <div className="search-container">
+      {/* Barra de búsqueda y filtros de ubicación */}
+      <div className="search-container flex flex-wrap items-center gap-2">
         <div className="search-box flex items-center bg-white border border-gray-300 rounded-lg p-3 relative w-full max-w-md">
           <FaSearch className="text-gray-400 w-4 h-4 mr-2 flex-shrink-0" />
           <input
@@ -315,11 +331,46 @@ const quitarDelBanco = async (perfilId) => {
             className="flex-1 outline-none text-gray-800 py-1"
           />
           {searchTerm && (
-            <button 
+            <button
               onClick={() => setSearchTerm('')}
               className="absolute right-2 text-gray-400 hover:text-gray-600 flex items-center justify-center w-5 h-5"
             >
                <FaTimes className="w-3 h-3" />
+            </button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-2">
+          <FaMapMarkerAlt className="text-gray-400 w-4 h-4 flex-shrink-0" />
+          <select
+            value={provinciaFilter}
+            onChange={(e) => setProvinciaFilter(e.target.value)}
+            className="outline-none text-gray-800 bg-transparent"
+            title="Filtrar por provincia"
+          >
+            <option value="">Todas las provincias</option>
+            {PROVINCIAS_CR.map((prov) => (
+              <option key={prov} value={prov}>
+                {prov}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="search-box flex items-center bg-white border border-gray-300 rounded-lg p-3 relative w-full max-w-xs">
+          <input
+            type="text"
+            placeholder="Filtrar por cantón/zona..."
+            value={cantonFilter}
+            onChange={(e) => setCantonFilter(e.target.value)}
+            className="flex-1 outline-none text-gray-800 py-1"
+          />
+          {cantonFilter && (
+            <button
+              onClick={() => setCantonFilter('')}
+              className="absolute right-2 text-gray-400 hover:text-gray-600 flex items-center justify-center w-5 h-5"
+            >
+              <FaTimes className="w-3 h-3" />
             </button>
           )}
         </div>
@@ -469,8 +520,8 @@ const quitarDelBanco = async (perfilId) => {
           <h3>No se encontraron profesionales</h3>
 
           <p>
-            {searchTerm
-              ? "No hay profesionales que coincidan con tu búsqueda."
+            {searchTerm || provinciaFilter || cantonFilter
+              ? "No hay profesionales que coincidan con tu búsqueda o filtros de ubicación."
               : "Aún no hay profesionales en el banco."}
           </p>
 
@@ -490,9 +541,9 @@ const quitarDelBanco = async (perfilId) => {
       // MAP USUARIOS
       <div className="tab-table-container mx-auto w-[80%] h-full flex flex-col">
         {usuariosFiltrados && usuariosFiltrados.length > 0 ? (
-          <div className="flex-1 overflow-y-auto w-full flex justify-center" style={{ maxHeight: "400px" }}>
+          <div className="flex-1 overflow-y-auto overflow-x-auto w-full flex justify-start sm:justify-center" style={{ maxHeight: "400px" }}>
             <div className="min-w-full">
-              <table className="responsive-table min-w-full">
+              <table className="responsive-table min-w-[320px]">
                 <thead className="sticky top-0 bg-gray-100">
                   <tr>
                     <th className="text-left px-3 py-2 min-w-[120px]">

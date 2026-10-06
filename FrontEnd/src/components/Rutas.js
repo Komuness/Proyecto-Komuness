@@ -5,7 +5,7 @@ import {
   Navigate,
 } from "react-router-dom";
 
-import { InicioPrincipal } from "./InicioPrincipal";
+import { PantallaInicio } from "./PantallaInicio";
 import { LandingPage } from "./landingPage";
 import { PerfilUsuario } from "./perfilUsuario";
 import { PublicacionDetalle } from "./publicacionDetalle";
@@ -37,7 +37,7 @@ export const Rutas = () => {
       <Navbar />
       <EncuestaInicioModal />
       <Routes>
-        <Route path="/" element={<InicioPrincipal />} />
+        <Route path="/" element={<PantallaInicio />} />
         <Route path="/eventos" element={<LandingPage tag="evento" />} />
         <Route
           path="/publicaciones"
@@ -57,7 +57,11 @@ export const Rutas = () => {
         <Route path="/calendario" element={<CalendarView />} />
         <Route path="/admin/categorias" element={<AdminCategorias />} />
         <Route path="/admin/boletines" element={<AdminBoletines />} />
-        <Route path="/acerca-de" element={<AcercaDe />} />
+        {/* Antes era la vista pública de "Quiénes somos"; ahora vive en "/".
+            Se conserva solo como acceso de administración para editar el
+            contenido (título, misión, equipo, donaciones, etc.). */}
+        <Route path="/admin/acerca-de" element={<AcercaDe />} />
+        <Route path="/acerca-de" element={<Navigate to="/#quienes-somos" replace />} />
         <Route path="/checkout-premium" element={<CheckoutPremium />} />
         <Route path="/perfil/:id" element={<PerfilPublico />} />
         <Route path="/mi-perfil/editar" element={<EditarPerfil />} />

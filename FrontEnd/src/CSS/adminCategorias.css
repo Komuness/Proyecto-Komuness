@@ -14,28 +14,39 @@
 /* Header */
 
 .admin-categorias-header {
-    position: relative;
     display: flex;
-    justify-content: center;
     align-items: center;
+    gap: 0.5rem;
     margin-bottom: 2rem;
     width: 100%;
 }
 
 .admin-categorias-back-btn {
-    position: absolute;
-    left: 0;
+    flex-shrink: 0;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
+.admin-categorias-header-spacer {
+    flex-shrink: 0;
+    width: 33px;
+}
+
 .admin-categorias-title {
+    flex: 1;
+    min-width: 0;
     margin: 0;
     color: white;
     font-size: 2rem;
     font-weight: 700;
     text-align: center;
+}
+
+@media (max-width: 480px) {
+    .admin-categorias-title {
+        font-size: 1.35rem;
+    }
 }
 
 .admin-categorias-back-btn:hover {
@@ -256,12 +267,6 @@
 }
 
 @media (min-width: 768px) {
-    .admin-categorias-header {
-        position: relative;
-        justify-content: center;
-        align-items: center;
-    }
-
     .admin-categorias-th {
         padding: 1rem;
     }

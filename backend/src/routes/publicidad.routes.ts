@@ -1,5 +1,7 @@
 import { Router } from "express";
 import multer from "multer";
+import { authMiddleware } from "../middlewares/auth.middleware";
+import { verificarRoles } from "../middlewares/roles.middleware";
 
 const upload = multer();
 import {
@@ -9,8 +11,7 @@ import {
     updatePublicidad,
 } from "../controllers/publicidad.controller";
 
-import { authMiddleware } from "../middlewares/auth.middleware";
-import { verificarRoles } from "../middlewares/roles.middleware";
+
 
 const router = Router();
 
