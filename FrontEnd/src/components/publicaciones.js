@@ -19,6 +19,7 @@ import LimitePublicaciones from "./limiteDePublicaciones";
 import PublicidadModal from "./publicidadModal";
 import DateFilter from "./generic/dateFilter";
 import PriceFilter from "./generic/priceFilter";
+import ComunidadFilter from "./generic/comunidadFilter";
 import CarruselGenerico from "./CarruselGenerico";
 
 // Base de API robusta (evita /api/api)
@@ -49,6 +50,7 @@ export const Publicaciones = ({ tag: propTag }) => {
   const fechaFinFilter = searchParams.get("fechaFin");
   const precioMin = searchParams.get("precioMin");
   const precioMax = searchParams.get("precioMax");
+  const comunidadFilter = searchParams.get("comunidad");
 
   const isSearch = searchParams.get("search") === "true";
   const searchFilter = isSearch ? searchTerm : null;
@@ -125,6 +127,7 @@ export const Publicaciones = ({ tag: propTag }) => {
         fechaFin: fechaFinFilter,
         precioMin: precioMin,
         precioMax: precioMax,
+        comunidad: comunidadFilter,
       });
   }, [
     tag,
@@ -134,6 +137,7 @@ export const Publicaciones = ({ tag: propTag }) => {
     fechaFinFilter,
     precioMin,
     precioMax,
+    comunidadFilter,
     user,
   ]);
 
@@ -356,6 +360,7 @@ export const Publicaciones = ({ tag: propTag }) => {
       fechaFin: fechaFinFilter,
       precioMin: precioMin,
       precioMax: precioMax,
+      comunidad: comunidadFilter,
     });
   };
 
@@ -466,6 +471,9 @@ export const Publicaciones = ({ tag: propTag }) => {
 
               {/* Filtro de fecha de evento/publicación */}
               <DateFilter />
+
+              {/* Filtro por comunidad/ubicación */}
+              <ComunidadFilter />
 
               {/* Filtro para precio regular */}
               {tag !== "publicacion" && <PriceFilter />}
@@ -609,6 +617,7 @@ export const Publicaciones = ({ tag: propTag }) => {
             fechaFin: fechaFinFilter,
             precioMin: precioMin,
             precioMax: precioMax,
+            comunidad: comunidadFilter,
           }}
         />
       )}

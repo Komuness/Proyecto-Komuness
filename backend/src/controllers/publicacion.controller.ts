@@ -541,11 +541,12 @@ export const getPublicacionesByTag = async (
   try {
     const offset = parseInt(req.query.offset as string) || 0;
     const limit = parseInt(req.query.limit as string) || 10;
-    const { tag, publicado, categoria, fechaInicio, fechaFin, precioMin, precioMax } =
+    const { tag, publicado, categoria, comunidad, fechaInicio, fechaFin, precioMin, precioMax } =
       req.query as {
         tag?: string;
         publicado?: string;
         categoria?: string;
+        comunidad?: string;
         fechaInicio?: string;
         fechaFin?: string;
         precioMin?: number;
@@ -556,6 +557,7 @@ export const getPublicacionesByTag = async (
     if (tag) query.tag = tag;
     if (publicado !== undefined) query.publicado = publicado === "true";
     if (categoria) query.categoria = categoria;
+    if (comunidad) query.comunidad = { $regex: comunidad as string, $options: "i" };
 
     const fechaFiltro = buildFechaFilter(fechaInicio, fechaFin, tag);
     if (fechaFiltro) {
@@ -1176,11 +1178,12 @@ export const searchPublicacionesAvanzada = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const { q, tag, categoria, fechaInicio, fechaFin, offset = 0, limit = 12 } =
+    const { q, tag, categoria, comunidad, fechaInicio, fechaFin, offset = 0, limit = 12 } =
       req.query as {
         q?: string;
         tag?: string;
         categoria?: string;
+        comunidad?: string;
         fechaInicio?: string;
         fechaFin?: string;
         offset?: string | number;
@@ -1206,6 +1209,10 @@ export const searchPublicacionesAvanzada = async (
     // Filtros adicionales
     if (tag) query.tag = tag;
     if (categoria) query.categoria = categoria;
+    // Búsqueda por ubicación/comunidad, independiente del texto general
+    if (comunidad && comunidad.trim() !== "") {
+      query.comunidad = { $regex: comunidad.trim(), $options: "i" };
+    }
 
     const fechaFiltro = buildFechaFilter(fechaInicio, fechaFin, tag);
     if (fechaFiltro) {

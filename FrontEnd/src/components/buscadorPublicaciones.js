@@ -98,6 +98,7 @@ export const BuscadorPublicaciones = () => {
     const categoria = searchParams.get("categoria");
     const fechaInicio = searchParams.get("fechaInicio");
     const fechaFin = searchParams.get("fechaFin");
+    const comunidad = searchParams.get("comunidad");
 
     const newSearchParams = new URLSearchParams();
 
@@ -111,6 +112,10 @@ export const BuscadorPublicaciones = () => {
 
     if (fechaFin) {
       newSearchParams.set("fechaFin", fechaFin);
+    }
+
+    if (comunidad) {
+      newSearchParams.set("comunidad", comunidad);
     }
 
     newSearchParams.set("q", searchTerm.trim());

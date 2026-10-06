@@ -128,7 +128,8 @@ export const CarruselGenerico = ({ tipo, filtros }) => {
         filtros.fechaInicio ||
         filtros.fechaFin ||
         filtros.precioMin ||
-        filtros.precioMax)
+        filtros.precioMax ||
+        filtros.comunidad)
   );
 
   const [items, setItems] = useState([]);
@@ -159,6 +160,9 @@ export const CarruselGenerico = ({ tipo, filtros }) => {
         }
         if (filtros?.precioMax) {
           params.set("precioMax", String(filtros.precioMax));
+        }
+        if (filtros?.comunidad) {
+          params.set("comunidad", filtros.comunidad);
         }
 
         const itemsRes = await fetch(
