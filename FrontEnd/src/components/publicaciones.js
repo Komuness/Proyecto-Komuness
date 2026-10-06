@@ -21,6 +21,7 @@ import DateFilter from "./generic/dateFilter";
 import PriceFilter from "./generic/priceFilter";
 import ComunidadFilter from "./generic/comunidadFilter";
 import CarruselGenerico from "./CarruselGenerico";
+import CalendarView from "./Calendar";
 
 // Base de API robusta (evita /api/api)
 const RAW = process.env.REACT_APP_BACKEND_URL || window.location.origin;
@@ -60,9 +61,7 @@ export const Publicaciones = ({ tag: propTag }) => {
   // El carrusel se muestra siempre que no haya una búsqueda activa
   // (los filtros de categoría/fecha/precio se aplican dentro del carrusel)
   const mostrarCarrusel =
-    tag === "evento" ||
-    tag === "emprendimiento" ||
-    tag === "publicacion";
+    tag === "evento" || tag === "emprendimiento" || tag === "publicacion";
 
   //Estado del banco de profesionales
   const [estadoUsuario, setEstadoUsuario] = useState(null);
@@ -490,12 +489,12 @@ export const Publicaciones = ({ tag: propTag }) => {
         </div>
       </div>
 
-{/*PUBLICIDAD*/}
-        <div className="w-full flex flex-col items-center justify-center gap-2 py-4 px-3 sm:px-6 md:px-10 lg:px-16 mt-4 rounded-xl bg-white/10">
-          {publicidad && publicidad.length > 0 && (
-            <div className="w-full max-w-[1920px] mx-auto relative bg-gray-800 rounded-2xl shadow-2xl overflow-hidden py-4">
-              {/*CARRUSEL*/}
-              <div className="relative w-full max-w-full h-[200px] sm:h-[260px] md:h-[360px] lg:h-[540px] mx-auto rounded-xl">
+      {/*PUBLICIDAD*/}
+      <div className="w-full flex flex-col items-center justify-center gap-2 py-4 px-3 sm:px-6 md:px-10 lg:px-16 mt-4 rounded-xl bg-white/10">
+        {publicidad && publicidad.length > 0 && (
+          <div className="w-full max-w-[1920px] mx-auto relative bg-gray-800 rounded-2xl shadow-2xl overflow-hidden py-4">
+            {/*CARRUSEL*/}
+            <div className="relative w-full max-w-full h-[200px] sm:h-[260px] md:h-[360px] lg:h-[540px] mx-auto rounded-xl">
               {/*Imagen*/}
               <img
                 src={publicidad[currentPublicidadIndex]?.imagen}
@@ -621,6 +620,15 @@ export const Publicaciones = ({ tag: propTag }) => {
           }}
         />
       )}
+      {/* Calendario de eventos: solo en la cartelera y cuando no hay búsqueda activa */}
+      {tag === "evento" && !searchFilter && (
+  <section
+    className="w-full max-w-7xl mx-auto px-2 md:px-4 py-6"
+    style={{ overflowAnchor: "none", contain: "layout" }}
+  >
+    <CalendarView />
+  </section>
+)}
 
       {(!mostrarCarrusel || searchFilter) && (
         <div

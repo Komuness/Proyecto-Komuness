@@ -16,7 +16,6 @@ import { IniciarSesion } from "./iniciarSesion";
 import { RecuperarContra } from "./recuperarContra";
 import { NuevaContra } from "./nuevaContra";
 import { CrearUsuario } from "./crearUsuario";
-import CalendarView from "./Calendar";
 import AdminCategorias from "./adminCategorias";
 import AdminBoletines from "./adminBoletines";
 import AcercaDe from "./AcercaDe";
@@ -54,7 +53,7 @@ export const Rutas = () => {
         <Route path="/recuperar" element={<RecuperarContra />} />
         <Route path="/nuevaCont" element={<NuevaContra />} />
         <Route path="/crearUsr" element={<CrearUsuario />} />
-        <Route path="/calendario" element={<CalendarView />} />
+        <Route path="/calendario" element={<Navigate to="/eventos" replace />} />
         <Route path="/admin/categorias" element={<AdminCategorias />} />
         <Route path="/admin/boletines" element={<AdminBoletines />} />
         {/* Antes era la vista pública de "Quiénes somos"; ahora vive en "/".
