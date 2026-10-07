@@ -16,7 +16,7 @@ import {
   FaChevronUp,
   FaPlus,
   FaTrash,
-  FaTags 
+  FaTags,
 } from "react-icons/fa";
 import {
   readSessionDraft,
@@ -72,6 +72,71 @@ const mergePerfilDraft = (basePerfil, draft) => {
   };
 };
 
+/* ---------- Validaciones ---------- */
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const URL_REGEX = /^https?:\/\/[^\s.]+\.[^\s]{2,}$/i;
+const TEL_REGEX = /^\+?[\d\s-]{8,15}$/;
+const ANIO_ACTUAL = new Date().getFullYear();
+
+const validarAnios = (item, prefix, errores) => {
+  const inicio = Number(item.añoInicio);
+  const fin = item.añoFin === "" || item.añoFin == null ? null : Number(item.añoFin);
+
+  if (!inicio || inicio < 1950 || inicio > ANIO_ACTUAL) {
+    errores[`${prefix}.añoInicio`] = `Ingresa un año entre 1950 y ${ANIO_ACTUAL}`;
+  }
+  if (fin !== null && (fin < inicio || fin > ANIO_ACTUAL + 10)) {
+    errores[`${prefix}.añoFin`] = "El año fin no puede ser menor al de inicio";
+  }
+};
+
+const validarPerfil = (p) => {
+  const e = {};
+
+  if (!p.nombre?.trim()) e.nombre = "El nombre es requerido";
+  if (!p.apellidos?.trim()) e.apellidos = "Los apellidos son requeridos";
+  if (p.correoSecundario && !EMAIL_REGEX.test(p.correoSecundario.trim()))
+    e.correoSecundario = "Ingresa un correo válido";
+  if (p.telefono && !TEL_REGEX.test(p.telefono.trim()))
+    e.telefono = "Ingresa un teléfono válido (8 a 15 dígitos)";
+
+  if (p.urlPortafolio && !URL_REGEX.test(p.urlPortafolio.trim()))
+    e.urlPortafolio = "Ingresa una URL válida que empiece con https://";
+
+  Object.entries(p.redesSociales || {}).forEach(([red, url]) => {
+    if (url && !URL_REGEX.test(url.trim()))
+      e[`redes.${red}`] = "Ingresa una URL válida que empiece con https://";
+  });
+
+  p.formacionAcademica.forEach((f, i) => {
+    if (!f.institucion?.trim()) e[`formacion.${i}.institucion`] = "Requerida";
+    if (!f.titulo?.trim()) e[`formacion.${i}.titulo`] = "Requerido";
+    validarAnios(f, `formacion.${i}`, e);
+  });
+
+  p.experienciaLaboral.forEach((x, i) => {
+    if (!x.empresa?.trim()) e[`experiencia.${i}.empresa`] = "Requerida";
+    if (!x.cargo?.trim()) e[`experiencia.${i}.cargo`] = "Requerido";
+    validarAnios(x, `experiencia.${i}`, e);
+  });
+
+  p.proyectos.forEach((pr, i) => {
+    if (!pr.nombre?.trim()) e[`proyecto.${i}.nombre`] = "Requerido";
+    if (pr.url && !URL_REGEX.test(pr.url.trim()))
+      e[`proyecto.${i}.url`] = "Ingresa una URL válida que empiece con https://";
+  });
+
+  return e;
+};
+
+const seccionDeError = (key) => {
+  if (["nombre", "apellidos", "correoSecundario", "telefono"].includes(key))
+    return "personal";
+  if (key.startsWith("formacion")) return "formacion";
+  if (key.startsWith("experiencia")) return "experiencia";
+  return "enlaces"; // urlPortafolio, redes.*, proyecto.*
+};
+
 const EditarPerfil = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -83,7 +148,14 @@ const EditarPerfil = () => {
   const [draftStorageKey] = useState(() =>
     getProfileDraftStorageKey(getStoredUserId()),
   );
-  const [etiquetas, setEtiquetas] = useState(null);
+  const [etiquetas, setEtiquetas] = useState([]);
+  const [errores, setErrores] = useState({});
+
+  const claseGrupo = (key, extra = "") =>
+    `form-group${extra ? ` ${extra}` : ""}${errores[key] ? " has-error" : ""}`;
+
+  const msgError = (key) =>
+    errores[key] ? <p className="field-error">{errores[key]}</p> : null;
 
   // Secciones expandibles
   const [seccionesAbiertas, setSeccionesAbiertas] = useState({
@@ -137,8 +209,6 @@ const EditarPerfil = () => {
     writeSessionDraft(draftStorageKey, { perfil });
   }, [loading, draftCargado, draftStorageKey, perfil, hasChanges]);
 
-  useEffect(() => {}, [perfil.fotoPerfil]);
-
   const cargarPerfil = async () => {
     const savedDraft = readSessionDraft(draftStorageKey);
     const shouldLoadDraft = savedDraft?.perfil
@@ -169,36 +239,28 @@ const EditarPerfil = () => {
 
       const data = await response.json();
       const { usuarioId, ...perfilData } = data.data;
+
       setPerfil((prev) =>
         mergePerfilDraft(
           {
             ...prev,
             ...perfilData,
-            redesSociales: perfilData.redesSociales || prev.redesSociales,
+            formacionAcademica: perfilData.formacionAcademica || [],
+            experienciaLaboral: perfilData.experienciaLaboral || [],
+            habilidades: perfilData.habilidades || [],
+            proyectos: perfilData.proyectos || [],
+            redesSociales: {
+              ...prev.redesSociales,
+              ...(perfilData.redesSociales || {}),
+            },
+            etiquetas: usuarioId?.encuestaInicio?.etiquetas || [],
           },
           shouldLoadDraft ? savedDraft : null,
         ),
       );
-      if (shouldLoadDraft) {
-        setHasChanges(true);
-      } else {
-        setHasChanges(false);
-      }
-      setPerfil({
-        ...perfil,
-        ...perfilData,
-        redesSociales: perfilData.redesSociales || perfil.redesSociales,
-      });
+      setHasChanges(!!shouldLoadDraft);
 
-      setPerfil({
-        ...perfilData,
-        etiquetas: usuarioId.encuestaInicio.etiquetas,
-      });
-
-
-      //Agregar todas las etiquetas correctamente
       fetchEtiquetas();
-
     } catch (error) {
       if (shouldLoadDraft && savedDraft?.perfil) {
         setPerfil((prev) => mergePerfilDraft(prev, savedDraft));
@@ -213,15 +275,15 @@ const EditarPerfil = () => {
   };
 
   const markHasChanges = () => setHasChanges(true);
+
   const fetchEtiquetas = async () => {
-      try {
-        const response = await fetch(`${API_URL}/elements/etiqueta?limit=100`);
-        const data = await response.json();
-        setEtiquetas(data.data || []);
-        
-      } catch (error) {
-        console.error("Error al cargar etiquetas:", error);
-      }
+    try {
+      const response = await fetch(`${API_URL}/elements/etiqueta?limit=100`);
+      const data = await response.json();
+      setEtiquetas(data.data || []);
+    } catch (error) {
+      console.error("Error al cargar etiquetas:", error);
+    }
   };
 
   const toggleSeccion = (seccion) => {
@@ -234,6 +296,7 @@ const EditarPerfil = () => {
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
     markHasChanges();
+    setErrores((prev) => ({ ...prev, [name]: undefined }));
     setPerfil((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -243,6 +306,7 @@ const EditarPerfil = () => {
   const handleRedesSocialesChange = (e) => {
     const { name, value } = e.target;
     markHasChanges();
+    setErrores((prev) => ({ ...prev, [`redes.${name}`]: undefined }));
     setPerfil((prev) => ({
       ...prev,
       redesSociales: {
@@ -271,6 +335,7 @@ const EditarPerfil = () => {
 
   const eliminarFormacion = (index) => {
     markHasChanges();
+    setErrores({});
     setPerfil((prev) => ({
       ...prev,
       formacionAcademica: prev.formacionAcademica.filter((_, i) => i !== index),
@@ -279,6 +344,7 @@ const EditarPerfil = () => {
 
   const handleFormacionChange = (index, field, value) => {
     markHasChanges();
+    setErrores((prev) => ({ ...prev, [`formacion.${index}.${field}`]: undefined }));
     setPerfil((prev) => ({
       ...prev,
       formacionAcademica: prev.formacionAcademica.map((item, i) =>
@@ -307,6 +373,7 @@ const EditarPerfil = () => {
 
   const eliminarExperiencia = (index) => {
     markHasChanges();
+    setErrores({});
     setPerfil((prev) => ({
       ...prev,
       experienciaLaboral: prev.experienciaLaboral.filter((_, i) => i !== index),
@@ -315,6 +382,7 @@ const EditarPerfil = () => {
 
   const handleExperienciaChange = (index, field, value) => {
     markHasChanges();
+    setErrores((prev) => ({ ...prev, [`experiencia.${index}.${field}`]: undefined }));
     setPerfil((prev) => ({
       ...prev,
       experienciaLaboral: prev.experienciaLaboral.map((item, i) =>
@@ -356,6 +424,7 @@ const EditarPerfil = () => {
 
   const eliminarProyecto = (index) => {
     markHasChanges();
+    setErrores({});
     setPerfil((prev) => ({
       ...prev,
       proyectos: prev.proyectos.filter((_, i) => i !== index),
@@ -364,6 +433,7 @@ const EditarPerfil = () => {
 
   const handleProyectoChange = (index, field, value) => {
     markHasChanges();
+    setErrores((prev) => ({ ...prev, [`proyecto.${index}.${field}`]: undefined }));
     setPerfil((prev) => ({
       ...prev,
       proyectos: prev.proyectos.map((item, i) =>
@@ -373,26 +443,54 @@ const EditarPerfil = () => {
   };
 
   const toggleEtiqueta = (id) => {
+    markHasChanges();
     const selected = perfil.etiquetas || [];
     const nextEtiquetas = selected.includes(id)
       ? selected.filter((etiquetaId) => etiquetaId !== id)
       : [...selected, id];
 
     setPerfil((prev) => ({
-        ...prev,
-        etiquetas: nextEtiquetas,
-      }));
+      ...prev,
+      etiquetas: nextEtiquetas,
+    }));
   };
 
+  const parseAnio = (value) => (value ? parseInt(value) : "");
+
   const handleGuardarCambios = async () => {
+    const nuevosErrores = validarPerfil(perfil);
+    setErrores(nuevosErrores);
+
+    const claves = Object.keys(nuevosErrores);
+    if (claves.length > 0) {
+      // Abrir las secciones con errores y llevar al primer campo
+      setSeccionesAbiertas((prev) => {
+        const next = { ...prev };
+        claves.forEach((k) => {
+          next[seccionDeError(k)] = true;
+        });
+        return next;
+      });
+      toast.error("Revisa los campos marcados antes de guardar");
+      setTimeout(() => {
+        document
+          .querySelector(".has-error")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+      return;
+    }
+
+    const confirmado = await confirm({
+      title: "Guardar cambios",
+      message: "¿Deseas guardar los cambios en tu perfil?",
+      hint: "Tu información pública se actualizará de inmediato.",
+      confirmText: "Guardar",
+      cancelText: "Revisar",
+    });
+    if (!confirmado) return;
+
     try {
       setGuardando(true);
-
-      // Validaciones básicas
-      if (!perfil.nombre || !perfil.apellidos) {
-        toast.error("Nombre y apellidos son requeridos");
-        return;
-      }
 
       const response = await fetch(`${API_URL}/perfil`, {
         method: "POST",
@@ -410,9 +508,7 @@ const EditarPerfil = () => {
       toast.success("Perfil actualizado exitosamente");
       removeSessionDraft(draftStorageKey);
       setHasChanges(false);
-
-      // Opcional: navegar al perfil público
-      // navigate(`/perfil/${perfil.usuarioId}`);
+      setErrores({});
     } catch (error) {
       toast.error("Error al guardar los cambios");
       console.error(error);
@@ -442,22 +538,12 @@ const EditarPerfil = () => {
 
       const data = await response.json();
 
-      // Actualizar el estado con la nueva foto
-      setPerfil((prev) => {
-        const nuevoEstado = { ...prev, fotoPerfil: data.fotoPerfil };
-
-        return nuevoEstado;
-      });
+      setPerfil((prev) => ({ ...prev, fotoPerfil: data.fotoPerfil }));
       markHasChanges();
-
-      // Recargar el perfil completo para asegurar sincronización
-
-      await cargarPerfil();
 
       toast.success("Foto de perfil actualizada");
     } catch (error) {
-      console.error("=== ERROR EN SUBIDA ===");
-      console.error("Error completo:", error);
+      console.error("Error en subida de foto:", error);
       toast.error(error.message || "Error al subir la foto");
       throw error;
     }
@@ -465,18 +551,12 @@ const EditarPerfil = () => {
 
   const handleFotoEliminada = async () => {
     try {
-      // Actualizar estado localmente
-      setPerfil((prev) => {
-        const nuevoEstado = { ...prev, fotoPerfil: "" };
-
-        return nuevoEstado;
-      });
+      setPerfil((prev) => ({ ...prev, fotoPerfil: "" }));
       markHasChanges();
 
       toast.success("Foto de perfil eliminada");
     } catch (error) {
-      console.error("=== ERROR AL ELIMINAR ===");
-      console.error("Error:", error);
+      console.error("Error al eliminar la foto:", error);
       toast.error("Error al eliminar la foto");
       throw error;
     }
@@ -568,7 +648,7 @@ const EditarPerfil = () => {
                 <p className="profile-role">
                   {perfil.ocupacionPrincipal || "Sin ocupación"}
                 </p>
-                <p className="text-sm text-gray-600 mt-2 text-center">
+                <p className="text-sm text-gray-300 mt-2 text-center">
                   Haz hover sobre la foto para cambiarla
                 </p>
               </div>
@@ -607,29 +687,29 @@ const EditarPerfil = () => {
               {seccionesAbiertas.personal && (
                 <div className="form-section-content">
                   <div className="form-grid">
-                    <div className="form-group">
+                    <div className={claseGrupo("nombre")}>
                       <label>Nombre *</label>
                       <input
                         type="text"
                         name="nombre"
                         value={perfil.nombre}
                         onChange={handleInputChange}
-                        required
                       />
+                      {msgError("nombre")}
                     </div>
 
-                    <div className="form-group">
+                    <div className={claseGrupo("apellidos")}>
                       <label>Apellidos *</label>
                       <input
                         type="text"
                         name="apellidos"
                         value={perfil.apellidos}
                         onChange={handleInputChange}
-                        required
                       />
+                      {msgError("apellidos")}
                     </div>
 
-                    <div className="form-group">
+                    <div className={claseGrupo("correoSecundario")}>
                       <label>Correo Secundario</label>
                       <input
                         type="email"
@@ -637,9 +717,10 @@ const EditarPerfil = () => {
                         value={perfil.correoSecundario}
                         onChange={handleInputChange}
                       />
+                      {msgError("correoSecundario")}
                     </div>
 
-                    <div className="form-group">
+                    <div className={claseGrupo("telefono")}>
                       <label>Teléfono</label>
                       <input
                         type="tel"
@@ -647,6 +728,7 @@ const EditarPerfil = () => {
                         value={perfil.telefono}
                         onChange={handleInputChange}
                       />
+                      {msgError("telefono")}
                     </div>
 
                     <div className="form-group">
@@ -747,7 +829,7 @@ const EditarPerfil = () => {
                   {perfil.formacionAcademica.map((formacion, index) => (
                     <div key={index} className="array-item">
                       <div className="form-grid">
-                        <div className="form-group">
+                        <div className={claseGrupo(`formacion.${index}.institucion`)}>
                           <label>Institución</label>
                           <input
                             type="text"
@@ -760,9 +842,10 @@ const EditarPerfil = () => {
                               )
                             }
                           />
+                          {msgError(`formacion.${index}.institucion`)}
                         </div>
 
-                        <div className="form-group">
+                        <div className={claseGrupo(`formacion.${index}.titulo`)}>
                           <label>Título</label>
                           <input
                             type="text"
@@ -775,9 +858,10 @@ const EditarPerfil = () => {
                               )
                             }
                           />
+                          {msgError(`formacion.${index}.titulo`)}
                         </div>
 
-                        <div className="form-group">
+                        <div className={claseGrupo(`formacion.${index}.añoInicio`)}>
                           <label>Año Inicio</label>
                           <input
                             type="number"
@@ -786,13 +870,14 @@ const EditarPerfil = () => {
                               handleFormacionChange(
                                 index,
                                 "añoInicio",
-                                parseInt(e.target.value),
+                                parseAnio(e.target.value),
                               )
                             }
                           />
+                          {msgError(`formacion.${index}.añoInicio`)}
                         </div>
 
-                        <div className="form-group">
+                        <div className={claseGrupo(`formacion.${index}.añoFin`)}>
                           <label>Año Fin</label>
                           <input
                             type="number"
@@ -801,11 +886,12 @@ const EditarPerfil = () => {
                               handleFormacionChange(
                                 index,
                                 "añoFin",
-                                e.target.value ? parseInt(e.target.value) : "",
+                                parseAnio(e.target.value),
                               )
                             }
                             placeholder="Dejar vacío si continúa"
                           />
+                          {msgError(`formacion.${index}.añoFin`)}
                         </div>
                       </div>
 
@@ -851,10 +937,11 @@ const EditarPerfil = () => {
                   {perfil.experienciaLaboral.map((experiencia, index) => (
                     <div key={index} className="array-item">
                       <div className="form-grid">
-                        <div className="form-group">
+                        <div className={claseGrupo(`experiencia.${index}.empresa`)}>
                           <label className="relative inline-flex items-center gap-2">
                             <span>Organización</span>
                             <button
+                              type="button"
                               onClick={() =>
                                 setOpenPopupOrganizacion(!openPopupOrganizacion)
                               }
@@ -863,7 +950,7 @@ const EditarPerfil = () => {
                               ⓘ
                             </button>
                             {openPopupOrganizacion && (
-                              <div className="absolute left-0 top-full mt-2 w-64 max-w-[calc(100vw-2rem)] rounded border bg-white p-2 shadow">
+                              <div className="absolute left-0 top-full z-10 mt-2 w-64 max-w-[calc(100vw-2rem)] rounded border bg-white p-2 text-sm text-gray-800 shadow">
                                 Incluye empresas, instituciones o proyectos
                                 relacionados, aunque no haya existido
                                 contratación directa en la organización.
@@ -881,9 +968,10 @@ const EditarPerfil = () => {
                               )
                             }
                           />
+                          {msgError(`experiencia.${index}.empresa`)}
                         </div>
 
-                        <div className="form-group">
+                        <div className={claseGrupo(`experiencia.${index}.cargo`)}>
                           <label>Rol Desempeñado</label>
                           <input
                             type="text"
@@ -896,9 +984,10 @@ const EditarPerfil = () => {
                               )
                             }
                           />
+                          {msgError(`experiencia.${index}.cargo`)}
                         </div>
 
-                        <div className="form-group">
+                        <div className={claseGrupo(`experiencia.${index}.añoInicio`)}>
                           <label>Año Inicio</label>
                           <input
                             type="number"
@@ -907,13 +996,14 @@ const EditarPerfil = () => {
                               handleExperienciaChange(
                                 index,
                                 "añoInicio",
-                                parseInt(e.target.value),
+                                parseAnio(e.target.value),
                               )
                             }
                           />
+                          {msgError(`experiencia.${index}.añoInicio`)}
                         </div>
 
-                        <div className="form-group">
+                        <div className={claseGrupo(`experiencia.${index}.añoFin`)}>
                           <label>Año Fin</label>
                           <input
                             type="number"
@@ -922,11 +1012,12 @@ const EditarPerfil = () => {
                               handleExperienciaChange(
                                 index,
                                 "añoFin",
-                                e.target.value ? parseInt(e.target.value) : "",
+                                parseAnio(e.target.value),
                               )
                             }
                             placeholder="Dejar vacío si continúa"
                           />
+                          {msgError(`experiencia.${index}.añoFin`)}
                         </div>
 
                         <div className="form-group form-group-full">
@@ -972,7 +1063,9 @@ const EditarPerfil = () => {
                 className="form-section-header"
                 onClick={() => toggleSeccion("habilidades")}
               >
-                <h2><SiHyperskill />Habilidades</h2>
+                <h2>
+                  <SiHyperskill /> Habilidades
+                </h2>
                 {seccionesAbiertas.habilidades ? (
                   <FaChevronUp />
                 ) : (
@@ -1026,7 +1119,9 @@ const EditarPerfil = () => {
                 className="form-section-header"
                 onClick={() => toggleSeccion("etiquetas")}
               >
-                <h2><FaTags />Etiquetas</h2>
+                <h2>
+                  <FaTags /> Etiquetas
+                </h2>
                 {seccionesAbiertas.etiquetas ? (
                   <FaChevronUp />
                 ) : (
@@ -1037,30 +1132,30 @@ const EditarPerfil = () => {
               {seccionesAbiertas.etiquetas && (
                 <div className="form-section-content">
                   <div className="flex flex-wrap gap-2">
-                  {etiquetas.map((etiqueta) => {
-                    const active = perfil.etiquetas?.includes(etiqueta._id);
-                    return (
-                      <button
-                        key={etiqueta._id}
-                        type="button"
-                        onClick={() => toggleEtiqueta(etiqueta._id)}
-                        className={`rounded-full px-3 py-3 text-xs sm:text-sm font-semibold transition focus:outline-none ${
-                          active
-                            ? "bg-[#ffbf30] text-[#12141a]"
-                            : "bg-[#3492eb] text-[#f0f0f0] hover:bg-[#3492eb]"
-                        }`}
-                      >
-                        {etiqueta.nombre}
-                      </button>
-                    );
-                  })}
-                  {etiquetas.length === 0 && (
-                    <span className="text-xs text-gray-300">
-                      No hay etiquetas configuradas todavía.
-                    </span>
-                  )}
+                    {etiquetas.map((etiqueta) => {
+                      const active = perfil.etiquetas?.includes(etiqueta._id);
+                      return (
+                        <button
+                          key={etiqueta._id}
+                          type="button"
+                          onClick={() => toggleEtiqueta(etiqueta._id)}
+                          className={`rounded-full px-3 py-3 text-xs sm:text-sm font-semibold transition focus:outline-none ${
+                            active
+                              ? "bg-[#ffbf30] text-[#12141a]"
+                              : "bg-[#3492eb] text-[#f0f0f0] hover:bg-[#3492eb]"
+                          }`}
+                        >
+                          {etiqueta.nombre}
+                        </button>
+                      );
+                    })}
+                    {etiquetas.length === 0 && (
+                      <span className="text-xs text-gray-300">
+                        No hay etiquetas configuradas todavía.
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
               )}
             </div>
 
@@ -1082,7 +1177,7 @@ const EditarPerfil = () => {
 
               {seccionesAbiertas.enlaces && (
                 <div className="form-section-content">
-                  <div className="form-group form-group-full">
+                  <div className={claseGrupo("urlPortafolio", "form-group-full")}>
                     <label>URL del Portafolio</label>
                     <input
                       type="url"
@@ -1091,11 +1186,12 @@ const EditarPerfil = () => {
                       onChange={handleInputChange}
                       placeholder="https://..."
                     />
+                    {msgError("urlPortafolio")}
                   </div>
 
                   <h3 className="subsection-title">Redes Sociales</h3>
                   <div className="form-grid">
-                    <div className="form-group">
+                    <div className={claseGrupo("redes.linkedin")}>
                       <label>LinkedIn</label>
                       <input
                         type="url"
@@ -1104,9 +1200,10 @@ const EditarPerfil = () => {
                         onChange={handleRedesSocialesChange}
                         placeholder="https://linkedin.com/in/..."
                       />
+                      {msgError("redes.linkedin")}
                     </div>
 
-                    <div className="form-group">
+                    <div className={claseGrupo("redes.facebook")}>
                       <label>Facebook</label>
                       <input
                         type="url"
@@ -1115,9 +1212,10 @@ const EditarPerfil = () => {
                         onChange={handleRedesSocialesChange}
                         placeholder="https://facebook.com/..."
                       />
+                      {msgError("redes.facebook")}
                     </div>
 
-                    <div className="form-group">
+                    <div className={claseGrupo("redes.instagram")}>
                       <label>Instagram</label>
                       <input
                         type="url"
@@ -1126,9 +1224,10 @@ const EditarPerfil = () => {
                         onChange={handleRedesSocialesChange}
                         placeholder="https://instagram.com/..."
                       />
+                      {msgError("redes.instagram")}
                     </div>
 
-                    <div className="form-group">
+                    <div className={claseGrupo("redes.twitter")}>
                       <label>Twitter</label>
                       <input
                         type="url"
@@ -1137,6 +1236,7 @@ const EditarPerfil = () => {
                         onChange={handleRedesSocialesChange}
                         placeholder="https://twitter.com/..."
                       />
+                      {msgError("redes.twitter")}
                     </div>
                   </div>
 
@@ -1144,7 +1244,7 @@ const EditarPerfil = () => {
                   {perfil.proyectos.map((proyecto, index) => (
                     <div key={index} className="array-item">
                       <div className="form-grid">
-                        <div className="form-group">
+                        <div className={claseGrupo(`proyecto.${index}.nombre`)}>
                           <label>Nombre del Proyecto</label>
                           <input
                             type="text"
@@ -1157,9 +1257,10 @@ const EditarPerfil = () => {
                               )
                             }
                           />
+                          {msgError(`proyecto.${index}.nombre`)}
                         </div>
 
-                        <div className="form-group">
+                        <div className={claseGrupo(`proyecto.${index}.url`)}>
                           <label>URL</label>
                           <input
                             type="url"
@@ -1169,6 +1270,7 @@ const EditarPerfil = () => {
                             }
                             placeholder="https://..."
                           />
+                          {msgError(`proyecto.${index}.url`)}
                         </div>
 
                         <div className="form-group form-group-full">
@@ -1233,7 +1335,7 @@ const EditarPerfil = () => {
                       archivoActual={perfil.cvUrl}
                       onSubida={handleCVSubido}
                     />
-                    <p className="text-sm text-gray-600 mt-2">
+                    <p className="text-sm text-gray-300 mt-2">
                       La foto de perfil se gestiona en el panel lateral
                       izquierdo
                     </p>
@@ -1276,7 +1378,7 @@ const EditarPerfil = () => {
                 onClick={handleCancelar}
                 className="btn-cancelar"
               >
-                Cancelar
+                Regresar
               </button>
 
               <button
