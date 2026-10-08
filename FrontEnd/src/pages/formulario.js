@@ -18,6 +18,15 @@ import {
 
 const CREATE_DRAFT_PREFIX = "komuness:crear-publicacion";
 
+// Las publicaciones se generan automáticamente a partir de estos dos tipos
+const TAGS_PERMITIDOS = ["evento", "emprendimiento"];
+const CAMPOS_MONTO = ["precio", "precioEstudiante", "precioCiudadanoOro", "descuento"];
+
+// Evita escribir signo negativo o notación científica en inputs numéricos
+const bloquearSignoNegativo = (e) => {
+  if (["-", "e", "E"].includes(e.key)) e.preventDefault();
+};
+
 const DEFAULT_UBICACION = {
   latitude: 9.7489,
   longitude: -83.7534,
@@ -33,6 +42,28 @@ const createDefaultEnlaces = () => [{ nombre: "", url: "" }];
 const getCreateDraftStorageKey = (tag) =>
   `${CREATE_DRAFT_PREFIX}:${tag || "general"}`;
 
+const normalizeTag = (tag) => (TAGS_PERMITIDOS.includes(tag) ? tag : "");
+
+// Texto del encabezado según el tipo elegido (el color lo define el CSS por clase)
+const TIPO_INFO = {
+  evento: {
+    badge: "Evento",
+    titulo: "Crear evento",
+    detalle: "Indica fecha, hora y ubicación para que la gente pueda asistir.",
+  },
+  emprendimiento: {
+    badge: "Emprendimiento",
+    titulo: "Crear emprendimiento",
+    detalle: "Cuéntanos sobre tu negocio: qué ofreces, precios y cómo contactarte.",
+  },
+};
+
+const TIPO_SIN_SELECCION = {
+  badge: null,
+  titulo: "Crear evento o emprendimiento",
+  detalle: "Selecciona el tipo para ver los campos que necesitas.",
+};
+
 const getInitialFormValues = (tag) => ({
   titulo: "",
   contenido: "",
@@ -41,7 +72,7 @@ const getInitialFormValues = (tag) => ({
   fecha: new Date().toLocaleDateString(),
   archivos: [],
   comentarios: [],
-  tag: tag || "",
+  tag: normalizeTag(tag),
   publicado: false,
   fechaEvento: "",
   horaEvento: "",
@@ -100,9 +131,12 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
         if (!isActive) return;
 
         if (shouldLoadDraft) {
+          const draftData = savedDraft.formData || {};
           setFormData({
             ...initialFormValues,
-            ...(savedDraft.formData || {}),
+            ...draftData,
+            // Un borrador antiguo podría traer tag "publicacion": ya no es válido
+            tag: normalizeTag(draftData.tag),
             archivos: [],
           });
           setEnlacesExternos(
@@ -153,6 +187,10 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+
+    // Rechaza montos negativos (incluso si los pegan)
+    if (CAMPOS_MONTO.includes(name) && value !== "" && Number(value) < 0) return;
+
     const normalizedValue = type === "checkbox" ? checked : value;
     setHasChanges(true);
     setFormData((prev) => ({ ...prev, [name]: normalizedValue }));
@@ -180,6 +218,8 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
       setHasChanges(true);
     }
     setFormData((prev) => ({ ...prev, archivos: [...prev.archivos, ...files] }));
+    // Permite volver a elegir el mismo archivo después de quitarlo de la vista previa
+    e.target.value = "";
   };
 
   const handleRemoveImage = (index) => {
@@ -246,8 +286,34 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
     (enlace) => enlace.nombre.trim() !== "" && enlace.url.trim() !== "",
   );
 
+  // Validaciones previas al envío. Devuelve el mensaje de error o null.
+  const validarFormulario = () => {
+    if (!TAGS_PERMITIDOS.includes(formData.tag)) {
+      return "Selecciona si es un evento o un emprendimiento";
+    }
+    if (!formData.comunidad.trim()) {
+      return "La comunidad es obligatoria";
+    }
+    if (formData.archivos.length === 0) {
+      return "Debes agregar al menos una imagen";
+    }
+    if (CAMPOS_MONTO.some((campo) => Number(formData[campo]) < 0)) {
+      return "Los montos no pueden ser negativos";
+    }
+    if (Number(formData.descuento) > 100) {
+      return "El descuento no puede ser mayor a 100%";
+    }
+    return null;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const errorValidacion = validarFormulario();
+    if (errorValidacion) {
+      toast.error(errorValidacion);
+      return;
+    }
 
     const data = new FormData();
     data.append("titulo", formData.titulo);
@@ -257,7 +323,7 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
     data.append("tag", formData.tag);
     data.append("publicado", String(formData.publicado));
     data.append("fechaEvento", formData.fechaEvento || "");
-    data.append("horaEvento", formData.horaEvento || ""); // <-- NUEVO
+    data.append("horaEvento", formData.horaEvento || "");
     data.append("precio", formData.precio || "");
     data.append("moneda", formData.moneda || "CRC");
     data.append("precioNegociable", String(formData.precioNegociable));
@@ -333,8 +399,9 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
     }
 
     // Si fue exitoso, mostrar toast de éxito
+    const nombreTipo = data.get("tag") === "evento" ? "Evento" : "Emprendimiento";
     toast.success(
-      "Publicación enviada con éxito, solicita a un administrador que la publique 🎉",
+      `${nombreTipo} enviado con éxito, solicita a un administrador que lo publique 🎉`,
       {
         duration: 8000,
       },
@@ -345,10 +412,16 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
 
   if (!isOpen) return null;
 
+  const tipoInfo = TIPO_INFO[formData.tag] || TIPO_SIN_SELECCION;
+
   return (
     <>
       <div className="formulario-publicacion-container">
-        <div className="formulario-publicacion">
+        <div
+          className={`formulario-publicacion formulario-publicacion--${
+            formData.tag || "sin-tipo"
+          }`}
+        >
           <form onSubmit={handleSubmit} className="formulario-grid">
             {/* Header móvil */}
             <div className="formulario-mobile-header">
@@ -358,6 +431,31 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
               <button type="submit" className="boton-mobile">
                 Publicar
               </button>
+            </div>
+
+            {/* Encabezado que cambia según el tipo */}
+            <div className="formulario-tipo-banner">
+              {tipoInfo.badge && (
+                <span className="tipo-badge">{tipoInfo.badge}</span>
+              )}
+              <h2 className="formulario-tipo-titulo">{tipoInfo.titulo}</h2>
+              <p className="formulario-tipo-detalle">{tipoInfo.detalle}</p>
+            </div>
+
+            {/* Tipo: se elige primero porque define el resto del formulario */}
+            <div className="campo-grupo">
+              <label className="campo-label">Tipo:</label>
+              <select
+                name="tag"
+                value={formData.tag}
+                onChange={handleChange}
+                className="campo-select"
+                required
+              >
+                <option value="">Selecciona el tipo</option>
+                <option value="evento">Evento</option>
+                <option value="emprendimiento">Emprendimiento</option>
+              </select>
             </div>
 
             {/* Título */}
@@ -377,23 +475,6 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
               </p>
             </div>
 
-            {/* Tag */}
-            <div className="campo-grupo">
-              <label className="campo-label">Tipo (tag):</label>
-              <select
-                name="tag"
-                value={formData.tag}
-                onChange={handleChange}
-                className="campo-select"
-                required
-              >
-                <option value="">Selecciona una categoría</option>
-                <option value="publicacion">Publicación</option>
-                <option value="evento">Evento</option>
-                <option value="emprendimiento">Emprendimiento</option>
-              </select>
-            </div>
-
             {/* Clasificación */}
             <div className="campo-grupo">
               <label className="campo-label">Clasificación:</label>
@@ -406,13 +487,14 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
 
             {/* Comunidad */}
             <div className="campo-grupo">
-              <label className="campo-label">Comunidad (opcional):</label>
+              <label className="campo-label">Comunidad *:</label>
               <input
                 type="text"
                 name="comunidad"
                 value={formData.comunidad}
                 onChange={handleChange}
                 maxLength={100}
+                required
                 className="campo-input"
                 placeholder="Ej: San José Centro, Heredia, Barrio Escalante"
               />
@@ -501,8 +583,10 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
                         name="precio"
                         value={formData.precio}
                         onChange={handleChange}
+                        onKeyDown={bloquearSignoNegativo}
                         className="campo-input"
                         required
+                        min="0"
                         placeholder="Ej: 10000"
                       />
                     </div>
@@ -517,7 +601,9 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
                         name="precioEstudiante"
                         value={formData.precioEstudiante}
                         onChange={handleChange}
+                        onKeyDown={bloquearSignoNegativo}
                         className="campo-input"
+                        min="0"
                         placeholder="Ej: 5000"
                       />
                     </div>
@@ -532,7 +618,9 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
                         name="precioCiudadanoOro"
                         value={formData.precioCiudadanoOro}
                         onChange={handleChange}
+                        onKeyDown={bloquearSignoNegativo}
                         className="campo-input"
+                        min="0"
                         placeholder="Ej: 7000"
                       />
                     </div>
@@ -547,6 +635,7 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
                         name="descuento"
                         value={formData.descuento}
                         onChange={handleChange}
+                        onKeyDown={bloquearSignoNegativo}
                         className="campo-input"
                         placeholder="Ej: 15 (para 15%)"
                         min="0"
@@ -640,17 +729,17 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
               </button>
             </div>
 
-            {/* Imágenes */}
+            {/* Imágenes (al menos una es obligatoria; se valida en handleSubmit) */}
             <div className="campo-grupo">
-              <label className="campo-label">Imágenes:</label>
+              <label className="campo-label">Imágenes *:</label>
               <input
                 type="file"
                 accept="image/*"
                 multiple
                 onChange={handleImageChange}
                 className="campo-input"
-                required={formData.tag !== "publicacion"}
               />
+              <p className="texto-ayuda">Agrega al menos una imagen.</p>
             </div>
 
             {/* Previsualización */}

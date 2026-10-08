@@ -106,12 +106,12 @@ const publicacionSchema = new Schema(
     // Evento
     fechaEvento: { type: String, required: false },
     horaEvento:  { type: String, required: false }, 
-    precio: { type: Number, required: false }, // Precio regular
+    precio: { type: Number, required: false , min: 0}, // Precio regular
     moneda: { type: String, enum: ['CRC', 'USD'], required: false, default: 'CRC' },
     monedaSimbolo: { type: String, enum: ['₡', '$'], required: false, default: '₡' },
     precioNegociable: { type: Boolean, required: false, default: false },
-    precioEstudiante: { type: Number, required: false },
-    precioCiudadanoOro: { type: Number, required: false },
+    precioEstudiante: { type: Number, required: false , min: 0},
+    precioCiudadanoOro: { type: Number, required: false , min: 0},
     descuento: { type: Number, required: false, default: 0, min: 0, max: 100 }, // Porcentaje de descuento
     enlacesExternos: { type: [enlaceExternoSchema], required: false },
     telefono: { type: String, required: false },

@@ -192,8 +192,11 @@ export const EditarPublicacionModal = ({
     draftCargado,
   ]);
 
+  const CAMPOS_MONTO = ["precio", "precioEstudiante", "precioCiudadanoOro", "descuento"];
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    if (CAMPOS_MONTO.includes(name) && value !== "" && Number(value) < 0) return;
     const normalizedValue = type === "checkbox" ? checked : value;
     setFormData((prev) => ({ ...prev, [name]: normalizedValue }));
   };
@@ -249,6 +252,13 @@ export const EditarPublicacionModal = ({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const requiereFoto = publicacion.tag === "evento" || publicacion.tag === "emprendimiento";
+      if (requiereFoto && imagenesMantenidas.length + nuevasImagenes.length === 0) {
+        toast.error("Debes mantener o agregar al menos una imagen");
+        return;
+      }
+
     setCargando(true);
 
     try {
@@ -349,13 +359,13 @@ export const EditarPublicacionModal = ({
         );
       }
 
-      // ✅ Toast con duración más larga para que el usuario lo vea
+      // Toast con duración más larga para que el usuario lo vea
       toast.success(
         "Solicitud de edición enviada para revisión. Un administrador debe aprobarla para aplicar los cambios.",
         { duration: 3000 },
       );
 
-      // 🔁 Cerrar el modal un poquito después para no matar el toast de inmediato
+      // Cerrar el modal un poquito después para no matar el toast de inmediato
       removeSessionDraft(getDraftStorageKey(publicacion._id));
       setTimeout(() => {
         onClose?.();
@@ -627,6 +637,7 @@ export const EditarPublicacionModal = ({
                       className="campo-input"
                       required
                       placeholder="Ej: 10000"
+                      min="0"
                     />
                   </div>
 
@@ -659,6 +670,7 @@ export const EditarPublicacionModal = ({
                       onChange={handleChange}
                       className="campo-input"
                       placeholder="Ej: 7000"
+                      min="0"
                     />
                   </div>
 
@@ -782,8 +794,7 @@ export const EditarPublicacionModal = ({
           {/* Nuevas imágenes  */}
           <div className="campo-grupo">
             <label htmlFor="nuevasImagenes" className="campo-label">
-              Agregar nuevas imágenes{" "}
-              {publicacion.tag !== "publicacion" ? "(opcional)" : ""}
+              Agregar nuevas imágenes {publicacion.tag === "publicacion" ? "(opcional)" : "*"}
             </label>
             <input
               id="nuevasImagenes"
