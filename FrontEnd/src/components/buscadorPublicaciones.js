@@ -17,12 +17,10 @@ export const BuscadorPublicaciones = () => {
   const searchRef = useRef(null);
 
   // Obtener término de búsqueda actual de la URL
+  // (también se limpia aquí si el término se quita desde afuera, ej. botón "Borrar filtros")
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
-    const currentSearch = urlParams.get("q");
-    if (currentSearch) {
-      setSearchTerm(currentSearch);
-    }
+    setSearchTerm(urlParams.get("q") || "");
   }, [location.search]);
 
   // Cerrar sugerencias al hacer clic fuera

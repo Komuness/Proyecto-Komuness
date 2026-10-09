@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { IoMdArrowRoundBack } from "react-icons/io";
 import { toast } from "react-hot-toast";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import "../CSS/publicaciones.css";
 
 import PublicacionCard from "./publicacionCard";
@@ -57,6 +57,20 @@ export const Publicaciones = ({ tag: propTag }) => {
   const searchFilter = isSearch ? searchTerm : null;
   const [limiteData, setLimiteData] = useState(null);
   const [selectedPub, setSelectedPub] = useState(null);
+
+  const hayFiltrosActivos = Boolean(
+    categoriaFilter ||
+      isSearch ||
+      fechaInicioFilter ||
+      fechaFinFilter ||
+      precioMin ||
+      precioMax ||
+      comunidadFilter,
+  );
+
+  const limpiarFiltros = () => {
+    navigate(location.pathname);
+  };
 
   // El carrusel se muestra siempre que no haya una búsqueda activa
   // (los filtros de categoría/fecha/precio se aplican dentro del carrusel)
@@ -476,6 +490,19 @@ export const Publicaciones = ({ tag: propTag }) => {
 
               {/* Filtro para precio regular */}
               {tag !== "publicacion" && <PriceFilter />}
+
+              {/* Borrar todos los filtros a la vez */}
+              {hayFiltrosActivos && (
+                <button
+                  type="button"
+                  onClick={limpiarFiltros}
+                  className="flex items-center gap-1 text-sm text-gray-200 hover:text-yellow-400 border border-gray-400 hover:border-yellow-400 rounded px-3 py-2 transition-colors whitespace-nowrap"
+                  title="Borrar todos los filtros"
+                >
+                  <FaTimes size={12} />
+                  Borrar filtros
+                </button>
+              )}
             </div>
 
             {limiteData && tag === "publicacion" && !esAdmin && (

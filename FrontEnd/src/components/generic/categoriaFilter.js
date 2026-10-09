@@ -35,10 +35,11 @@ export const CategoriaFilter = () => {
     fetchCategorias();
   }, []);
 
+  // Resincroniza si la URL cambia desde afuera (ej. botón "Borrar filtros")
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     setSelectedCategoria(searchParams.get("categoria") || "");
-  }, []);
+  }, [location.search]);
 
   useEffect(() => {
     const checkEstado = async () => {
