@@ -6,7 +6,6 @@ import { IPublicacionNotification,
   IComentario,
   IEnlaceExterno,
   IPublicacion,
-  IUbicacion,
 } from "../interfaces/publicacion.interface";
 import { modelPublicacion } from "../models/publicacion.model";
 import mongoose from "mongoose";
@@ -19,6 +18,7 @@ import {
   buildActivePublicationQuery,
   calculatePublicationExpirationDate,
 } from "../utils/publicacionExpiration";
+import { validarUbicacion } from "../utils/ubicacion";
 import { sendEmail } from "../utils/mail"; // usa el mismo transporter que recuperación
 import { modelUsuario } from "../models/usuario.model"; // ← Modelo de usuarios
 import {
@@ -28,6 +28,8 @@ import {
 } from "../services/notificacion.service";
 
 const LOG_ON = process.env.LOG_PUBLICACION === "1";
+
+const TAGS_CONTEO = ["publicacion", "evento", "emprendimiento"];
 
 // Utilidad: normaliza precio (string → number | undefined)
 function parsePrecio(input: any): number | undefined {
@@ -240,42 +242,6 @@ function parseHoraEvento(input: any): string | undefined {
   return /^\d{2}:\d{2}$/.test(t) ? t : undefined;
 }
 
-// función para validar ubicación
-function parseUbicacion(input: any): IUbicacion | undefined {
-  if (!input) return undefined;
-  try {
-    let ubicacion: any;
-
-    // Si es string (JSON), parsear
-    if (typeof input === "string") {
-      ubicacion = JSON.parse(input);
-    } else {
-      ubicacion = input;
-    }
-
-    // Validar que tenga los campos necesarios
-    if (!ubicacion || typeof ubicacion !== "object") return undefined;
-
-    const lat = Number(ubicacion.latitude);
-    const lng = Number(ubicacion.longitude);
-    const dir = String(ubicacion.direccion).trim();
-
-    // Validar rango de coordenadas válidas
-    if (!Number.isFinite(lat) || lat < -90 || lat > 90) return undefined;
-    if (!Number.isFinite(lng) || lng < -180 || lng > 180) return undefined;
-    if (dir.length === 0 || dir.length > 500) return undefined;
-
-    return {
-      latitude: lat,
-      longitude: lng,
-      direccion: dir,
-      mapLink: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`,
-    };
-  } catch {
-    return undefined;
-  }
-}
-
 // ───────────────────────────────────────────────────────────────────────────────
 // Helper: correos de admins (tipoUsuario = 1) con email válido
 // ───────────────────────────────────────────────────────────────────────────────
@@ -315,7 +281,12 @@ export const createPublicacion = async (
     const horaEvento = parseHoraEvento(body.horaEvento);
     const telefono = parseTelefono(body.telefono);
     const enlacesExternos = parseEnlacesExternos(body.enlacesExternos);
-    const ubicacion = parseUbicacion(body.ubicacion);
+    const ubicacionResult = validarUbicacion(body.ubicacion);
+    if (!ubicacionResult.ok) {
+      res.status(400).json({ message: ubicacionResult.error });
+      return;
+    }
+    const ubicacion = ubicacionResult.ubicacion;
     const comunidad = parseComunidad(body.comunidad);
     const monedaData = getMonedaData(body.moneda, body.monedaSimbolo);
 
@@ -448,7 +419,12 @@ export const createPublicacionA = async (
     const enlacesExternos = parseEnlacesExternos(
       (publicacion as any).enlacesExternos,
     );
-    const ubicacion = parseUbicacion((publicacion as any).ubicacion);
+    const ubicacionResult = validarUbicacion((publicacion as any).ubicacion);
+    if (!ubicacionResult.ok) {
+      res.status(400).json({ ok: false, message: ubicacionResult.error });
+      return;
+    }
+    const ubicacion = ubicacionResult.ubicacion;
     const comunidad = parseComunidad((publicacion as any).comunidad);
     const monedaData = getMonedaData(
       (publicacion as any).moneda,
@@ -723,6 +699,19 @@ export const updatePublicacion = async (
 
       if (parsedHora !== undefined) updatedData.horaEvento = parsedHora;
       else delete updatedData.horaEvento;
+    }
+
+    // Si viene ubicacion, validarla (si viene vacía, no pisa)
+    if (updatedData.hasOwnProperty("ubicacion")) {
+      const ubicacionResult = validarUbicacion(updatedData.ubicacion);
+      if (!ubicacionResult.ok) {
+        res.status(400).json({ message: ubicacionResult.error });
+        return;
+      }
+
+      if (ubicacionResult.ubicacion !== undefined)
+        updatedData.ubicacion = ubicacionResult.ubicacion;
+      else delete updatedData.ubicacion;
     }
 
     const nextTag =
@@ -1125,6 +1114,73 @@ export const getEventosPorFecha = async (
   } catch (error) {
     const err = error as Error;
     res.status(500).json({ message: err.message });
+  }
+};
+
+// Conteo de publicaciones por lugar (comunidad), p. ej. cuántos emprendimientos hay en cada una
+export const contarPublicacionesPorUbicacion = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { tag, comunidad } = req.query;
+
+    if (tag !== undefined && !TAGS_CONTEO.includes(tag as string)) {
+      res.status(400).json({
+        message: `El tag debe ser uno de: ${TAGS_CONTEO.join(", ")}`,
+      });
+      return;
+    }
+    if (comunidad !== undefined && typeof comunidad !== "string") {
+      res.status(400).json({ message: "El parámetro comunidad debe ser texto" });
+      return;
+    }
+
+    const match: any = {
+      publicado: true,
+      $and: [buildActivePublicationQuery()],
+    };
+    if (tag) match.tag = tag;
+    if (comunidad && comunidad.trim() !== "") {
+      match.comunidad = {
+        $regex: comunidad.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        $options: "i",
+      };
+    }
+
+    // Agrupa sin distinguir mayúsculas ni espacios sobrantes ("San Ramón" = "san ramón ")
+    const grupos = await modelPublicacion.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: {
+            $toLower: { $trim: { input: { $ifNull: ["$comunidad", ""] } } },
+          },
+          comunidad: { $first: "$comunidad" },
+          total: { $sum: 1 },
+          conUbicacion: {
+            $sum: { $cond: [{ $gt: ["$ubicacion", null] }, 1, 0] },
+          },
+        },
+      },
+      { $sort: { total: -1, _id: 1 } },
+    ]);
+
+    const porComunidad = grupos.map((g: any) => ({
+      comunidad: g._id ? String(g.comunidad).trim() : null,
+      total: g.total as number,
+      conUbicacion: g.conUbicacion as number,
+    }));
+
+    res.status(200).json({
+      total: porComunidad.reduce((acc, g) => acc + g.total, 0),
+      conUbicacion: porComunidad.reduce((acc, g) => acc + g.conUbicacion, 0),
+      porComunidad,
+    });
+  } catch (error) {
+    const err = error as Error;
+    console.error("Error en conteo por ubicación:", err);
+    res.status(500).json({ message: "Error al realizar el conteo" });
   }
 };
 

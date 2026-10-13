@@ -1,4 +1,3 @@
-
 import multer from 'multer';
 import { Router } from 'express';
 import {
@@ -16,6 +15,7 @@ import {
   searchPublicacionesByTitulo,
   searchPublicacionesAvanzada,
   searchByTitulo,
+  contarPublicacionesPorUbicacion,
 } from '../controllers/publicacion.controller';
 
 import {
@@ -50,6 +50,7 @@ router.get('/buscar', filterPublicaciones);
 router.get('/:id', getPublicacionById);
 router.get('/categoria/:categoriaId', getPublicacionesByCategoria);
 router.get('/eventos/calendario', getEventosPorFecha);
+router.get('/conteo/ubicacion', contarPublicacionesPorUbicacion); // Conteo por lugar (?tag=emprendimiento&comunidad=...)
 
 // ========== RUTAS DE USUARIO AUTENTICADO ==========
 router.post('/', authMiddleware, validarLimitePublicaciones, createPublicacion);
@@ -79,7 +80,6 @@ router.post('/:id/comentarios/:comentarioId/respuesta', authMiddleware, verifica
 // Ruta  para solicitar actualización
 router.put('/:id/request-update', authMiddleware, multiFields, requestUpdatePublicacion);
 router.delete('/:id/cancel-update', authMiddleware, cancelUpdateRequest);
-router.put('/:id/request-update', authMiddleware, multiFields, requestUpdatePublicacion);
 // ========== RUTAS DE ADMINISTRACIÓN ==========
 // NOTA: Estas rutas deben definirse ANTES de las rutas con parámetros genéricos como '/:id'
 router.get('/admin/pending-updates', authMiddleware, verificarRoles([0, 1]), getPendingUpdates);
@@ -89,9 +89,9 @@ router.put('/admin/:id/reject-update', authMiddleware, verificarRoles([0, 1]), r
 // ========== RUTAS DE ADMINISTRACIÓN GENERAL ==========
 router.put('/:id', authMiddleware, verificarRoles([0, 1]), updatePublicacion);
 router.delete('/:id', authMiddleware, verificarRoles([0, 1]), deletePublicacion);
-export default router;
-
 // ========== RUTAS DE BÚSQUEDA ==========
 router.get('/search/quick', searchPublicacionesByTitulo); // Búsqueda rápida
 router.get('/search/advanced', searchPublicacionesAvanzada); // Búsqueda con filtros
 router.get('/search/titulo', searchByTitulo);
+
+export default router;

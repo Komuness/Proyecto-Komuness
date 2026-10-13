@@ -116,7 +116,7 @@ const publicacionSchema = new Schema(
     enlacesExternos: { type: [enlaceExternoSchema], required: false },
     telefono: { type: String, required: false },
     fechaExpiracion: { type: Date, required: false, index: true },
-    ubicacion: { type: ubicacionSchema, required: false }, // Ubicación del evento
+    ubicacion: { type: ubicacionSchema, required: false }, // Ubicación en el mapa (evento o emprendimiento)
     comunidad: { type: String, required: false, trim: true, maxlength: 100, index: true }, // Comunidad/localidad de la publicación
 
     // categorías de área

@@ -29,7 +29,7 @@ export interface IPublicacion {
   descuento?: number; // Porcentaje de descuento (0-100)
   enlacesExternos?: IEnlaceExterno[]; 
   telefono?: string;
-  ubicacion?: IUbicacion; // Ubicación del evento
+  ubicacion?: IUbicacion; // Ubicación en el mapa (evento o emprendimiento)
   comunidad?: string; // Comunidad/localidad a la que pertenece la publicación
   categoria: string | Types.ObjectId;
   fechaExpiracion?: string | Date | null;
@@ -120,7 +120,7 @@ export interface IPublicacionUpdate {
   descuento?: number; // Porcentaje de descuento (0-100)
   enlacesExternos?: IEnlaceExterno[];
   telefono?: string;
-  ubicacion?: IUbicacion; // Ubicación del evento para actualización
+  ubicacion?: IUbicacion; // Ubicación en el mapa para actualización
   comunidad?: string; // Comunidad/localidad a la que pertenece la publicación
   categoria?: string | Types.ObjectId;  // ← Permitir ambos tipos
   adjunto?: IAdjunto[];

@@ -77,6 +77,10 @@ export const Publicaciones = ({ tag: propTag }) => {
   const mostrarCarrusel =
     tag === "evento" || tag === "emprendimiento" || tag === "publicacion";
 
+    // El botón de crear solo aplica a eventos y emprendimientos
+  const puedeMostrarBotonCrear =
+    tag === "evento" || tag === "emprendimiento";
+
   //Estado del banco de profesionales
   const [estadoUsuario, setEstadoUsuario] = useState(null);
   const [cargandoEstado, setCargandoEstado] = useState(false);
@@ -741,7 +745,7 @@ export const Publicaciones = ({ tag: propTag }) => {
         </div>
       )}
 
-      {(esAdmin || estadoUsuario?.enBancoProfesionales) && (
+      {puedeMostrarBotonCrear && (esAdmin || estadoUsuario?.enBancoProfesionales) && (
         <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex items-center gap-3">
           <span className="hidden md:block bg-white px-4 py-2 rounded-full shadow-md text-sm font-medium text-gray-700">
             Inspira a otros con tu talento

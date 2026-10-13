@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
-import { IPublicacion, IPublicacionUpdate, IEditHistory, IEnlaceExterno, IAdjunto, IUbicacion } from '../interfaces/publicacion.interface';
+import { IPublicacion, IPublicacionUpdate, IEditHistory, IEnlaceExterno, IAdjunto } from '../interfaces/publicacion.interface';
 import { modelPublicacion } from '../models/publicacion.model';
 import mongoose from 'mongoose';
 import { saveMulterFileToGridFS } from '../utils/gridfs';
 import { calculatePublicationExpirationDate } from '../utils/publicacionExpiration';
+import { validarUbicacion } from '../utils/ubicacion';
 
 const LOG_ON = process.env.LOG_PUBLICACION === '1';
 
@@ -95,9 +96,13 @@ export const requestUpdatePublicacion = async (req: Request, res: Response): Pro
 
     // Procesar ubicación
     if (req.body.ubicacion !== undefined) {
-      const ubicacion = parseUbicacion(req.body.ubicacion);
-      if (ubicacion !== undefined) {
-        updateData.ubicacion = ubicacion;
+      const ubicacionResult = validarUbicacion(req.body.ubicacion);
+      if (!ubicacionResult.ok) {
+        res.status(400).json({ message: ubicacionResult.error });
+        return;
+      }
+      if (ubicacionResult.ubicacion !== undefined) {
+        updateData.ubicacion = ubicacionResult.ubicacion;
       }
     }
     if (publicacion.tag === 'emprendimiento' && updateData.precioNegociable === true) {
@@ -191,6 +196,9 @@ export const requestUpdatePublicacion = async (req: Request, res: Response): Pro
       }
       if (key === 'enlacesExternos') {
         return JSON.stringify(updateData.enlacesExternos) !== JSON.stringify(publicacion.enlacesExternos);
+      }
+      if (key === 'ubicacion') {
+        return JSON.stringify(updateData.ubicacion) !== JSON.stringify(publicacion.ubicacion);
       }
       return updateData[key] !== (publicacion as any)[key];
     });
@@ -304,6 +312,7 @@ function mapUpdateFields(updateFields: Omit<IPublicacionUpdate, 'requestedAt' | 
   if (updateFields.telefono !== undefined) mapped.telefono = updateFields.telefono;
   if (updateFields.categoria !== undefined) mapped.categoria = updateFields.categoria;
   if (updateFields.comunidad !== undefined) mapped.comunidad = updateFields.comunidad;
+  if (updateFields.ubicacion !== undefined) mapped.ubicacion = updateFields.ubicacion;
   if (updateFields.enlacesExternos !== undefined) mapped.enlacesExternos = updateFields.enlacesExternos;
   if (updateFields.adjunto !== undefined) mapped.adjunto = updateFields.adjunto;
   
@@ -417,6 +426,11 @@ export const approveUpdate = async (req: Request, res: Response): Promise<void> 
     if (updateFields.comunidad !== undefined && updateFields.comunidad !== publicacion.comunidad) {
       publicacion.comunidad = updateFields.comunidad;
       camposActualizados.push('comunidad');
+    }
+
+    if (updateFields.ubicacion != null && JSON.stringify(updateFields.ubicacion) !== JSON.stringify(publicacion.ubicacion)) {
+      publicacion.ubicacion = updateFields.ubicacion;
+      camposActualizados.push('ubicación');
     }
 
     //  Manejo de enlacesExternos
@@ -638,41 +652,7 @@ function parsePrecio(input: any): number | undefined {
   return undefined;
 }
 
-// Función auxiliar para parsear ubicación
-function parseUbicacion(input: any): IUbicacion | undefined {
-  if (!input) return undefined;
-  try {
-    let ubicacion: any;
-    
-    // Si es string (JSON), parsear
-    if (typeof input === 'string') {
-      ubicacion = JSON.parse(input);
-    } else {
-      ubicacion = input;
-    }
-    
-    // Validar que tenga los campos necesarios
-    if (!ubicacion || typeof ubicacion !== 'object') return undefined;
-    
-    const lat = Number(ubicacion.latitude);
-    const lng = Number(ubicacion.longitude);
-    const dir = String(ubicacion.direccion).trim();
-    
-    // Validar rango de coordenadas válidas
-    if (!Number.isFinite(lat) || lat < -90 || lat > 90) return undefined;
-    if (!Number.isFinite(lng) || lng < -180 || lng > 180) return undefined;
-    if (dir.length === 0 || dir.length > 500) return undefined;
-    
-    return {
-      latitude: lat,
-      longitude: lng,
-      direccion: dir,
-      mapLink: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`
-    };
-  } catch {
-    return undefined;
-  }
-}
+
 function parseBoolean(input: any): boolean | undefined {
   if (input === undefined || input === null || input === '') return undefined;
   if (typeof input === 'boolean') return input;
