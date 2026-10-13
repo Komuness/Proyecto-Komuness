@@ -172,7 +172,9 @@ export const registerUsuario = async (req: Request, res: Response): Promise<void
             await existingUser.save();
 
             const link = buildConfirmationLink(req, tokenData.token);
-            await sendConfirmationEmail(existingUser.email, String(existingUser.nombre || ""), link);
+            sendConfirmationEmail(existingUser.email, String(existingUser.nombre || ""), link).catch((emailError) => {
+                console.error("No se pudo enviar el correo de confirmacion (reenvio):", emailError);
+            });
 
             res.status(200).json({
                 message: "Tu cuenta aun no esta confirmada. Te reenviamos el correo de confirmacion."
@@ -198,7 +200,9 @@ export const registerUsuario = async (req: Request, res: Response): Promise<void
         await nuevoUsuario.save();
 
         const link = buildConfirmationLink(req, tokenData.token);
-        await sendConfirmationEmail(nuevoUsuario.email, nuevoUsuario.nombre, link);
+        sendConfirmationEmail(nuevoUsuario.email, nuevoUsuario.nombre, link).catch((emailError) => {
+            console.error("No se pudo enviar el correo de confirmacion:", emailError);
+        });
 
         res.status(201).json({
             message: "Usuario creado. Revisa tu correo y confirma la creacion de la cuenta antes de iniciar sesion.",
