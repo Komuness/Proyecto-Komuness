@@ -334,8 +334,11 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
     data.append("categoria", formData.categoria || "");
     data.append("comunidad", formData.comunidad || "");
 
-    // Agregar ubicación como JSON si es un evento
-    if (formData.tag === "evento" && ubicacion) {
+    // Agregar ubicación como JSON si es un evento o un emprendimiento
+    if (
+      (formData.tag === "evento" || formData.tag === "emprendimiento") &&
+      ubicacion
+    ) {
       data.append("ubicacion", JSON.stringify(ubicacion));
     }
 
@@ -794,14 +797,18 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
                   />
                 </div>
 
-                {/* Mapa para seleccionar ubicación del evento */}
-                <div style={{ gridColumn: "1 / -1" }}>
-                  <MapaUbicacion
-                    onLocationSelect={handleUbicacionChange}
-                    initialLocation={ubicacion}
-                  />
-                </div>
               </>
+            )}
+
+            {/* Mapa para seleccionar ubicación (eventos y emprendimientos) */}
+            {(formData.tag === "evento" ||
+              formData.tag === "emprendimiento") && (
+              <div style={{ gridColumn: "1 / -1" }}>
+                <MapaUbicacion
+                  onLocationSelect={handleUbicacionChange}
+                  initialLocation={ubicacion}
+                />
+              </div>
             )}
 
             {/* Botones desktop */}
