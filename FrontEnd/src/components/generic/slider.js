@@ -76,16 +76,25 @@ export const Slider = ({ publicacion }) => {
         `}</style>
       )}
 
-      {/* Modal de zoom */}
+      {/* Modal de zoom: la imagen se muestra completa, ajustada a la pantalla */}
       {zoomedImg && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-2"
           onClick={cerrarZoom}
         >
+          <button
+            type="button"
+            aria-label="Cerrar"
+            className="absolute top-3 right-4 text-white text-4xl leading-none"
+            onClick={cerrarZoom}
+          >
+            ×
+          </button>
           <img
             src={zoomedImg}
             alt="Imagen ampliada"
-            className="max-w-4xl max-h-[80vh] rounded-lg shadow-2xl"
+            className="max-w-[96vw] max-h-[94vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
           />
         </div>
       )}

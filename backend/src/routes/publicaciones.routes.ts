@@ -16,6 +16,8 @@ import {
   searchPublicacionesAvanzada,
   searchByTitulo,
   contarPublicacionesPorUbicacion,
+  addFotosEmprendimiento,
+  deleteFotoEmprendimiento,
 } from '../controllers/publicacion.controller';
 
 import {
@@ -66,6 +68,18 @@ router.post('/v2', authMiddleware, validarLimitePublicaciones, (req, res, next) 
     createPublicacionA(req, res).catch(next);
   });
 });
+
+// Fotos de emprendimientos: agregar/quitar en cualquier momento (autor o admin)
+router.post('/:id/fotos', authMiddleware, (req, res, next) => {
+  multiFields(req, res, (err: any) => {
+    if (err) {
+      const status = err?.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
+      return res.status(status).json({ ok: false, message: err?.message || 'Error al subir archivos' });
+    }
+    addFotosEmprendimiento(req, res).catch(next);
+  });
+});
+router.delete('/:id/fotos/:fotoId', authMiddleware, deleteFotoEmprendimiento);
 
 router.post('/:id/comentarios', authMiddleware, verificarRoles([0, 1, 2, 3]), addComentario);
 

@@ -1362,3 +1362,109 @@ export const searchByTitulo = async (
     res.status(500).json({ message: "Error al realizar la búsqueda" });
   }
 };
+
+const MAX_FOTOS_EMPRENDIMIENTO = 20;
+
+/**
+ * Agrega fotos a un emprendimiento en cualquier momento (sin pasar por el
+ * flujo de aprobación de ediciones). Solo el autor o un administrador.
+ */
+export const addFotosEmprendimiento = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    const pub = await modelPublicacion.findById(req.params.id);
+    if (!pub) {
+      res.status(404).json({ ok: false, message: "Publicación no encontrada" });
+      return;
+    }
+    if (pub.tag !== "emprendimiento") {
+      res.status(400).json({ ok: false, message: "Solo los emprendimientos admiten fotos adicionales" });
+      return;
+    }
+    const esAutor = String(pub.autor) === String(user._id);
+    const esAdmin = user.tipoUsuario === 0 || user.tipoUsuario === 1;
+    if (!esAutor && !esAdmin) {
+      res.status(403).json({ ok: false, message: "No tienes permiso para modificar este emprendimiento" });
+      return;
+    }
+
+    const map = (req.files ?? {}) as Record<string, Express.Multer.File[] | undefined>;
+    const files = Array.isArray(req.files)
+      ? (req.files as Express.Multer.File[])
+      : [...(map["imagenes"] ?? []), ...(map["archivos"] ?? [])];
+
+    if (files.length === 0) {
+      res.status(400).json({ ok: false, message: "Debes enviar al menos una imagen" });
+      return;
+    }
+    if (files.some((f) => !f.mimetype?.startsWith("image/"))) {
+      res.status(400).json({ ok: false, message: "Solo se permiten archivos de imagen" });
+      return;
+    }
+    const actuales = pub.adjunto?.length ?? 0;
+    if (actuales + files.length > MAX_FOTOS_EMPRENDIMIENTO) {
+      res.status(400).json({
+        ok: false,
+        message: `Máximo ${MAX_FOTOS_EMPRENDIMIENTO} fotos por emprendimiento (tienes ${actuales})`,
+      });
+      return;
+    }
+
+    for (const file of files) {
+      const result = await saveMulterFileToGridFS(file, "publicaciones");
+      pub.adjunto!.push({
+        url: `${process.env.PUBLIC_BASE_URL || "http://159.54.148.238"}/api/files/${result.id.toString()}`,
+        key: result.id.toString(),
+      });
+    }
+    await pub.save();
+    res.status(200).json({ ok: true, adjunto: pub.adjunto });
+  } catch (error) {
+    console.error("addFotosEmprendimiento error:", error);
+    res.status(500).json({ ok: false, message: (error as Error).message });
+  }
+};
+
+/** Elimina una foto de un emprendimiento (autor o administrador). */
+export const deleteFotoEmprendimiento = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    const pub = await modelPublicacion.findById(req.params.id);
+    if (!pub) {
+      res.status(404).json({ ok: false, message: "Publicación no encontrada" });
+      return;
+    }
+    const esAutor = String(pub.autor) === String(user._id);
+    const esAdmin = user.tipoUsuario === 0 || user.tipoUsuario === 1;
+    if (!esAutor && !esAdmin) {
+      res.status(403).json({ ok: false, message: "No tienes permiso para modificar este emprendimiento" });
+      return;
+    }
+    const foto: any = (pub.adjunto as any[] | undefined)?.find(
+      (a) => String(a._id) === req.params.fotoId,
+    );
+    if (!foto) {
+      res.status(404).json({ ok: false, message: "Foto no encontrada" });
+      return;
+    }
+    if ((pub.adjunto?.length ?? 0) <= 1) {
+      res.status(400).json({ ok: false, message: "El emprendimiento debe conservar al menos una foto" });
+      return;
+    }
+    pub.adjunto = (pub.adjunto as any[]).filter((a) => String(a._id) !== req.params.fotoId) as any;
+    await pub.save();
+    try {
+      await deleteGridFSFile(foto.key);
+    } catch {}
+    res.status(200).json({ ok: true, adjunto: pub.adjunto });
+  } catch (error) {
+    console.error("deleteFotoEmprendimiento error:", error);
+    res.status(500).json({ ok: false, message: (error as Error).message });
+  }
+};
