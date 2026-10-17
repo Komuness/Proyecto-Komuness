@@ -501,8 +501,18 @@ const EditarPerfil = () => {
         body: JSON.stringify(perfil),
       });
 
-      if (!response.ok) {
-        throw new Error("Error al guardar el perfil");
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data.success === false) {
+        // El servidor devuelve los campos faltantes para unirse al banco
+        if (Array.isArray(data?.data)) {
+          toast.error(
+            `Completa tu perfil para aparecer en el banco. Falta: ${data.data.join(", ")}`,
+            { duration: 6000 }
+          );
+          return;
+        }
+        throw new Error(data?.message || "Error al guardar el perfil");
       }
 
       toast.success("Perfil actualizado exitosamente");

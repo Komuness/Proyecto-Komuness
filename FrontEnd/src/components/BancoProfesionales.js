@@ -44,6 +44,8 @@ const BancoProfesionales = () => {
   const [cargandoEstado, setCargandoEstado] = useState(false);
   const [cargandoToggle, setCargandoToggle] = useState(false);
   const [activeTab, setActiveTab] = useState("profesionales");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ page: 1, pages: 1, total: 0 });
 
   const usuariosFiltrados = usuarios.data?.filter((item) => {
     const texto = searchTerm.toLowerCase();
@@ -55,20 +57,28 @@ const BancoProfesionales = () => {
   });
 
   // Cargar profesionales - USAR PROFESIONALES_API_URL
-  const cargarProfesionales = useCallback(async (search = '', provincia = '', canton = '') => {
+  const cargarProfesionales = useCallback(async (search = '', provincia = '', canton = '', pageNum = 1, append = false) => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (provincia) params.set('provincia', provincia);
       if (canton) params.set('canton', canton);
-      const queryParams = params.toString() ? `?${params.toString()}` : '';
-      const response = await fetch(`${PROFESIONALES_API_URL}/banco-profesionales${queryParams}`);
+      params.set('page', String(pageNum));
+      params.set('limit', '12');
+      const response = await fetch(`${PROFESIONALES_API_URL}/banco-profesionales?${params.toString()}`);
 
       if (!response.ok) throw new Error('Error al cargar profesionales');
 
       const data = await response.json();
-      setProfesionales(data);
+      setProfesionales((prev) => {
+        if (append && prev?.data) {
+          return { ...data, data: [...prev.data, ...(data.data || [])] };
+        }
+        return data;
+      });
+      setPagination(data.pagination || { page: pageNum, pages: pageNum, total: data.data?.length || 0 });
+      setPage(pageNum);
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al cargar los profesionales');
@@ -77,13 +87,18 @@ const BancoProfesionales = () => {
     }
   }, []);
 
+  // Cargar la siguiente página de profesionales
+  const cargarMas = () => {
+    if (loading) return;
+    cargarProfesionales(searchTerm, provinciaFilter, cantonFilter, page + 1, true);
+  };
+
   // Cargar usuarios
-  const cargarUsuarios = useCallback(async (search = '') => {
+  const cargarUsuarios = useCallback(async () => {
     if(!user) return;
     try {
       setLoading(true);
 
-      const queryParams = search ? `?search=${encodeURIComponent(search)}` : '';
       const response = await fetch(
         `${API_URL}/usuario/public`,
         {
@@ -155,20 +170,26 @@ const BancoProfesionales = () => {
         }
       });
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Error al actualizar estado');
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data.success === false) {
+        // Si el servidor devuelve los campos faltantes, mostrarlos
+        if (Array.isArray(data?.data)) {
+          ImprimirErroresDePerfil(data.data);
+          return;
+        }
+        throw new Error(data?.message || 'Error al actualizar estado');
       }
 
-      const data = await response.json();
-      setEstadoUsuario(data.data);
+      setEstadoUsuario((prev) => ({ ...(prev || {}), ...data.data }));
       toast.success(data.message);
       
       // Recargar lista si se unió o retiró
-      cargarProfesionales(searchTerm, provinciaFilter, cantonFilter);
+      cargarProfesionales(searchTerm, provinciaFilter, cantonFilter, 1, false);
 
     } catch (error) {
       console.error('Error:', error);
-      toast.error('Error al actualizar el estado');
+      toast.error(error?.message || 'Error al actualizar el estado');
     } finally {
       setCargandoToggle(false);
     }
@@ -265,11 +286,11 @@ const quitarDelBanco = async (perfilId) => {
     if(activeTab !== 'profesionales') return;
 
     const timeoutId = setTimeout(() => {
-      cargarProfesionales(searchTerm, provinciaFilter, cantonFilter);
+      cargarProfesionales(searchTerm, provinciaFilter, cantonFilter, 1, false);
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, provinciaFilter, cantonFilter, cargarProfesionales]);
+  }, [searchTerm, provinciaFilter, cantonFilter, activeTab, cargarProfesionales]);
 
   // Cargar estado del usuario al montar
   useEffect(() => {
@@ -422,6 +443,7 @@ const quitarDelBanco = async (perfilId) => {
 
       // MAP PROFESIONALES 
       profesionales && profesionales.data?.length > 0 ? (
+        <>
         <div className="profesionales-grid">
 
           {profesionales.data?.map((item) => (
@@ -500,20 +522,34 @@ const quitarDelBanco = async (perfilId) => {
 
               {/* ACTIONS */}
               <div className="card-actions">
-                <button
-                  onClick={() =>
-                    navigate(`/perfil/${item.usuarioId._id}`)
-                  }
-                  className="btn-ver-perfil"
-                >
-                  <FaEye /> Ver Perfil Completo
-                </button>
+                {item.usuarioId?._id && (
+                  <button
+                    onClick={() =>
+                      navigate(`/perfil/${item.usuarioId._id}`)
+                    }
+                    className="btn-ver-perfil"
+                  >
+                    <FaEye /> Ver Perfil Completo
+                  </button>
+                )}
               </div>
 
             </div>
           ))}
 
         </div>
+        {pagination.page < pagination.pages && (
+          <div className="flex justify-center my-6">
+            <button
+              onClick={cargarMas}
+              disabled={loading}
+              className="btn-toggle no-unido"
+            >
+              {loading ? <FaSpinner className="spinner" /> : 'Cargar más'}
+            </button>
+          </div>
+        )}
+        </>
       ) : (
         <div className="empty-state">
           <FaUser className="empty-icon mx-auto" />

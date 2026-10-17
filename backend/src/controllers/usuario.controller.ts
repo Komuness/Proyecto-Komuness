@@ -66,7 +66,7 @@ export const getUsuarios = async (req: Request, res: Response): Promise<void> =>
 export const getPublicUsuarios = async (req: Request, res: Response): Promise<void> => {
 
     try {
-        const usuarios = await modelUsuario.find().select('nombre apellido');
+        const usuarios = await modelUsuario.find().select('nombre apellido email');
 
         res.status(200).json({
             success: true,
