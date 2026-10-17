@@ -1,6 +1,7 @@
 // src/components/buscadorPublicaciones.js - Versión temporal
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { getRutaDetalle } from "../utils/secciones";
 
 // Base de API robusta (evita /api/api)
 const RAW = process.env.REACT_APP_BACKEND_URL || window.location.origin;
@@ -127,7 +128,7 @@ export const BuscadorPublicaciones = () => {
 
   // Seleccionar una sugerencia
   const handleSuggestionClick = (publicacion) => {
-    navigate(`/publicaciones/${publicacion._id}`);
+    navigate(getRutaDetalle(publicacion.tag, publicacion._id));
     setSearchTerm("");
     setShowSuggestions(false);
   };

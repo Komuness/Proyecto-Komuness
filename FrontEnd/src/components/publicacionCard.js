@@ -7,6 +7,7 @@ import ProfileErrorModal from "./ProfileErrorModal";
 import { API_URL } from "../utils/api";
 
 import { obtenerEtiquetaExpiracion } from "../utils/publicacionExpiracion";
+import { getRutaDetalle } from "../utils/secciones";
 
 export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
   // ========== FUNCIÓN FORMATFECHA CORREGIDA ==========
@@ -89,7 +90,7 @@ export const PublicacionCard = ({ publicacion, onDeleteClick }) => {
   };
 
   const handleClick = () => {
-    navigate(`/publicaciones/${publicacion._id}`, {
+    navigate(getRutaDetalle(publicacion.tag, publicacion._id), {
       state: { from: location.pathname + location.search },
     });
   };

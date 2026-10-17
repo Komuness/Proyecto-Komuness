@@ -24,6 +24,7 @@ import CategoriaBadge from "./generic/categoriaBadge";
 import ProfileErrorModal from "./ProfileErrorModal";
 import "../CSS/publicacionDetalle.css";
 import { obtenerEtiquetaExpiracion } from "../utils/publicacionExpiracion";
+import { getSeccionPorPath } from "../utils/secciones";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -324,10 +325,12 @@ export const PublicacionDetalle = () => {
         <div className="publicacion-error-card">
           <p className="text-lg mb-4">{error}</p>
           <button
-            onClick={() => (window.location.href = "/publicaciones")}
+            onClick={() =>
+              (window.location.href = getSeccionPorPath(location.pathname))
+            }
             className="publicacion-error-btn"
           >
-            Volver a publicaciones
+            Volver
           </button>
         </div>
       </div>

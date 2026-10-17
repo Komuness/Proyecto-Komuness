@@ -3,6 +3,7 @@ import { FaTimes, FaClock, FaTag } from "react-icons/fa";
 import moment from "moment";
 import "moment/locale/es";
 import { BASE_URL } from "../utils/api";
+import { getRutaDetalle } from "../utils/secciones";
 
 moment.locale("es");
 
@@ -49,7 +50,7 @@ export const EventoDetalleModal = ({ evento, isOpen, onClose }) => {
 
   const handleVerCompleta = () => {
     onClose();
-    navigate(`/publicaciones/${evento._id}`);
+    navigate(getRutaDetalle(evento.tag, evento._id));
   };
 
   return (

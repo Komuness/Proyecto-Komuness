@@ -43,6 +43,8 @@ export const Rutas = () => {
           element={<LandingPage tag="publicacion" />}
         />
         <Route path="/publicaciones/:id" element={<PublicacionDetalle />} />
+        <Route path="/eventos/:id" element={<PublicacionDetalle />} />
+        <Route path="/emprendimientos/:id" element={<PublicacionDetalle />} />
         <Route
           path="/emprendimientos"
           element={<LandingPage tag="emprendimiento" />}
