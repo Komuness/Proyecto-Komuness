@@ -475,6 +475,48 @@ export const createPublicacionA = async (
 
     const savePost = await nuevaPublicacion.save();
 
+    // BKD38: al crear un evento o emprendimiento, generar automáticamente
+    // una publicación independiente en el feed general. Solo ocurre al
+    // crear (no hay sincronización si luego se edita o borra el original).
+    if (tag === "evento" || tag === "emprendimiento") {
+      try {
+        // Copia independiente de los adjuntos: no reusar el mismo key de
+        // GridFS que el evento/emprendimiento original, porque
+        // deletePublicacion() borra los adjuntos en GridFS al eliminar
+        // cualquiera de los dos documentos, y eso rompería las imágenes
+        // del otro.
+        const adjuntosPublicacion: IAdjunto[] = [];
+        for (const file of files) {
+          const result = await saveMulterFileToGridFS(file, "publicaciones");
+          adjuntosPublicacion.push({
+            url: `${process.env.PUBLIC_BASE_URL || "http://159.54.148.238"}/api/files/${result.id.toString()}`,
+            key: result.id.toString(),
+          });
+        }
+
+        const publicacionAutomatica = new modelPublicacion({
+          titulo: savePost.titulo,
+          contenido: savePost.contenido,
+          contenidoBreve: savePost.contenidoBreve,
+          autor: userId,
+          fecha: savePost.fecha,
+          tag: "publicacion",
+          publicado: savePost.publicado,
+          categoria: savePost.categoria,
+          comunidad: savePost.comunidad,
+          adjunto: adjuntosPublicacion,
+          publicacionOrigenId: savePost._id,
+        });
+
+        await publicacionAutomatica.save();
+      } catch (e) {
+        console.warn(
+          "[Publicaciones][createPublicacionA] No se pudo crear la publicación automática:",
+          e,
+        );
+      }
+    }
+
     // Notificación por correo a admins (aprobación)
     try {
       const asunto = "Nueva publicación para aprobar";

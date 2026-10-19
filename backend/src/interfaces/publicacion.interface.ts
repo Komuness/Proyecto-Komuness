@@ -31,6 +31,7 @@ export interface IPublicacion {
   telefono?: string;
   ubicacion?: IUbicacion; // Ubicación en el mapa (evento o emprendimiento)
   comunidad?: string; // Comunidad/localidad a la que pertenece la publicación
+  publicacionOrigenId?: string | Types.ObjectId; // Si esta publicación se generó automáticamente a partir de un evento/emprendimiento, referencia a ese documento (solo informativo, sin sincronización)
   categoria: string | Types.ObjectId;
   fechaExpiracion?: string | Date | null;
   diasRestantes?: number | null;
