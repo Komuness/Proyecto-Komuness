@@ -1,7 +1,7 @@
+import "dotenv/config";
 import express, { Request, Response, Express } from "express";
 import type { ErrorRequestHandler } from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import path from "path";
 import mongoose from "mongoose";
 import cookieParser from "cookie-parser";
@@ -24,6 +24,7 @@ import paqueteSuscripcionRoutes from "./routes/paqueteSuscripcion.routes";
 import publicidadRoutes from "./routes/publicidad.routes";
 import proyectosDestacadosRoutes from "./routes/proyectosDestacados.routes";
 import actividadesRoutes from "./routes/actividades.routes";
+import { uploadErrorHandler } from "./utils/imageUpload";
 
 // Rutas de PayPal
 import paypalRoutes from "./routes/paypal.routes";
@@ -33,7 +34,6 @@ import bancoProfesionalesRoutes from "./routes/bancoProfesionales.routes";
 import boletinRoutes from "./routes/boletin.routes";
 
 const app: Express = express();
-dotenv.config();
 
 app.disable("x-powered-by");
 app.use(cookieParser());
@@ -49,7 +49,7 @@ const defaultCorsOrigins = [
   "http://159.54.148.238",
   "https://komuness.duckdns.org",
   "https://proyecto-komuness-production.up.railway.app",
-  "https://frontend-production-0b7e.up.railway.app/",
+  "https://frontend-production-0b7e.up.railway.app", // sin "/" final
 ];
 
 const extraCorsOrigins = (process.env.CORS_ORIGINS || "")
@@ -69,30 +69,20 @@ app.use(
   }),
 );
 
-/** ====== ESTÁTICOS (reemplazo directo de Nginx alias) ====== */
+/** ====== ESTÁTICOS ====== */
 const UPLOADS_ROOT = process.env.UPLOAD_DIR || "/srv/uploads";
-const LIBRARY_DIR =
-  process.env.LIBRARY_DIR || path.join(UPLOADS_ROOT, "biblioteca");
 const ACERCADE_DIR =
   process.env.ACERCADE_LIB || path.join(UPLOADS_ROOT, "acercade");
 const PROFILE_DIR =
   process.env.PROFILE_LIB || path.join(UPLOADS_ROOT, "perfil");
 const CSV_DIR = process.env.CSV_LIB || path.join(UPLOADS_ROOT, "csv");
 
-app.use("/uploads", express.static(UPLOADS_ROOT));
-app.use(
-  "/biblioteca",
-  express.static(process.env.LIBRARY_DIR || UPLOADS_ROOT + "/biblioteca"),
-);
-app.use(
-  "/acercade",
-  express.static(process.env.ACERCADE_LIB || UPLOADS_ROOT + "/acercade"),
-);
-app.use(
-  "/perfil",
-  express.static(process.env.PROFILE_LIB || UPLOADS_ROOT + "/perfil"),
-);
-app.use("/csv", express.static(process.env.CSV_LIB || UPLOADS_ROOT + "/csv"));
+// NOTA: se quitaron "/uploads" y "/biblioteca" porque exponían la biblioteca
+// completa (incluidos archivos pendientes/rechazados) sin autenticación.
+// La biblioteca se descarga por /api/biblioteca/files/:id
+app.use("/acercade", express.static(ACERCADE_DIR));
+app.use("/perfil", express.static(PROFILE_DIR));
+app.use("/csv", express.static(CSV_DIR));
 
 /** ====== Rutas API ====== */
 app.use("/api/configuracion", configuracionRoutes);
@@ -100,7 +90,7 @@ app.use("/api/usuario", usuarioRoutes);
 app.use("/api/publicaciones", publicacionRoutes);
 app.use("/api/biblioteca", bibliotecaRoutes);
 app.use("/api/elements", elementRoutes);
-app.use('/api/categoria-preferencias', categoriaPreferenciaRoutes);
+app.use("/api/categoria-preferencias", categoriaPreferenciaRoutes);
 app.use("/api", filesRouter);
 app.use("/api/acerca-de", seccionAcercaRoutes);
 app.use("/api/perfil", perfilRoutes);
@@ -119,7 +109,7 @@ app.get("/api/", (_req: Request, res: Response) => {
   res.send("Hello World");
 });
 
-/** Healthcheck mínimo para Railway (útil para ver si conectó a Mongo) */
+/** Healthcheck mínimo para Railway */
 app.get(["/health", "/api/health"], (_req: Request, res: Response) => {
   res.json({
     ok: true,
@@ -184,6 +174,7 @@ const globalErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   }
 };
 
+// Primero el de imágenes (400 con mensajes claros), después el global
 app.use(globalErrorHandler);
 
 const port = process.env.PORT || 5000;

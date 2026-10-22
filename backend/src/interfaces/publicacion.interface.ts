@@ -123,6 +123,7 @@ export interface IPublicacionUpdate {
   telefono?: string;
   ubicacion?: IUbicacion; // Ubicación en el mapa para actualización
   comunidad?: string; // Comunidad/localidad a la que pertenece la publicación
+   publicacionOrigenId?: string | Types.ObjectId; // Si esta publicación se generó automáticamente a partir de un evento/emprendimiento, referencia a ese documento (solo informativo, sin sincronización)
   categoria?: string | Types.ObjectId;  // ← Permitir ambos tipos
   adjunto?: IAdjunto[];
   requestedAt: string;

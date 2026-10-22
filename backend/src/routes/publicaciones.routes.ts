@@ -1,4 +1,4 @@
-import multer from 'multer';
+
 import { Router } from 'express';
 import {
   createPublicacion,
@@ -25,21 +25,15 @@ import {
   getPendingUpdates,
   approveUpdate,
   rejectUpdate,
-  cancelUpdateRequest
+  cancelUpdateRequest,
 } from '../controllers/publicacion-update.controller';
 
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { verificarRoles } from '../middlewares/roles.middleware';
 import { validarLimitePublicaciones } from '../middlewares/limitePublicaciones.middleware';
+import { uploadImageMemory } from '../utils/imageUpload';
 
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage,
-  limits: { fileSize: 20 * 1024 * 1024 }, // 20MB
-});
-
-// acepta 'archivos' o 'imagenes' (0..N)
-const multiFields = upload.fields([
+const multiFields = uploadImageMemory.fields([
   { name: 'archivos', maxCount: 10 },
   { name: 'imagenes', maxCount: 10 },
 ]);
@@ -49,63 +43,116 @@ const router = Router();
 // ========== RUTAS PÚBLICAS ==========
 router.get('/', getPublicacionesByTag);
 router.get('/buscar', filterPublicaciones);
-router.get('/:id', getPublicacionById);
+
+// Las rutas específicas deben declararse antes de '/:id'.
+router.get('/search/quick', searchPublicacionesByTitulo);
+router.get('/search/advanced', searchPublicacionesAvanzada);
+router.get('/search/titulo', searchByTitulo);
+
+router.get('/conteo/ubicacion', contarPublicacionesPorUbicacion);
 router.get('/categoria/:categoriaId', getPublicacionesByCategoria);
 router.get('/eventos/calendario', getEventosPorFecha);
-router.get('/conteo/ubicacion', contarPublicacionesPorUbicacion); // Conteo por lugar (?tag=emprendimiento&comunidad=...)
+
+// ========== RUTAS DE ADMINISTRACIÓN DE ACTUALIZACIONES ==========
+router.get(
+  '/admin/pending-updates',
+  authMiddleware,
+  verificarRoles([0, 1]),
+  getPendingUpdates
+);
+
+router.put(
+  '/admin/:id/approve-update',
+  authMiddleware,
+  verificarRoles([0, 1]),
+  approveUpdate
+);
+
+router.put(
+  '/admin/:id/reject-update',
+  authMiddleware,
+  verificarRoles([0, 1]),
+  rejectUpdate
+);
+
+// Ruta genérica de consulta después de las rutas específicas.
+router.get('/:id', getPublicacionById);
 
 // ========== RUTAS DE USUARIO AUTENTICADO ==========
-router.post('/', authMiddleware, validarLimitePublicaciones, createPublicacion);
+router.post(
+  '/',
+  authMiddleware,
+  validarLimitePublicaciones,
+  createPublicacion
+);
 
-// Handler robusto para capturar errores de Multer
-router.post('/v2', authMiddleware, validarLimitePublicaciones, (req, res, next) => {
-  multiFields(req, res, (err: any) => {
-    if (err) {
-      const msg = err?.message || 'Error al subir archivos';
-      const status = err?.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
-      return res.status(status).json({ ok: false, message: msg });
-    }
-    createPublicacionA(req, res).catch(next);
-  });
-});
+// Crear publicación con imágenes.
+router.post(
+  '/v2',
+  authMiddleware,
+  validarLimitePublicaciones,
+  (req, res, next) => {
+    multiFields(req, res, (err: any) => {
+      if (err) {
+        const status = err?.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
 
-// Fotos de emprendimientos: agregar/quitar en cualquier momento (autor o admin)
+        return res.status(status).json({
+          ok: false,
+          message: err?.message || 'Error al subir archivos',
+        });
+      }
+
+      createPublicacionA(req, res).catch(next);
+    });
+  }
+);
+
+// Agregar fotos a un emprendimiento existente.
 router.post('/:id/fotos', authMiddleware, (req, res, next) => {
   multiFields(req, res, (err: any) => {
     if (err) {
       const status = err?.code === 'LIMIT_FILE_SIZE' ? 413 : 400;
-      return res.status(status).json({ ok: false, message: err?.message || 'Error al subir archivos' });
+
+      return res.status(status).json({
+        ok: false,
+        message: err?.message || 'Error al subir archivos',
+      });
     }
+
     addFotosEmprendimiento(req, res).catch(next);
   });
 });
+
+// Eliminar una foto de un emprendimiento.
 router.delete('/:id/fotos/:fotoId', authMiddleware, deleteFotoEmprendimiento);
 
-router.post('/:id/comentarios', authMiddleware, verificarRoles([0, 1, 2, 3]), addComentario);
+// ========== COMENTARIOS Y RESPUESTAS ==========
+router.post(
+  '/:id/comentarios',
+  authMiddleware,
+  verificarRoles([0, 1, 2, 3]),
+  addComentario
+);
 
+router.post(
+  '/:id/comentarios/:comentarioId/respuesta',
+  authMiddleware,
+  verificarRoles([0, 1, 2, 3]),
+  addRespuesta
+);
 
+// ========== SOLICITUDES DE ACTUALIZACIÓN ==========
+router.put(
+  '/:id/request-update',
+  authMiddleware,
+  multiFields,
+  requestUpdatePublicacion
+);
 
-router.post('/:id/comentarios/:comentarioId/respuesta', authMiddleware, verificarRoles([0, 1, 2, 3]), addRespuesta);
-
-
-
-
-// ========== RUTAS DE EDICIÓN PARA AUTORES ==========
-// Ruta  para solicitar actualización
-router.put('/:id/request-update', authMiddleware, multiFields, requestUpdatePublicacion);
 router.delete('/:id/cancel-update', authMiddleware, cancelUpdateRequest);
-// ========== RUTAS DE ADMINISTRACIÓN ==========
-// NOTA: Estas rutas deben definirse ANTES de las rutas con parámetros genéricos como '/:id'
-router.get('/admin/pending-updates', authMiddleware, verificarRoles([0, 1]), getPendingUpdates);
-router.put('/admin/:id/approve-update', authMiddleware, verificarRoles([0, 1]), approveUpdate);
-router.put('/admin/:id/reject-update', authMiddleware, verificarRoles([0, 1]), rejectUpdate);
 
-// ========== RUTAS DE ADMINISTRACIÓN GENERAL ==========
+// ========== ADMINISTRACIÓN GENERAL ==========
 router.put('/:id', authMiddleware, verificarRoles([0, 1]), updatePublicacion);
 router.delete('/:id', authMiddleware, verificarRoles([0, 1]), deletePublicacion);
-// ========== RUTAS DE BÚSQUEDA ==========
-router.get('/search/quick', searchPublicacionesByTitulo); // Búsqueda rápida
-router.get('/search/advanced', searchPublicacionesAvanzada); // Búsqueda con filtros
-router.get('/search/titulo', searchByTitulo);
 
 export default router;
