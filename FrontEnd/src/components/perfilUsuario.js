@@ -21,7 +21,7 @@ export const PerfilUsuario = () => {
   const [archivos, setArchivos] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
   const [pendingUpdates, setPendingUpdates] = useState([]);
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout, updateUser, cargando } = useAuth();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modalLimitesAbierto, setModalLimitesAbierto] = useState(false);
   const [modalPagosAbierto, setModalPagosAbierto] = useState(false);
@@ -40,10 +40,12 @@ export const PerfilUsuario = () => {
   const [, setPerfilPublico] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    // Esperar a que AuthContext termine de validar la sesión; si no, al
+    // recargar la página user todavía es null y se expulsa al usuario.
+    if (!cargando && !user) {
       navigate("/");
     }
-  }, [user, navigate]);
+  }, [user, cargando, navigate]);
 
   // Función para cargar datos del límite de publicaciones del usuario
   const cargarDatosLimite = async () => {
@@ -296,8 +298,19 @@ export const PerfilUsuario = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, user]);
 
+  // fetch no rechaza ante 4xx/5xx: convertirlos en error para que el toast
+  // no diga "éxito" cuando el servidor falló.
+  const fetchOk = async (url, options) => {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.message || `Error ${response.status}`);
+    }
+    return response;
+  };
+
   const aceptarPost = async (id) => {
-    const promesa = fetch(`${API_URL}/publicaciones/${id}`, {
+    const promesa = fetchOk(`${API_URL}/publicaciones/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -314,14 +327,16 @@ export const PerfilUsuario = () => {
 
     try {
       await promesa;
-      setPublicaciones((prev) => prev.filter((item) => item._id !== id));
+      // Recargar: al aprobar un evento/emprendimiento el backend también
+      // aprueba su publicación automática, que debe salir de la lista.
+      await cargarPublicaciones();
     } catch (error) {
       console.error("Error al aceptar publicación:", error);
     }
   };
 
   const rechazarPost = async (id) => {
-    const promesa = fetch(`${API_URL}/publicaciones/${id}`, {
+    const promesa = fetchOk(`${API_URL}/publicaciones/${id}`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -336,7 +351,9 @@ export const PerfilUsuario = () => {
 
     try {
       await promesa;
-      setPublicaciones((prev) => prev.filter((item) => item._id !== id));
+      // Recargar: al rechazar un evento/emprendimiento el backend también
+      // borra su publicación automática pendiente.
+      await cargarPublicaciones();
     } catch (error) {
       console.error("Error al eliminar publicación:", error);
     }

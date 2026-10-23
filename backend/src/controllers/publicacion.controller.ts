@@ -805,9 +805,22 @@ export const updatePublicacion = async (
       return;
     }
 
+    // BKD38: al aprobar un evento/emprendimiento, aprobar también la
+    // publicación automática que se generó con él (si sigue pendiente).
+    const seAprobo = !publicacionActual.publicado && updatedData.publicado === true;
+    if (
+      seAprobo &&
+      (publicacion.tag === "evento" || publicacion.tag === "emprendimiento")
+    ) {
+      await modelPublicacion.updateMany(
+        { publicacionOrigenId: publicacion._id, publicado: false },
+        { $set: { publicado: true } },
+      );
+    }
+
     //Notificación a usuarios suscritos a categoría
     const autor = publicacionActual.autor as any;
-    if(!publicacionActual.publicado && updatedData.publicado === true){
+    if(seAprobo){
       const nombreAutor = [autor.nombre, autor.apellido].filter(Boolean).join(" ").trim();
       try {
         await notificarNuevaPublicacion({
@@ -843,13 +856,35 @@ export const deletePublicacion = async (
       return;
     }
 
-    const adjuntos = (deletedPost as any).adjunto as IAdjunto[] | undefined;
-    if (adjuntos?.length) {
-      for (const a of adjuntos) {
-        if (a.key) {
-          try {
-            await deleteGridFSFile(a.key);
-          } catch {}
+    // BKD38: si se rechaza (borra) un evento/emprendimiento que todavía no
+    // estaba aprobado, borrar también su publicación automática pendiente.
+    // Las que ya están publicadas no se tocan (no hay sincronización).
+    const documentosBorrados: any[] = [deletedPost];
+    if (
+      !deletedPost.publicado &&
+      (deletedPost.tag === "evento" || deletedPost.tag === "emprendimiento")
+    ) {
+      const copias = await modelPublicacion.find({
+        publicacionOrigenId: deletedPost._id,
+        publicado: false,
+      });
+      if (copias.length) {
+        await modelPublicacion.deleteMany({
+          _id: { $in: copias.map((c) => c._id) },
+        });
+        documentosBorrados.push(...copias);
+      }
+    }
+
+    for (const doc of documentosBorrados) {
+      const adjuntos = (doc as any).adjunto as IAdjunto[] | undefined;
+      if (adjuntos?.length) {
+        for (const a of adjuntos) {
+          if (a.key) {
+            try {
+              await deleteGridFSFile(a.key);
+            } catch {}
+          }
         }
       }
     }

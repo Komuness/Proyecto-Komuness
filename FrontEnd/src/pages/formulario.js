@@ -511,7 +511,11 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
                 value={formData.contenido}
                 onChange={handleChange}
                 className="campo-textarea"
-                placeholder={`Descripción del evento`}
+                placeholder={
+                  formData.tag === "emprendimiento"
+                    ? "Descripción del emprendimiento"
+                    : "Descripción del evento"
+                }
                 rows="4"
                 required
               />

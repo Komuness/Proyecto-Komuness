@@ -9,7 +9,7 @@ import { MdSend } from "react-icons/md";
 
 export const AdminBoletines = () => {
     const navigate = useNavigate();
-    const { user, token } = useAuth();
+    const { user, token, cargando } = useAuth();
 
     const [boletines, setBoletines] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -33,6 +33,9 @@ export const AdminBoletines = () => {
     // Verificar permisos
     useEffect(() => {
         const checkPermissions = async () => {
+            // Esperar a que AuthContext valide la sesión antes de decidir.
+            if (cargando) return;
+
             if (!user) {
                 navigate("/iniciarSesion");
                 return;
@@ -46,7 +49,7 @@ export const AdminBoletines = () => {
         };
 
         checkPermissions();
-    }, [user, navigate]);
+    }, [user, cargando, navigate]);
 
     // Obtener boletines
     const fetchBoletines = async () => {
