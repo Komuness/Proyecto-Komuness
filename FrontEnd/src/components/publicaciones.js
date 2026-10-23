@@ -77,13 +77,10 @@ export const Publicaciones = ({ tag: propTag }) => {
   const mostrarCarrusel =
     tag === "evento" || tag === "emprendimiento" || tag === "publicacion";
 
-    // El botón de crear solo aplica a eventos y emprendimientos
+  // El botón de crear aplica a eventos y emprendimientos, para cualquier
+  // usuario con sesión: lo que crea queda pendiente hasta que un admin lo aprueba.
   const puedeMostrarBotonCrear =
-    tag === "evento" || tag === "emprendimiento";
-
-  //Estado del banco de profesionales
-  const [estadoUsuario, setEstadoUsuario] = useState(null);
-  const [cargandoEstado, setCargandoEstado] = useState(false);
+    (tag === "evento" || tag === "emprendimiento") && !!user;
 
   // para PUBLICIDAD
   const [mostrarModalPublicidad, setMostrarModalPublicidad] = useState(false);
@@ -442,31 +439,6 @@ export const Publicaciones = ({ tag: propTag }) => {
   };
 
   useEffect(() => {
-    // Verificar si el usuario está en el banco
-    const cargarEstadoUsuario = async () => {
-      if (!user) return;
-
-      try {
-        setCargandoEstado(true);
-        const response = await fetch(`${API_URL}/banco-profesionales/estado`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setEstadoUsuario(data.data);
-        }
-      } catch (error) {
-        console.error("Error al cargar estado:", error);
-      } finally {
-        setCargandoEstado(false);
-      }
-    };
-
-    cargarEstadoUsuario();
-
     //Datos límite
     if (user) {
       cargarDatosLimite();
@@ -745,7 +717,7 @@ export const Publicaciones = ({ tag: propTag }) => {
         </div>
       )}
 
-      {puedeMostrarBotonCrear && (esAdmin || estadoUsuario?.enBancoProfesionales) && (
+      {puedeMostrarBotonCrear && (
         <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex items-center gap-3">
           <span className="hidden md:block bg-white px-4 py-2 rounded-full shadow-md text-sm font-medium text-gray-700">
             Inspira a otros con tu talento

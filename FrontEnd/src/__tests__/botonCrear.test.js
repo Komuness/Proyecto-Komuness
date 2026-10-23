@@ -1,5 +1,6 @@
-// UI41: el botón "+" de crear aparece en Eventos y Emprendimientos (para
-// admins y miembros del Banco de Profesionales) y nunca en Publicaciones.
+// UI41: el botón "+" de crear aparece en Eventos y Emprendimientos para
+// cualquier usuario con sesión (lo que crea queda pendiente hasta que un admin
+// lo aprueba) y nunca en Publicaciones, que se generan automáticamente.
 import { render, screen, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { Publicaciones } from "../components/publicaciones";
@@ -34,46 +35,37 @@ jest.mock("../components/generic/comunidadFilter", () => () => null);
 jest.mock("../components/CarruselGenerico", () => () => null);
 jest.mock("../components/Calendar", () => () => null);
 
-const ADMIN = { _id: "a1", nombre: "Admin", tipoUsuario: 0 };
-const BASICO = { _id: "b1", nombre: "Basico", tipoUsuario: 2 };
-
-const mockFetch = (enBanco) => {
-  global.fetch = jest.fn((url) => {
-    const body = String(url).includes("banco-profesionales/estado")
-      ? { data: { enBancoProfesionales: enBanco } }
-      : { data: [], pagination: { offset: 0, limit: 12, total: 0, pages: 0 } };
-    return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
-  });
-};
+const USUARIOS = [
+  ["un admin", { _id: "a1", nombre: "Admin", tipoUsuario: 0 }],
+  ["un usuario básico", { _id: "b1", nombre: "Basico", tipoUsuario: 2 }],
+  ["un usuario premium", { _id: "p1", nombre: "Premium", tipoUsuario: 3 }],
+];
 
 const renderLista = (tag) => render(<Publicaciones tag={tag} />);
-
 const BOTON = "Inspira a otros con tu talento";
 
 beforeEach(() => {
   window.scrollTo = jest.fn(); // jsdom no implementa scroll
   jest.clearAllMocks();
   localStorage.setItem("token", "t");
+  global.fetch = jest.fn(() =>
+    Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ data: [], pagination: { offset: 0, limit: 12, total: 0, pages: 0 } }),
+    }),
+  );
 });
 
 describe.each(["evento", "emprendimiento"])("en %s", (tag) => {
-  test("el admin ve el botón de crear", async () => {
-    useAuth.mockReturnValue({ user: ADMIN });
-    mockFetch(false);
+  test.each(USUARIOS)("%s ve el botón de crear", async (_, user) => {
+    useAuth.mockReturnValue({ user });
     renderLista(tag);
     expect(await screen.findByText(BOTON)).toBeInTheDocument();
   });
 
-  test("un miembro del banco ve el botón de crear", async () => {
-    useAuth.mockReturnValue({ user: BASICO });
-    mockFetch(true);
-    renderLista(tag);
-    expect(await screen.findByText(BOTON)).toBeInTheDocument();
-  });
-
-  test("un usuario básico fuera del banco no lo ve", async () => {
-    useAuth.mockReturnValue({ user: BASICO });
-    mockFetch(false);
+  test("sin sesión no aparece", async () => {
+    useAuth.mockReturnValue({ user: null });
     renderLista(tag);
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     expect(screen.queryByText(BOTON)).not.toBeInTheDocument();
@@ -81,12 +73,8 @@ describe.each(["evento", "emprendimiento"])("en %s", (tag) => {
 });
 
 describe("en publicacion", () => {
-  test.each([
-    ["el admin", ADMIN, false],
-    ["un miembro del banco", BASICO, true],
-  ])("%s no ve el botón: las publicaciones se generan solas", async (_, user, enBanco) => {
+  test.each(USUARIOS)("%s no ve el botón: las publicaciones se generan solas", async (_, user) => {
     useAuth.mockReturnValue({ user });
-    mockFetch(enBanco);
     renderLista("publicacion");
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     expect(screen.queryByText(BOTON)).not.toBeInTheDocument();
