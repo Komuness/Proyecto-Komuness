@@ -118,11 +118,7 @@ const publicacionSchema = new Schema(
     fechaExpiracion: { type: Date, required: false, index: true },
     ubicacion: { type: ubicacionSchema, required: false }, // Ubicación en el mapa (evento o emprendimiento)
     comunidad: { type: String, required: false, trim: true, maxlength: 100, index: true }, // Comunidad/localidad de la publicación
-<<<<<<< HEAD
     publicacionOrigenId: { type: Schema.Types.ObjectId, ref: 'Publicacion', required: false }, // Si se generó automáticamente a partir de un evento/emprendimiento (solo informativo)
-=======
-     publicacionOrigenId: { type: Schema.Types.ObjectId, ref: 'Publicacion', required: false }, // Si se generó automáticamente a partir de un evento/emprendimiento (solo informativo)
->>>>>>> 5fb683d (update: IMG/Noti)
 
     // categorías de área
     categoria: { type: Schema.Types.ObjectId, ref: 'Categoria', required: true },
