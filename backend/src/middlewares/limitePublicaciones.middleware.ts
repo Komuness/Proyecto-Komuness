@@ -112,9 +112,10 @@ export const validarLimitePublicaciones = async (
             }
         }
 
-        // Contar publicaciones del usuario
+        // Contar publicaciones del usuario (las automáticas de BKD38 no cuentan)
         const cantidadPublicaciones = await modelPublicacion.countDocuments({
-            autor: usuarioCompleto._id
+            autor: usuarioCompleto._id,
+            publicacionOrigenId: { $exists: false }
         });
 
         // Validar si ha alcanzado el límite

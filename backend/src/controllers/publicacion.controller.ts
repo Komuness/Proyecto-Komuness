@@ -504,6 +504,11 @@ export const createPublicacionA = async (
           publicado: savePost.publicado,
           categoria: savePost.categoria,
           comunidad: savePost.comunidad,
+          fechaEvento: savePost.fechaEvento,
+          horaEvento: savePost.horaEvento,
+          telefono: savePost.telefono,
+          enlacesExternos: savePost.enlacesExternos,
+          ubicacion: savePost.ubicacion,
           adjunto: adjuntosPublicacion,
           publicacionOrigenId: savePost._id,
         });
@@ -574,6 +579,9 @@ export const getPublicacionesByTag = async (
     const query: any = { $and: [buildActivePublicationQuery()] };
     if (tag) query.tag = tag;
     if (publicado !== undefined) query.publicado = publicado === "true";
+    // BKD38: las publicaciones automáticas pendientes se aprueban/rechazan
+    // junto con su evento/emprendimiento, no deben salir como solicitud aparte.
+    if (publicado === "false") query.publicacionOrigenId = { $exists: false };
     if (categoria) query.categoria = categoria;
     if (comunidad) query.comunidad = { $regex: comunidad as string, $options: "i" };
 
