@@ -1,6 +1,7 @@
 // src/components/buscadorPublicaciones.js - Versión temporal
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { getRutaDetalle } from "../utils/secciones";
 
 // Base de API robusta (evita /api/api)
 const RAW = process.env.REACT_APP_BACKEND_URL || window.location.origin;
@@ -17,12 +18,10 @@ export const BuscadorPublicaciones = () => {
   const searchRef = useRef(null);
 
   // Obtener término de búsqueda actual de la URL
+  // (también se limpia aquí si el término se quita desde afuera, ej. botón "Borrar filtros")
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
-    const currentSearch = urlParams.get("q");
-    if (currentSearch) {
-      setSearchTerm(currentSearch);
-    }
+    setSearchTerm(urlParams.get("q") || "");
   }, [location.search]);
 
   // Cerrar sugerencias al hacer clic fuera
@@ -129,7 +128,7 @@ export const BuscadorPublicaciones = () => {
 
   // Seleccionar una sugerencia
   const handleSuggestionClick = (publicacion) => {
-    navigate(`/publicaciones/${publicacion._id}`);
+    navigate(getRutaDetalle(publicacion.tag, publicacion._id));
     setSearchTerm("");
     setShowSuggestions(false);
   };

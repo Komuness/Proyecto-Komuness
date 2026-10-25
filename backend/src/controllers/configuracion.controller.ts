@@ -512,7 +512,7 @@ export const getMisLimitesPublicaciones = async (req: Request, res: Response): P
                     tipoUsuario: usuarioCompleto.tipoUsuario,
                     nombreTipo: usuarioCompleto.tipoUsuario === 0 ? 'super-admin' : 'admin',
                     limite: null,
-                    publicacionesActuales: await modelPublicacion.countDocuments({ autor: usuarioCompleto._id }),
+                    publicacionesActuales: await modelPublicacion.countDocuments({ autor: usuarioCompleto._id, publicacionOrigenId: { $exists: false } }),
                     sinLimite: true
                 }
             });
@@ -533,7 +533,7 @@ export const getMisLimitesPublicaciones = async (req: Request, res: Response): P
             limiteAplicable = configuracion?.valor ?? (usuarioCompleto.tipoUsuario === 3 ? 50 : 10);
         }
 
-        const cantidadPublicaciones = await modelPublicacion.countDocuments({ autor: usuarioCompleto._id });
+        const cantidadPublicaciones = await modelPublicacion.countDocuments({ autor: usuarioCompleto._id, publicacionOrigenId: { $exists: false } });
 
         // Validar si premium está vencido
         let premiumVencido = false;

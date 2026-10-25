@@ -106,18 +106,19 @@ const publicacionSchema = new Schema(
     // Evento
     fechaEvento: { type: String, required: false },
     horaEvento:  { type: String, required: false }, 
-    precio: { type: Number, required: false }, // Precio regular
+    precio: { type: Number, required: false , min: 0}, // Precio regular
     moneda: { type: String, enum: ['CRC', 'USD'], required: false, default: 'CRC' },
     monedaSimbolo: { type: String, enum: ['₡', '$'], required: false, default: '₡' },
     precioNegociable: { type: Boolean, required: false, default: false },
-    precioEstudiante: { type: Number, required: false },
-    precioCiudadanoOro: { type: Number, required: false },
+    precioEstudiante: { type: Number, required: false , min: 0},
+    precioCiudadanoOro: { type: Number, required: false , min: 0},
     descuento: { type: Number, required: false, default: 0, min: 0, max: 100 }, // Porcentaje de descuento
     enlacesExternos: { type: [enlaceExternoSchema], required: false },
     telefono: { type: String, required: false },
     fechaExpiracion: { type: Date, required: false, index: true },
-    ubicacion: { type: ubicacionSchema, required: false }, // Ubicación del evento
+    ubicacion: { type: ubicacionSchema, required: false }, // Ubicación en el mapa (evento o emprendimiento)
     comunidad: { type: String, required: false, trim: true, maxlength: 100, index: true }, // Comunidad/localidad de la publicación
+    publicacionOrigenId: { type: Schema.Types.ObjectId, ref: 'Publicacion', required: false }, // Si se generó automáticamente a partir de un evento/emprendimiento (solo informativo)
 
     // categorías de área
     categoria: { type: Schema.Types.ObjectId, ref: 'Categoria', required: true },

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { modelPerfil } from '../models/perfil.model';
 import { modelUsuario } from '../models/usuario.model';
+import { obtenerFaltantesBanco } from '../utils/perfilElegibilidad';
 import fs from 'fs';
 import path from 'path';
 
@@ -173,6 +174,32 @@ export const crearOActualizarPerfil = async (req: Request, res: Response): Promi
     
     // Buscar perfil existente
     let perfil = await modelPerfil.findOne({ usuarioId: userId });
+
+    const esAdmin = usuario.tipoUsuario === 0 || usuario.tipoUsuario === 1;
+    const quiereEstarEnBanco = datosActualizados.enBancoProfesionales === true;
+
+    // Si se intenta aparecer en el banco, validar elegibilidad en el servidor
+    if (quiereEstarEnBanco) {
+      const perfilResultante = {
+        ...(perfil ? perfil.toObject() : {}),
+        ...datosActualizados
+      };
+
+      if (!esAdmin) {
+        const faltantes = obtenerFaltantesBanco(perfilResultante);
+        if (faltantes.length > 0) {
+          res.status(200).json({
+            success: false,
+            message: 'Debes completar tu perfil antes de unirte al banco',
+            data: faltantes
+          });
+          return;
+        }
+      }
+
+      // Un perfil dentro del banco debe ser público para poder listarse
+      datosActualizados.perfilPublico = true;
+    }
 
     if (perfil) {
       // Actualizar perfil existente
@@ -423,17 +450,7 @@ export const validacionParaBanco = async (req: Request, res: Response): Promise<
     }
 
 
-    const faltantes = [];
-
-    // Valida que tenga la información correspondiente para entrar al banco 
-    if (!perfil.nombre) faltantes.push('Nombre');
-    if (!perfil.apellidos) faltantes.push('Apellidos');
-    if (!perfil.telefono) faltantes.push('Teléfono');
-    if (!perfil.canton) faltantes.push('Cantón');
-    if (!perfil.provincia) faltantes.push('Provincia');
-    if (!perfil.fotoPerfil) faltantes.push('Foto de perfil');
-    if (!perfil.ocupacionPrincipal) faltantes.push('Ocupación principal');
-    if (!perfil.formacionAcademica?.length) faltantes.push('Formación académica');
+    const faltantes = obtenerFaltantesBanco(perfil);
 
     if (perfil && faltantes.length > 0) {
       res.status(200).json({

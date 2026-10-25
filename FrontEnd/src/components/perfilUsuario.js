@@ -21,7 +21,7 @@ export const PerfilUsuario = () => {
   const [archivos, setArchivos] = useState([]);
   const [usuarios, setUsuarios] = useState([]);
   const [pendingUpdates, setPendingUpdates] = useState([]);
-  const { user, logout, updateUser } = useAuth();
+  const { user, logout, updateUser, cargando } = useAuth();
   const [modalAbierto, setModalAbierto] = useState(false);
   const [modalLimitesAbierto, setModalLimitesAbierto] = useState(false);
   const [modalPagosAbierto, setModalPagosAbierto] = useState(false);
@@ -40,10 +40,12 @@ export const PerfilUsuario = () => {
   const [, setPerfilPublico] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    // Esperar a que AuthContext termine de validar la sesión; si no, al
+    // recargar la página user todavía es null y se expulsa al usuario.
+    if (!cargando && !user) {
       navigate("/");
     }
-  }, [user, navigate]);
+  }, [user, cargando, navigate]);
 
   // Función para cargar datos del límite de publicaciones del usuario
   const cargarDatosLimite = async () => {
@@ -296,8 +298,19 @@ export const PerfilUsuario = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, user]);
 
+  // fetch no rechaza ante 4xx/5xx: convertirlos en error para que el toast
+  // no diga "éxito" cuando el servidor falló.
+  const fetchOk = async (url, options) => {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.message || `Error ${response.status}`);
+    }
+    return response;
+  };
+
   const aceptarPost = async (id) => {
-    const promesa = fetch(`${API_URL}/publicaciones/${id}`, {
+    const promesa = fetchOk(`${API_URL}/publicaciones/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -314,14 +327,16 @@ export const PerfilUsuario = () => {
 
     try {
       await promesa;
-      setPublicaciones((prev) => prev.filter((item) => item._id !== id));
+      // Recargar: al aprobar un evento/emprendimiento el backend también
+      // aprueba su publicación automática, que debe salir de la lista.
+      await cargarPublicaciones();
     } catch (error) {
       console.error("Error al aceptar publicación:", error);
     }
   };
 
   const rechazarPost = async (id) => {
-    const promesa = fetch(`${API_URL}/publicaciones/${id}`, {
+    const promesa = fetchOk(`${API_URL}/publicaciones/${id}`, {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -336,7 +351,9 @@ export const PerfilUsuario = () => {
 
     try {
       await promesa;
-      setPublicaciones((prev) => prev.filter((item) => item._id !== id));
+      // Recargar: al rechazar un evento/emprendimiento el backend también
+      // borra su publicación automática pendiente.
+      await cargarPublicaciones();
     } catch (error) {
       console.error("Error al eliminar publicación:", error);
     }
@@ -1032,13 +1049,9 @@ export const PerfilUsuario = () => {
               {/* Botón para actualizar a Premium */}
               <button
                 onClick={() => setModalPremiumAbierto(true)}
-                className="w-full px-4 py-3 bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-white font-bold rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                className="w-full px-4 py-3 bg-gradient-to-r from-[#ffc83d] to-[#f5a300] hover:from-[#f5a300] hover:to-[#e08e00] text-[#12141a] font-bold rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                 </svg>
                 Actualizar a Premium
@@ -1130,15 +1143,15 @@ export const PerfilUsuario = () => {
             <div className="flex gap-2 mb-4">
               <button
                 onClick={() => navigate("/mi-perfil/editar")}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors duration-200 font-medium text-sm flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 bg-[#2f8bf0] text-white rounded shadow-md hover:bg-[#1f78db] transition-colors duration-200 font-medium text-sm flex items-center justify-center gap-2"
               >
                 <FaEdit />
-                Modificar Perfil Público
+                Modificar Perfil
               </button>
 
               <button
                 onClick={() => navigate(`/perfil/${user?._id}`)}
-                className="flex-1 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors duration-200 font-medium text-sm flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2 bg-[#16a974] text-white rounded shadow-md hover:bg-[#12905f] transition-colors duration-200 font-medium text-sm flex items-center justify-center gap-2"
               >
                 <AiOutlineUser />
                 Ver Perfil Público
@@ -1147,7 +1160,7 @@ export const PerfilUsuario = () => {
 
             <button
               onClick={() => setModalAbierto(true)}
-              className="w-full px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+              className="w-full px-4 py-2 bg-[#3a46b8] border border-white/20 text-white rounded shadow-md hover:bg-[#4a57d1] transition-colors duration-200 font-medium"
             >
               Cambiar contraseña
             </button>
@@ -1158,7 +1171,7 @@ export const PerfilUsuario = () => {
                 logout();
                 navigate("/");
               }}
-              className="mt-4 w-full bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded"
+              className="mt-4 w-full bg-[#dc3a3a] text-white hover:bg-[#b82e2e] font-medium px-4 py-2 rounded shadow-md transition-colors duration-200"
             >
               Cerrar sesión
             </button>

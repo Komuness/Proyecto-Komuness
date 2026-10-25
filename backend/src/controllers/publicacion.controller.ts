@@ -6,7 +6,6 @@ import { IPublicacionNotification,
   IComentario,
   IEnlaceExterno,
   IPublicacion,
-  IUbicacion,
 } from "../interfaces/publicacion.interface";
 import { modelPublicacion } from "../models/publicacion.model";
 import mongoose from "mongoose";
@@ -19,6 +18,7 @@ import {
   buildActivePublicationQuery,
   calculatePublicationExpirationDate,
 } from "../utils/publicacionExpiration";
+import { validarUbicacion } from "../utils/ubicacion";
 import { sendEmail } from "../utils/mail"; // usa el mismo transporter que recuperación
 import { modelUsuario } from "../models/usuario.model"; // ← Modelo de usuarios
 import {
@@ -28,6 +28,8 @@ import {
 } from "../services/notificacion.service";
 
 const LOG_ON = process.env.LOG_PUBLICACION === "1";
+
+const TAGS_CONTEO = ["publicacion", "evento", "emprendimiento"];
 
 // Utilidad: normaliza precio (string → number | undefined)
 function parsePrecio(input: any): number | undefined {
@@ -240,42 +242,6 @@ function parseHoraEvento(input: any): string | undefined {
   return /^\d{2}:\d{2}$/.test(t) ? t : undefined;
 }
 
-// función para validar ubicación
-function parseUbicacion(input: any): IUbicacion | undefined {
-  if (!input) return undefined;
-  try {
-    let ubicacion: any;
-
-    // Si es string (JSON), parsear
-    if (typeof input === "string") {
-      ubicacion = JSON.parse(input);
-    } else {
-      ubicacion = input;
-    }
-
-    // Validar que tenga los campos necesarios
-    if (!ubicacion || typeof ubicacion !== "object") return undefined;
-
-    const lat = Number(ubicacion.latitude);
-    const lng = Number(ubicacion.longitude);
-    const dir = String(ubicacion.direccion).trim();
-
-    // Validar rango de coordenadas válidas
-    if (!Number.isFinite(lat) || lat < -90 || lat > 90) return undefined;
-    if (!Number.isFinite(lng) || lng < -180 || lng > 180) return undefined;
-    if (dir.length === 0 || dir.length > 500) return undefined;
-
-    return {
-      latitude: lat,
-      longitude: lng,
-      direccion: dir,
-      mapLink: `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`,
-    };
-  } catch {
-    return undefined;
-  }
-}
-
 // ───────────────────────────────────────────────────────────────────────────────
 // Helper: correos de admins (tipoUsuario = 1) con email válido
 // ───────────────────────────────────────────────────────────────────────────────
@@ -315,7 +281,12 @@ export const createPublicacion = async (
     const horaEvento = parseHoraEvento(body.horaEvento);
     const telefono = parseTelefono(body.telefono);
     const enlacesExternos = parseEnlacesExternos(body.enlacesExternos);
-    const ubicacion = parseUbicacion(body.ubicacion);
+    const ubicacionResult = validarUbicacion(body.ubicacion);
+    if (!ubicacionResult.ok) {
+      res.status(400).json({ message: ubicacionResult.error });
+      return;
+    }
+    const ubicacion = ubicacionResult.ubicacion;
     const comunidad = parseComunidad(body.comunidad);
     const monedaData = getMonedaData(body.moneda, body.monedaSimbolo);
 
@@ -448,7 +419,12 @@ export const createPublicacionA = async (
     const enlacesExternos = parseEnlacesExternos(
       (publicacion as any).enlacesExternos,
     );
-    const ubicacion = parseUbicacion((publicacion as any).ubicacion);
+    const ubicacionResult = validarUbicacion((publicacion as any).ubicacion);
+    if (!ubicacionResult.ok) {
+      res.status(400).json({ ok: false, message: ubicacionResult.error });
+      return;
+    }
+    const ubicacion = ubicacionResult.ubicacion;
     const comunidad = parseComunidad((publicacion as any).comunidad);
     const monedaData = getMonedaData(
       (publicacion as any).moneda,
@@ -498,6 +474,53 @@ export const createPublicacionA = async (
     });
 
     const savePost = await nuevaPublicacion.save();
+
+    // BKD38: al crear un evento o emprendimiento, generar automáticamente
+    // una publicación independiente en el feed general. Solo ocurre al
+    // crear (no hay sincronización si luego se edita o borra el original).
+    if (tag === "evento" || tag === "emprendimiento") {
+      try {
+        // Copia independiente de los adjuntos: no reusar el mismo key de
+        // GridFS que el evento/emprendimiento original, porque
+        // deletePublicacion() borra los adjuntos en GridFS al eliminar
+        // cualquiera de los dos documentos, y eso rompería las imágenes
+        // del otro.
+        const adjuntosPublicacion: IAdjunto[] = [];
+        for (const file of files) {
+          const result = await saveMulterFileToGridFS(file, "publicaciones");
+          adjuntosPublicacion.push({
+            url: `${process.env.PUBLIC_BASE_URL || "http://159.54.148.238"}/api/files/${result.id.toString()}`,
+            key: result.id.toString(),
+          });
+        }
+
+        const publicacionAutomatica = new modelPublicacion({
+          titulo: savePost.titulo,
+          contenido: savePost.contenido,
+          contenidoBreve: savePost.contenidoBreve,
+          autor: userId,
+          fecha: savePost.fecha,
+          tag: "publicacion",
+          publicado: savePost.publicado,
+          categoria: savePost.categoria,
+          comunidad: savePost.comunidad,
+          fechaEvento: savePost.fechaEvento,
+          horaEvento: savePost.horaEvento,
+          telefono: savePost.telefono,
+          enlacesExternos: savePost.enlacesExternos,
+          ubicacion: savePost.ubicacion,
+          adjunto: adjuntosPublicacion,
+          publicacionOrigenId: savePost._id,
+        });
+
+        await publicacionAutomatica.save();
+      } catch (e) {
+        console.warn(
+          "[Publicaciones][createPublicacionA] No se pudo crear la publicación automática:",
+          e,
+        );
+      }
+    }
 
     // Notificación por correo a admins (aprobación)
     try {
@@ -556,6 +579,9 @@ export const getPublicacionesByTag = async (
     const query: any = { $and: [buildActivePublicationQuery()] };
     if (tag) query.tag = tag;
     if (publicado !== undefined) query.publicado = publicado === "true";
+    // BKD38: las publicaciones automáticas pendientes se aprueban/rechazan
+    // junto con su evento/emprendimiento, no deben salir como solicitud aparte.
+    if (publicado === "false") query.publicacionOrigenId = { $exists: false };
     if (categoria) query.categoria = categoria;
     if (comunidad) query.comunidad = { $regex: comunidad as string, $options: "i" };
 
@@ -725,6 +751,19 @@ export const updatePublicacion = async (
       else delete updatedData.horaEvento;
     }
 
+    // Si viene ubicacion, validarla (si viene vacía, no pisa)
+    if (updatedData.hasOwnProperty("ubicacion")) {
+      const ubicacionResult = validarUbicacion(updatedData.ubicacion);
+      if (!ubicacionResult.ok) {
+        res.status(400).json({ message: ubicacionResult.error });
+        return;
+      }
+
+      if (ubicacionResult.ubicacion !== undefined)
+        updatedData.ubicacion = ubicacionResult.ubicacion;
+      else delete updatedData.ubicacion;
+    }
+
     const nextTag =
       (updatedData.tag as string | undefined) ?? publicacionActual.tag;
     const nextPrecio = updatedData.hasOwnProperty("precio")
@@ -774,9 +813,22 @@ export const updatePublicacion = async (
       return;
     }
 
+    // BKD38: al aprobar un evento/emprendimiento, aprobar también la
+    // publicación automática que se generó con él (si sigue pendiente).
+    const seAprobo = !publicacionActual.publicado && updatedData.publicado === true;
+    if (
+      seAprobo &&
+      (publicacion.tag === "evento" || publicacion.tag === "emprendimiento")
+    ) {
+      await modelPublicacion.updateMany(
+        { publicacionOrigenId: publicacion._id, publicado: false },
+        { $set: { publicado: true } },
+      );
+    }
+
     //Notificación a usuarios suscritos a categoría
     const autor = publicacionActual.autor as any;
-    if(!publicacionActual.publicado && updatedData.publicado === true){
+    if(seAprobo){
       const nombreAutor = [autor.nombre, autor.apellido].filter(Boolean).join(" ").trim();
       try {
         await notificarNuevaPublicacion({
@@ -812,13 +864,35 @@ export const deletePublicacion = async (
       return;
     }
 
-    const adjuntos = (deletedPost as any).adjunto as IAdjunto[] | undefined;
-    if (adjuntos?.length) {
-      for (const a of adjuntos) {
-        if (a.key) {
-          try {
-            await deleteGridFSFile(a.key);
-          } catch {}
+    // BKD38: si se rechaza (borra) un evento/emprendimiento que todavía no
+    // estaba aprobado, borrar también su publicación automática pendiente.
+    // Las que ya están publicadas no se tocan (no hay sincronización).
+    const documentosBorrados: any[] = [deletedPost];
+    if (
+      !deletedPost.publicado &&
+      (deletedPost.tag === "evento" || deletedPost.tag === "emprendimiento")
+    ) {
+      const copias = await modelPublicacion.find({
+        publicacionOrigenId: deletedPost._id,
+        publicado: false,
+      });
+      if (copias.length) {
+        await modelPublicacion.deleteMany({
+          _id: { $in: copias.map((c) => c._id) },
+        });
+        documentosBorrados.push(...copias);
+      }
+    }
+
+    for (const doc of documentosBorrados) {
+      const adjuntos = (doc as any).adjunto as IAdjunto[] | undefined;
+      if (adjuntos?.length) {
+        for (const a of adjuntos) {
+          if (a.key) {
+            try {
+              await deleteGridFSFile(a.key);
+            } catch {}
+          }
         }
       }
     }
@@ -1128,6 +1202,73 @@ export const getEventosPorFecha = async (
   }
 };
 
+// Conteo de publicaciones por lugar (comunidad), p. ej. cuántos emprendimientos hay en cada una
+export const contarPublicacionesPorUbicacion = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { tag, comunidad } = req.query;
+
+    if (tag !== undefined && !TAGS_CONTEO.includes(tag as string)) {
+      res.status(400).json({
+        message: `El tag debe ser uno de: ${TAGS_CONTEO.join(", ")}`,
+      });
+      return;
+    }
+    if (comunidad !== undefined && typeof comunidad !== "string") {
+      res.status(400).json({ message: "El parámetro comunidad debe ser texto" });
+      return;
+    }
+
+    const match: any = {
+      publicado: true,
+      $and: [buildActivePublicationQuery()],
+    };
+    if (tag) match.tag = tag;
+    if (comunidad && comunidad.trim() !== "") {
+      match.comunidad = {
+        $regex: comunidad.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        $options: "i",
+      };
+    }
+
+    // Agrupa sin distinguir mayúsculas ni espacios sobrantes ("San Ramón" = "san ramón ")
+    const grupos = await modelPublicacion.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: {
+            $toLower: { $trim: { input: { $ifNull: ["$comunidad", ""] } } },
+          },
+          comunidad: { $first: "$comunidad" },
+          total: { $sum: 1 },
+          conUbicacion: {
+            $sum: { $cond: [{ $gt: ["$ubicacion", null] }, 1, 0] },
+          },
+        },
+      },
+      { $sort: { total: -1, _id: 1 } },
+    ]);
+
+    const porComunidad = grupos.map((g: any) => ({
+      comunidad: g._id ? String(g.comunidad).trim() : null,
+      total: g.total as number,
+      conUbicacion: g.conUbicacion as number,
+    }));
+
+    res.status(200).json({
+      total: porComunidad.reduce((acc, g) => acc + g.total, 0),
+      conUbicacion: porComunidad.reduce((acc, g) => acc + g.conUbicacion, 0),
+      porComunidad,
+    });
+  } catch (error) {
+    const err = error as Error;
+    console.error("Error en conteo por ubicación:", err);
+    res.status(500).json({ message: "Error al realizar el conteo" });
+  }
+};
+
 // Búsqueda rápida por título (para sugerencias)
 export const searchPublicacionesByTitulo = async (
   req: Request,
@@ -1304,5 +1445,111 @@ export const searchByTitulo = async (
     const err = error as Error;
     console.error("Error en búsqueda por título:", err);
     res.status(500).json({ message: "Error al realizar la búsqueda" });
+  }
+};
+
+const MAX_FOTOS_EMPRENDIMIENTO = 20;
+
+/**
+ * Agrega fotos a un emprendimiento en cualquier momento (sin pasar por el
+ * flujo de aprobación de ediciones). Solo el autor o un administrador.
+ */
+export const addFotosEmprendimiento = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    const pub = await modelPublicacion.findById(req.params.id);
+    if (!pub) {
+      res.status(404).json({ ok: false, message: "Publicación no encontrada" });
+      return;
+    }
+    if (pub.tag !== "emprendimiento") {
+      res.status(400).json({ ok: false, message: "Solo los emprendimientos admiten fotos adicionales" });
+      return;
+    }
+    const esAutor = String(pub.autor) === String(user._id);
+    const esAdmin = user.tipoUsuario === 0 || user.tipoUsuario === 1;
+    if (!esAutor && !esAdmin) {
+      res.status(403).json({ ok: false, message: "No tienes permiso para modificar este emprendimiento" });
+      return;
+    }
+
+    const map = (req.files ?? {}) as Record<string, Express.Multer.File[] | undefined>;
+    const files = Array.isArray(req.files)
+      ? (req.files as Express.Multer.File[])
+      : [...(map["imagenes"] ?? []), ...(map["archivos"] ?? [])];
+
+    if (files.length === 0) {
+      res.status(400).json({ ok: false, message: "Debes enviar al menos una imagen" });
+      return;
+    }
+    if (files.some((f) => !f.mimetype?.startsWith("image/"))) {
+      res.status(400).json({ ok: false, message: "Solo se permiten archivos de imagen" });
+      return;
+    }
+    const actuales = pub.adjunto?.length ?? 0;
+    if (actuales + files.length > MAX_FOTOS_EMPRENDIMIENTO) {
+      res.status(400).json({
+        ok: false,
+        message: `Máximo ${MAX_FOTOS_EMPRENDIMIENTO} fotos por emprendimiento (tienes ${actuales})`,
+      });
+      return;
+    }
+
+    for (const file of files) {
+      const result = await saveMulterFileToGridFS(file, "publicaciones");
+      pub.adjunto!.push({
+        url: `${process.env.PUBLIC_BASE_URL || "http://159.54.148.238"}/api/files/${result.id.toString()}`,
+        key: result.id.toString(),
+      });
+    }
+    await pub.save();
+    res.status(200).json({ ok: true, adjunto: pub.adjunto });
+  } catch (error) {
+    console.error("addFotosEmprendimiento error:", error);
+    res.status(500).json({ ok: false, message: (error as Error).message });
+  }
+};
+
+/** Elimina una foto de un emprendimiento (autor o administrador). */
+export const deleteFotoEmprendimiento = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const user = (req as any).user;
+    const pub = await modelPublicacion.findById(req.params.id);
+    if (!pub) {
+      res.status(404).json({ ok: false, message: "Publicación no encontrada" });
+      return;
+    }
+    const esAutor = String(pub.autor) === String(user._id);
+    const esAdmin = user.tipoUsuario === 0 || user.tipoUsuario === 1;
+    if (!esAutor && !esAdmin) {
+      res.status(403).json({ ok: false, message: "No tienes permiso para modificar este emprendimiento" });
+      return;
+    }
+    const foto: any = (pub.adjunto as any[] | undefined)?.find(
+      (a) => String(a._id) === req.params.fotoId,
+    );
+    if (!foto) {
+      res.status(404).json({ ok: false, message: "Foto no encontrada" });
+      return;
+    }
+    if ((pub.adjunto?.length ?? 0) <= 1) {
+      res.status(400).json({ ok: false, message: "El emprendimiento debe conservar al menos una foto" });
+      return;
+    }
+    pub.adjunto = (pub.adjunto as any[]).filter((a) => String(a._id) !== req.params.fotoId) as any;
+    await pub.save();
+    try {
+      await deleteGridFSFile(foto.key);
+    } catch {}
+    res.status(200).json({ ok: true, adjunto: pub.adjunto });
+  } catch (error) {
+    console.error("deleteFotoEmprendimiento error:", error);
+    res.status(500).json({ ok: false, message: (error as Error).message });
   }
 };

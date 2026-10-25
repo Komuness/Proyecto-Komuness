@@ -229,12 +229,7 @@ export const Navbar = () => {
             >
               <span>Biblioteca</span>
             </li>
-            <li
-              onClick={() => handleNavigation("/calendario")}
-              className={isActive("/calendario") ? "activo" : ""}
-            >
-              <span>Calendario</span>
-            </li>
+           
 
             <li
               onClick={() => handleNavigation("/tutoriales")}

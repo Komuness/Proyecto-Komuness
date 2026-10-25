@@ -13,7 +13,7 @@ import {
   IoMdCreate,
 } from "react-icons/io";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { API_URL, getCategoriaById } from "../utils/api";
 import { EditarPublicacionModal } from "./EditarPublicacionModal";
 import Slider from "./generic/slider";
@@ -24,6 +24,7 @@ import CategoriaBadge from "./generic/categoriaBadge";
 import ProfileErrorModal from "./ProfileErrorModal";
 import "../CSS/publicacionDetalle.css";
 import { obtenerEtiquetaExpiracion } from "../utils/publicacionExpiracion";
+import { getSeccionPorPath } from "../utils/secciones";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -94,6 +95,9 @@ export const PublicacionDetalle = () => {
   const [error, setError] = useState(null);
   const [categoriaCompleta, setCategoriaCompleta] = useState(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [subiendoFotos, setSubiendoFotos] = useState(false);
+  const [fotosError, setFotosError] = useState(null);
+  const fotosInputRef = useRef(null);
 
   // Estados para el modal de error de perfil
   const [showProfileError, setShowProfileError] = useState(false);
@@ -141,6 +145,50 @@ export const PublicacionDetalle = () => {
 
     if (id) obtenerPublicacion();
   }, [id]);
+
+  const authHeaders = () => ({
+    Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+  });
+
+  const handleSubirFotos = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    setFotosError(null);
+    setSubiendoFotos(true);
+    try {
+      const formData = new FormData();
+      files.forEach((f) => formData.append("imagenes", f));
+      const res = await fetch(`${API_URL}/publicaciones/${publicacion._id}/fotos`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: formData,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "No se pudieron subir las fotos");
+      setPublicacion((prev) => ({ ...prev, adjunto: data.adjunto }));
+    } catch (err) {
+      setFotosError(err.message);
+    } finally {
+      setSubiendoFotos(false);
+    }
+  };
+
+  const handleEliminarFoto = async (fotoId) => {
+    if (!window.confirm("¿Eliminar esta foto?")) return;
+    setFotosError(null);
+    try {
+      const res = await fetch(
+        `${API_URL}/publicaciones/${publicacion._id}/fotos/${fotoId}`,
+        { method: "DELETE", headers: authHeaders() },
+      );
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "No se pudo eliminar la foto");
+      setPublicacion((prev) => ({ ...prev, adjunto: data.adjunto }));
+    } catch (err) {
+      setFotosError(err.message);
+    }
+  };
 
   useEffect(() => {
     if (publicacion?.comentarios) {
@@ -277,10 +325,12 @@ export const PublicacionDetalle = () => {
         <div className="publicacion-error-card">
           <p className="text-lg mb-4">{error}</p>
           <button
-            onClick={() => (window.location.href = "/publicaciones")}
+            onClick={() =>
+              (window.location.href = getSeccionPorPath(location.pathname))
+            }
             className="publicacion-error-btn"
           >
-            Volver a publicaciones
+            Volver
           </button>
         </div>
       </div>
@@ -393,6 +443,58 @@ export const PublicacionDetalle = () => {
             <div className="publicacion-slider-container">
               <Slider key={publicacion._id} publicacion={publicacion} />
             </div>
+
+            {/* GESTIÓN DE FOTOS DEL EMPRENDIMIENTO (autor o admin) */}
+            {publicacion.tag === "emprendimiento" &&
+              user &&
+              (user._id === publicacion.autor?._id ||
+                user.tipoUsuario === 0 ||
+                user.tipoUsuario === 1) && (
+                <div className="publicacion-details-panel" data-testid="gestion-fotos">
+                  <h3 className="text-white font-semibold mb-3">
+                    Fotos del emprendimiento ({publicacion.adjunto?.length || 0}/20)
+                  </h3>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "12px" }}>
+                    {(publicacion.adjunto || []).map((foto) => (
+                      <div key={foto._id || foto.key} style={{ position: "relative" }}>
+                        <img
+                          src={foto.url}
+                          alt="Foto del emprendimiento"
+                          style={{ width: 110, height: 110, objectFit: "cover", borderRadius: 8 }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleEliminarFoto(foto._id)}
+                          aria-label="Eliminar foto"
+                          style={{
+                            position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,.7)",
+                            color: "white", borderRadius: "50%", width: 24, height: 24, lineHeight: "24px",
+                          }}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <input
+                    ref={fotosInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    hidden
+                    onChange={handleSubirFotos}
+                  />
+                  <button
+                    type="button"
+                    disabled={subiendoFotos}
+                    onClick={() => fotosInputRef.current?.click()}
+                    className="publicacion-action-btn publicacion-edit-btn"
+                  >
+                    {subiendoFotos ? "Subiendo..." : "+ Agregar fotos"}
+                  </button>
+                  {fotosError && <p className="text-red-400 mt-2 text-sm">{fotosError}</p>}
+                </div>
+              )}
 
             {/* DETALLES PRINCIPALES */}
             <div className="publicacion-details-panel">

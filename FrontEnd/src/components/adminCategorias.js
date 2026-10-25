@@ -38,11 +38,14 @@ export const AdminCategorias = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({ nombre: "" });
-  const { user } = useAuth();
+  const { user, cargando } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkPermissions = async () => {
+      // Esperar a que AuthContext valide la sesión antes de decidir.
+      if (cargando) return;
+
       if (!user) {
         navigate("/iniciarSesion");
         return;
@@ -56,7 +59,7 @@ export const AdminCategorias = () => {
     };
 
     checkPermissions();
-  }, [user, navigate]);
+  }, [user, cargando, navigate]);
 
   const fetchElements = async () => {
     try {

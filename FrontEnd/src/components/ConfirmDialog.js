@@ -6,10 +6,7 @@ const ConfirmDialog = ({ dialog, onConfirm, onCancel }) => {
   return (
     <div className="confirm-dialog-overlay" role="dialog" aria-modal="true">
       <div className={`confirm-dialog-card confirm-dialog-card--${dialog.tone || "primary"}`}>
-        <div className="confirm-dialog-header">
-          <span className="confirm-dialog-accent" aria-hidden="true" />
-          <h3 className="confirm-dialog-title">{dialog.title}</h3>
-        </div>
+        <h3 className="confirm-dialog-title">{dialog.title}</h3>
         <p className="confirm-dialog-message">{dialog.message}</p>
         {dialog.hint ? (
           <p className="confirm-dialog-hint">{dialog.hint}</p>

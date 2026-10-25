@@ -20,6 +20,7 @@ import {
 } from "react-icons/fa";
 import { API_URL, BASE_URL } from "../utils/api";
 import { CategoriaBadge } from "./generic/categoriaBadge";
+import { getRutaDetalle } from "../utils/secciones";
 import "../CSS/carruselGenerico.css";
 
 const MESES = [
@@ -389,14 +390,14 @@ export const CarruselGenerico = ({ tipo, filtros }) => {
                     <div
                       className="carrusel-card"
                       onClick={() =>
-                        navigate(`/publicaciones/${item._id}`)
+                        navigate(getRutaDetalle(tipo, item._id))
                       }
                       role="button"
                       tabIndex={0}
                       onKeyDown={(e) => {
                         if (e.key === "Enter" || e.key === " ") {
                           e.preventDefault();
-                          navigate(`/publicaciones/${item._id}`);
+                          navigate(getRutaDetalle(tipo, item._id));
                         }
                       }}
                     >

@@ -1,54 +1,58 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import { modelPublicidad } from "../models/publicidad.model";
-import { saveMulterFileToGridFS } from "../utils/gridfs";
+import {
+  saveMulterFileToGridFS,
+  safeDeleteGridFS,
+  gridIdFromUrl,
+} from "../utils/gridfs";
+import { assertRealImages, ImageValidationError } from "../utils/imageUpload";
 
-/*
-const publicidadSchema = new Schema<IPublicidad>(
-  {
-    imagen: { type: String, required: true, trim: true },
-    descripcion: { type: String, required: true, trim: true },
-    fechaCaducidad: { type: Date, required: true },
-    autor: { type: Schema.Types.ObjectId, ref: "Usuario", required: true },
-    activa: { type: Boolean, default: true },
-    publicacionRelacionada: {
-      type: Schema.Types.ObjectId,
-      ref: "Publicacion",
-      required: false,
-      default: null,
-    },
-*/
+const buildImageUrl = (fileId: string) => {
+  const base = process.env.PUBLIC_BASE_URL;
+  if (!base) throw new Error("PUBLIC_BASE_URL no está definida en el .env");
+  return `${base}/api/files/${fileId}`;
+};
+
+/** Valida los campos de texto comunes a crear y actualizar. Devuelve el mensaje de error o null. */
+function validarCampos(body: any): string | null {
+  const { descripcion, fechaCaducidad, autor, publicacionRelacionada } = body;
+
+  if (!descripcion?.trim())
+    return "La descripción de la publicidad es obligatoria";
+  if (!fechaCaducidad)
+    return "La fecha de caducidad de la publicidad es obligatoria";
+  if (Number.isNaN(new Date(fechaCaducidad).getTime()))
+    return "La fecha de caducidad no es válida";
+  if (!autor) return "El autor de la publicidad es obligatorio";
+  if (!mongoose.Types.ObjectId.isValid(autor)) return "El autor no es válido";
+  if (
+    publicacionRelacionada &&
+    !mongoose.Types.ObjectId.isValid(publicacionRelacionada)
+  )
+    return "La publicación relacionada no es válida";
+
+  return null;
+}
+
+/** "true"/"false" llegan como string desde FormData */
+function parseActiva(v: any): boolean {
+  if (v === undefined || v === null || v === "") return true;
+  if (typeof v === "boolean") return v;
+  return String(v).trim().toLowerCase() !== "false" && String(v) !== "0";
+}
 
 export const createPublicidad = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
-  try {
-    const {
-      descripcion,
-      fechaCaducidad,
-      autor,
-      activa,
-      publicacionRelacionada,
-    } = req.body;
+  // Fuera del try para poder revertir en el catch
+  let nuevoFileId: string | undefined;
 
-    if (!descripcion?.trim()) {
-      res
-        .status(400)
-        .json({ message: "La descripción de la publicidad es obligatoria" });
-      return;
-    }
-    if (!fechaCaducidad) {
-      res
-        .status(400)
-        .json({
-          message: "La fecha de caducidad de la publicidad es obligatoria",
-        });
-      return;
-    }
-    if (!autor) {
-      res
-        .status(400)
-        .json({ message: "El autor de la publicidad es obligatorio" });
+  try {
+    const errorCampos = validarCampos(req.body);
+    if (errorCampos) {
+      res.status(400).json({ message: errorCampos });
       return;
     }
 
@@ -58,26 +62,41 @@ export const createPublicidad = async (
       return;
     }
 
+    // Validar que sea una imagen real (bytes, no solo el MIME)
+    await assertRealImages([file]);
+
+    const {
+      descripcion,
+      fechaCaducidad,
+      autor,
+      activa,
+      publicacionRelacionada,
+    } = req.body;
+
     const result = await saveMulterFileToGridFS(file, "publicidad");
-    const imagen =
-      `${process.env.PUBLIC_BASE_URL || "http://159.54.148.238"}` +
-      `/api/files/${result.id.toString()}`;
+    const fileId: string = result.id.toString(); 
+    nuevoFileId = fileId; 
 
     const nuevaPublicidad = new modelPublicidad({
-      imagen,
+      imagen: buildImageUrl(fileId), 
       descripcion: descripcion.trim(),
       fechaCaducidad,
       autor,
-      activa: activa ?? true,
-      publicacionRelacionada: publicacionRelacionada ?? null,
+      activa: parseActiva(activa),
+      publicacionRelacionada: publicacionRelacionada || null,
     });
-
     const saved = await nuevaPublicidad.save();
     res.status(201).json(saved);
   } catch (error: any) {
-    console.error(error);
+    // Si la imagen ya se subió pero algo falló después, no dejarla huérfana
+    await safeDeleteGridFS(nuevoFileId);
 
-    res.status(500).json({ message: "Error al crear el paquete" });
+    if (error instanceof ImageValidationError) {
+      res.status(400).json({ message: error.message });
+      return;
+    }
+    console.error(error);
+    res.status(500).json({ message: "Error al crear la publicidad" });
   }
 };
 
@@ -88,7 +107,19 @@ export const deletePublicidad = async (
   try {
     const { id } = req.params;
 
-    await modelPublicidad.findByIdAndDelete(id);
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ message: "ID de publicidad inválido" });
+      return;
+    }
+
+    const eliminada = await modelPublicidad.findByIdAndDelete(id);
+    if (!eliminada) {
+      res.status(404).json({ message: "Publicidad no encontrada" });
+      return;
+    }
+
+    // Borrar también la imagen de GridFS
+    await safeDeleteGridFS(gridIdFromUrl(eliminada.imagen));
 
     res.json({ message: "Publicidad eliminada correctamente" });
   } catch (error) {
@@ -116,8 +147,28 @@ export const updatePublicidad = async (
   req: Request,
   res: Response,
 ): Promise<void> => {
+  let nuevoFileId: string | undefined;
+
   try {
     const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      res.status(400).json({ message: "ID de publicidad inválido" });
+      return;
+    }
+
+    const errorCampos = validarCampos(req.body);
+    if (errorCampos) {
+      res.status(400).json({ message: errorCampos });
+      return;
+    }
+
+    const publicidad = await modelPublicidad.findById(id);
+    if (!publicidad) {
+      res.status(404).json({ message: "Publicidad no encontrada" });
+      return;
+    }
+
     const {
       descripcion,
       fechaCaducidad,
@@ -126,57 +177,42 @@ export const updatePublicidad = async (
       publicacionRelacionada,
     } = req.body;
 
-    if (!descripcion?.trim()) {
-      res
-        .status(400)
-        .json({ message: "La descripción de la publicidad es obligatoria" });
-      return;
-    }
-    if (!fechaCaducidad) {
-      res
-        .status(400)
-        .json({
-          message: "La fecha de caducidad de la publicidad es obligatoria",
-        });
-      return;
-    }
-    if (!autor) {
-      res
-        .status(400)
-        .json({ message: "El autor de la publicidad es obligatorio" });
-      return;
-    }
-    const publicidad = await modelPublicidad.findById(id);
-
-    if (!publicidad) {
-      res.status(404).json({
-        message: "Publicidad no encontrada",
-      });
-      return;
-    }
-
-    let imagen = publicidad.imagen;
+    const imagenAnterior = publicidad.imagen;
+    let imagen = imagenAnterior;
 
     if (req.file) {
-      const result = await saveMulterFileToGridFS(req.file, "publicidad");
+      await assertRealImages([req.file]);
 
-      imagen =
-        `${process.env.PUBLIC_BASE_URL || "http://159.54.148.238"}` +
-        `/api/files/${result.id.toString()}`;
+      const result = await saveMulterFileToGridFS(req.file, "publicidad");
+      const fileId: string = result.id.toString();
+      nuevoFileId = fileId;
+      imagen = buildImageUrl(fileId);
     }
 
     publicidad.imagen = imagen;
     publicidad.descripcion = descripcion.trim();
     publicidad.fechaCaducidad = fechaCaducidad;
     publicidad.autor = autor;
-    publicidad.activa = activa ?? true;
-    publicidad.publicacionRelacionada = publicacionRelacionada ?? null;
+    publicidad.activa = parseActiva(activa);
+    publicidad.publicacionRelacionada = publicacionRelacionada || null;
 
     await publicidad.save();
+
+    // Solo después de guardar con éxito se borra la imagen vieja
+    if (nuevoFileId) {
+      await safeDeleteGridFS(gridIdFromUrl(imagenAnterior));
+    }
+
     res.status(200).json(publicidad);
   } catch (error: any) {
-    console.error(error);
+    // Si se subió la nueva imagen pero falló algo, se revierte
+    await safeDeleteGridFS(nuevoFileId);
 
+    if (error instanceof ImageValidationError) {
+      res.status(400).json({ message: error.message });
+      return;
+    }
+    console.error(error);
     res.status(500).json({ message: "Error al actualizar la publicidad" });
   }
 };

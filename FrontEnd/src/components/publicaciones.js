@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { IoMdArrowRoundBack } from "react-icons/io";
 import { toast } from "react-hot-toast";
-import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import "../CSS/publicaciones.css";
 
 import PublicacionCard from "./publicacionCard";
@@ -21,6 +21,7 @@ import DateFilter from "./generic/dateFilter";
 import PriceFilter from "./generic/priceFilter";
 import ComunidadFilter from "./generic/comunidadFilter";
 import CarruselGenerico from "./CarruselGenerico";
+import CalendarView from "./Calendar";
 
 // Base de API robusta (evita /api/api)
 const RAW = process.env.REACT_APP_BACKEND_URL || window.location.origin;
@@ -57,16 +58,29 @@ export const Publicaciones = ({ tag: propTag }) => {
   const [limiteData, setLimiteData] = useState(null);
   const [selectedPub, setSelectedPub] = useState(null);
 
+  const hayFiltrosActivos = Boolean(
+    categoriaFilter ||
+      isSearch ||
+      fechaInicioFilter ||
+      fechaFinFilter ||
+      precioMin ||
+      precioMax ||
+      comunidadFilter,
+  );
+
+  const limpiarFiltros = () => {
+    navigate(location.pathname);
+  };
+
   // El carrusel se muestra siempre que no haya una búsqueda activa
   // (los filtros de categoría/fecha/precio se aplican dentro del carrusel)
   const mostrarCarrusel =
-    tag === "evento" ||
-    tag === "emprendimiento" ||
-    tag === "publicacion";
+    tag === "evento" || tag === "emprendimiento" || tag === "publicacion";
 
-  //Estado del banco de profesionales
-  const [estadoUsuario, setEstadoUsuario] = useState(null);
-  const [cargandoEstado, setCargandoEstado] = useState(false);
+  // El botón de crear aplica a eventos y emprendimientos, para cualquier
+  // usuario con sesión: lo que crea queda pendiente hasta que un admin lo aprueba.
+  const puedeMostrarBotonCrear =
+    (tag === "evento" || tag === "emprendimiento") && !!user;
 
   // para PUBLICIDAD
   const [mostrarModalPublicidad, setMostrarModalPublicidad] = useState(false);
@@ -425,31 +439,6 @@ export const Publicaciones = ({ tag: propTag }) => {
   };
 
   useEffect(() => {
-    // Verificar si el usuario está en el banco
-    const cargarEstadoUsuario = async () => {
-      if (!user) return;
-
-      try {
-        setCargandoEstado(true);
-        const response = await fetch(`${API_URL}/banco-profesionales/estado`, {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setEstadoUsuario(data.data);
-        }
-      } catch (error) {
-        console.error("Error al cargar estado:", error);
-      } finally {
-        setCargandoEstado(false);
-      }
-    };
-
-    cargarEstadoUsuario();
-
     //Datos límite
     if (user) {
       cargarDatosLimite();
@@ -477,6 +466,19 @@ export const Publicaciones = ({ tag: propTag }) => {
 
               {/* Filtro para precio regular */}
               {tag !== "publicacion" && <PriceFilter />}
+
+              {/* Borrar todos los filtros a la vez */}
+              {hayFiltrosActivos && (
+                <button
+                  type="button"
+                  onClick={limpiarFiltros}
+                  className="flex items-center gap-1 text-sm text-gray-200 hover:text-yellow-400 border border-gray-400 hover:border-yellow-400 rounded px-3 py-2 transition-colors whitespace-nowrap"
+                  title="Borrar todos los filtros"
+                >
+                  <FaTimes size={12} />
+                  Borrar filtros
+                </button>
+              )}
             </div>
 
             {limiteData && tag === "publicacion" && !esAdmin && (
@@ -490,12 +492,12 @@ export const Publicaciones = ({ tag: propTag }) => {
         </div>
       </div>
 
-{/*PUBLICIDAD*/}
-        <div className="w-full flex flex-col items-center justify-center gap-2 py-4 px-3 sm:px-6 md:px-10 lg:px-16 mt-4 rounded-xl bg-white/10">
-          {publicidad && publicidad.length > 0 && (
-            <div className="w-full max-w-[1920px] mx-auto relative bg-gray-800 rounded-2xl shadow-2xl overflow-hidden py-4">
-              {/*CARRUSEL*/}
-              <div className="relative w-full max-w-full h-[200px] sm:h-[260px] md:h-[360px] lg:h-[540px] mx-auto rounded-xl">
+      {/*PUBLICIDAD*/}
+      <div className="w-full flex flex-col items-center justify-center gap-2 py-4 px-3 sm:px-6 md:px-10 lg:px-16 mt-4 rounded-xl bg-white/10">
+        {publicidad && publicidad.length > 0 && (
+          <div className="w-full max-w-[1920px] mx-auto relative bg-gray-800 rounded-2xl shadow-2xl overflow-hidden py-4">
+            {/*CARRUSEL*/}
+            <div className="relative w-full max-w-full h-[200px] sm:h-[260px] md:h-[360px] lg:h-[540px] mx-auto rounded-xl">
               {/*Imagen*/}
               <img
                 src={publicidad[currentPublicidadIndex]?.imagen}
@@ -621,6 +623,15 @@ export const Publicaciones = ({ tag: propTag }) => {
           }}
         />
       )}
+      {/* Calendario de eventos: solo en la cartelera y cuando no hay búsqueda activa */}
+      {tag === "evento" && !searchFilter && (
+  <section
+    className="w-full max-w-7xl mx-auto px-2 md:px-4 py-6"
+    style={{ overflowAnchor: "none", contain: "layout" }}
+  >
+    <CalendarView />
+  </section>
+)}
 
       {(!mostrarCarrusel || searchFilter) && (
         <div
@@ -706,7 +717,7 @@ export const Publicaciones = ({ tag: propTag }) => {
         </div>
       )}
 
-      {(esAdmin || estadoUsuario?.enBancoProfesionales) && (
+      {puedeMostrarBotonCrear && (
         <div className="fixed bottom-4 right-4 md:bottom-6 md:right-6 z-50 flex items-center gap-3">
           <span className="hidden md:block bg-white px-4 py-2 rounded-full shadow-md text-sm font-medium text-gray-700">
             Inspira a otros con tu talento
