@@ -8,8 +8,11 @@ import {
 } from "../utils/gridfs";
 import { assertRealImages, ImageValidationError } from "../utils/imageUpload";
 
-const buildImageUrl = (fileId: string) =>
-  `${process.env.PUBLIC_BASE_URL || "http://159.54.148.238"}/api/files/${fileId}`;
+const buildImageUrl = (fileId: string) => {
+  const base = process.env.PUBLIC_BASE_URL;
+  if (!base) throw new Error("PUBLIC_BASE_URL no está definida en el .env");
+  return `${base}/api/files/${fileId}`;
+};
 
 /** Valida los campos de texto comunes a crear y actualizar. Devuelve el mensaje de error o null. */
 function validarCampos(body: any): string | null {
