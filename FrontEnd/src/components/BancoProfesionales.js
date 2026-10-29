@@ -341,32 +341,27 @@ const quitarDelBanco = async (perfilId) => {
       </div>
 
       {/* Barra de búsqueda y filtros de ubicación */}
-      <div className="search-container flex flex-wrap items-center gap-2">
-        <div className="search-box flex items-center bg-white border border-gray-300 rounded-lg p-3 relative w-full max-w-md">
-          <FaSearch className="text-gray-400 w-4 h-4 mr-2 flex-shrink-0" />
+      <div className="banco-filtros">
+        <div className="banco-campo grande">
+          <FaSearch />
           <input
             type="text"
             placeholder="Filtrar por nombre, especialidad, ocupación..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1 outline-none text-gray-800 py-1"
           />
           {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute right-2 text-gray-400 hover:text-gray-600 flex items-center justify-center w-5 h-5"
-            >
-               <FaTimes className="w-3 h-3" />
+            <button onClick={() => setSearchTerm('')} className="btn-limpiar" title="Limpiar">
+              <FaTimes />
             </button>
           )}
         </div>
 
-        <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-3 py-2">
-          <FaMapMarkerAlt className="text-gray-400 w-4 h-4 flex-shrink-0" />
+        <div className="banco-campo mediano">
+          <FaMapMarkerAlt />
           <select
             value={provinciaFilter}
             onChange={(e) => setProvinciaFilter(e.target.value)}
-            className="outline-none text-gray-800 bg-transparent"
             title="Filtrar por provincia"
           >
             <option value="">Todas las provincias</option>
@@ -378,55 +373,43 @@ const quitarDelBanco = async (perfilId) => {
           </select>
         </div>
 
-        <div className="search-box flex items-center bg-white border border-gray-300 rounded-lg p-3 relative w-full max-w-xs">
+        <div className="banco-campo mediano">
           <input
             type="text"
             placeholder="Filtrar por cantón/zona..."
             value={cantonFilter}
             onChange={(e) => setCantonFilter(e.target.value)}
-            className="flex-1 outline-none text-gray-800 py-1"
           />
           {cantonFilter && (
-            <button
-              onClick={() => setCantonFilter('')}
-              className="absolute right-2 text-gray-400 hover:text-gray-600 flex items-center justify-center w-5 h-5"
-            >
-              <FaTimes className="w-3 h-3" />
+            <button onClick={() => setCantonFilter('')} className="btn-limpiar" title="Limpiar">
+              <FaTimes />
             </button>
           )}
         </div>
       </div>
 
       {/* Pestañas para navegación */}
-      <div className="flex justify-center">
-      <div className="dashboard-tabs w-fit flex flex-wrap gap-2 border-b border-gray-200 pb-2 bg-white px-3 py-2 rounded-lg shadow-sm">
+      <div className="banco-tabs-wrap">
+        <div className="banco-tabs">
           <button
             onClick={() => setActiveTab("profesionales")}
-            className={`px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-0 ${
-              activeTab === "profesionales"
-                ? "bg-gray-200 text-blue-600 shadow-inner"
-                : "text-gray-500 hover:bg-gray-100"
-            }`}
+            className={`banco-tab ${activeTab === "profesionales" ? "activo" : ""}`}
           >
-            <AiOutlineUser className="inline w-4 h-4 mr-2" />
+            <AiOutlineUser />
             Profesionales
           </button>
 
           <button
             onClick={() => {
-              if (!user) navigate('/iniciarSesion');;
-              setActiveTab("usuarios")}
-            }
-            className={`px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-0 ${
-            activeTab === "usuarios"
-              ? "bg-gray-200 text-blue-600 shadow-inner"
-              : "text-gray-500 hover:bg-gray-100"
-          }`}
+              if (!user) navigate('/iniciarSesion');
+              setActiveTab("usuarios");
+            }}
+            className={`banco-tab ${activeTab === "usuarios" ? "activo" : ""}`}
           >
-            <AiOutlineUser className="inline w-4 h-4 mr-2" />
+            <AiOutlineUser />
             Usuarios
           </button>
-      </div>
+        </div>
       </div>
 
       {/* Grid de profesionales/usuarios */}
@@ -539,7 +522,7 @@ const quitarDelBanco = async (perfilId) => {
 
         </div>
         {pagination.page < pagination.pages && (
-          <div className="flex justify-center my-6">
+          <div className="banco-cargar-mas">
             <button
               onClick={cargarMas}
               disabled={loading}
@@ -575,46 +558,26 @@ const quitarDelBanco = async (perfilId) => {
     ) : (
 
       // MAP USUARIOS
-      <div className="tab-table-container mx-auto w-[80%] h-full flex flex-col">
+      <div className="banco-tabla-wrapper">
         {usuariosFiltrados && usuariosFiltrados.length > 0 ? (
-          <div className="flex-1 overflow-y-auto overflow-x-auto w-full flex justify-start sm:justify-center" style={{ maxHeight: "400px" }}>
-            <div className="min-w-full">
-              <table className="responsive-table min-w-[320px]">
-                <thead className="sticky top-0 bg-gray-100">
-                  <tr>
-                    <th className="text-left px-3 py-2 min-w-[120px]">
-                      Nombre
-                    </th>
-                    <th className="text-left px-3 py-2 min-w-[120px]">
-                      Apellidos
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {usuariosFiltrados.map((item) => (
-                    <tr
-                      key={item._id}
-                      className="border-t hover:bg-gray-50"
-                    >
-                      <td className="px-3 py-2 break-words min-w-[120px]">
-                        {item.nombre || "Sin nombre"}
-                      </td>
-
-                      <td className="px-3 py-2 break-words min-w-[120px]">
-                        {item.apellido || "Sin apellido"}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-
-              </table>
-            </div>
-          </div>
+          <table className="banco-tabla">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Apellidos</th>
+              </tr>
+            </thead>
+            <tbody>
+              {usuariosFiltrados.map((item) => (
+                <tr key={item._id}>
+                  <td>{item.nombre || "Sin nombre"}</td>
+                  <td>{item.apellido || "Sin apellido"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            No se encontraron usuarios.
-          </div>
+          <div className="banco-tabla-vacia">No se encontraron usuarios.</div>
         )}
       </div>
     )}
