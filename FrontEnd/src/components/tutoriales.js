@@ -5,11 +5,16 @@ import { API_URL } from "../utils/api";
 import TutorialModal from "../components/tutorialModal";
 import ReactMarkdown from "react-markdown";
 
+// Minúsculas y sin tildes, para que "como crear" encuentre "Cómo crear"
+const normalizarTexto = (texto = "") =>
+  texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+
 export const Tutoriales = () => {
   const { user } = useAuth();
   const [mostrarModal, setMostrarModal] = useState(false);
   const [tutoriales, setTutoriales] = useState([]);
   const [tutorialEditando, setTutorialEditando] = useState(null); // null = crear desde cero, objeto = editar tutorial
+  const [busqueda, setBusqueda] = useState("");
 
   useEffect(() => {
     fetchTutoriales();
@@ -124,6 +129,12 @@ export const Tutoriales = () => {
 
   const esAdmin = user && (user.tipoUsuario === 0 || user.tipoUsuario === 1);
 
+  // Buscador por nombre (UI63): filtra en el cliente mientras se escribe
+  const terminoBusqueda = normalizarTexto(busqueda);
+  const tutorialesFiltrados = terminoBusqueda
+    ? tutoriales.filter((t) => normalizarTexto(t.nombre).includes(terminoBusqueda))
+    : tutoriales;
+
   ///////////////////////////////////////
 
   return (
@@ -156,8 +167,43 @@ export const Tutoriales = () => {
         </div>
       )}
 
+      {/* Buscador por nombre */}
+      <div className="w-full max-w-6xl px-4 py-2">
+        <div className="relative">
+          <input
+            type="search"
+            aria-label="Buscar tutorial por nombre"
+            placeholder="Buscar tutorial por nombre..."
+            className="w-full px-4 py-2 pr-10 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 shadow-sm text-black"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+          {busqueda && (
+            <button
+              type="button"
+              aria-label="Limpiar búsqueda"
+              onClick={() => setBusqueda("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 text-xl leading-none"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        {terminoBusqueda && (
+          <p className="mt-2 text-sm text-gray-200">
+            {tutorialesFiltrados.length} de {tutoriales.length} tutoriales
+          </p>
+        )}
+      </div>
+
+      {terminoBusqueda && tutorialesFiltrados.length === 0 && (
+        <p className="w-full max-w-6xl text-center text-gray-200 bg-white/10 rounded-xl p-6">
+          No hay tutoriales que coincidan con “{busqueda.trim()}”.
+        </p>
+      )}
+
       {/* cada tutorial tiene video si es de YT o link si no y el boton de borrar*/}
-      {tutoriales.map((tutorial) => (
+      {tutorialesFiltrados.map((tutorial) => (
         <div
           key={tutorial._id}
           className="w-full max-w-6xl bg-white/10 rounded-xl p-4"
