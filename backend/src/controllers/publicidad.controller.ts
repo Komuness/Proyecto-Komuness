@@ -14,16 +14,48 @@ const buildImageUrl = (fileId: string) => {
   return `${base}/api/files/${fileId}`;
 };
 
+const TITULO_MAX = 80;
+
+/** "" o ausente → null. Si viene algo, se convierte a Date (puede quedar inválida) */
+function parseFechaOpcional(v: any): Date | null {
+  if (v === undefined || v === null || String(v).trim() === "") return null;
+  return new Date(v);
+}
+
+const esFechaInvalida = (d: Date | null) =>
+  d !== null && Number.isNaN(d.getTime());
+
 /** Valida los campos de texto comunes a crear y actualizar. Devuelve el mensaje de error o null. */
 function validarCampos(body: any): string | null {
-  const { descripcion, fechaCaducidad, autor, publicacionRelacionada } = body;
+  const {
+    titulo,
+    descripcion,
+    fechaCaducidad,
+    fechaInicioEvento,
+    fechaFinEvento,
+    autor,
+    publicacionRelacionada,
+  } = body;
 
+  if (!titulo?.trim()) return "El título de la publicidad es obligatorio";
+  if (titulo.trim().length > TITULO_MAX)
+    return `El título no puede superar los ${TITULO_MAX} caracteres`;
   if (!descripcion?.trim())
     return "La descripción de la publicidad es obligatoria";
   if (!fechaCaducidad)
     return "La fecha de caducidad de la publicidad es obligatoria";
   if (Number.isNaN(new Date(fechaCaducidad).getTime()))
     return "La fecha de caducidad no es válida";
+
+  const inicio = parseFechaOpcional(fechaInicioEvento);
+  const fin = parseFechaOpcional(fechaFinEvento);
+  if (esFechaInvalida(inicio)) return "La fecha de inicio no es válida";
+  if (esFechaInvalida(fin)) return "La fecha de fin no es válida";
+  if (fin && !inicio)
+    return "Si indica una fecha de fin, también debe indicar la de inicio";
+  if (inicio && fin && fin < inicio)
+    return "La fecha de fin no puede ser anterior a la de inicio";
+
   if (!autor) return "El autor de la publicidad es obligatorio";
   if (!mongoose.Types.ObjectId.isValid(autor)) return "El autor no es válido";
   if (
@@ -66,8 +98,11 @@ export const createPublicidad = async (
     await assertRealImages([file]);
 
     const {
+      titulo,
       descripcion,
       fechaCaducidad,
+      fechaInicioEvento,
+      fechaFinEvento,
       autor,
       activa,
       publicacionRelacionada,
@@ -78,13 +113,17 @@ export const createPublicidad = async (
     nuevoFileId = fileId; 
 
     const nuevaPublicidad = new modelPublicidad({
+      titulo: titulo.trim(),
       imagen: buildImageUrl(fileId), 
       descripcion: descripcion.trim(),
+      fechaInicioEvento: parseFechaOpcional(fechaInicioEvento),
+      fechaFinEvento: parseFechaOpcional(fechaFinEvento),
       fechaCaducidad,
       autor,
       activa: parseActiva(activa),
       publicacionRelacionada: publicacionRelacionada || null,
     });
+    
     const saved = await nuevaPublicidad.save();
     res.status(201).json(saved);
   } catch (error: any) {
@@ -133,7 +172,10 @@ export const getPublicidades = async (
   res: Response,
 ): Promise<void> => {
   try {
-    const publicidades = await modelPublicidad.find();
+    // Solo las activas que todavía no llegan a su fecha de caducidad
+    const publicidades = await modelPublicidad
+      .find({ activa: true, fechaCaducidad: { $gt: new Date() } })
+      .sort({ createdAt: -1 });
     res.json({
       data: publicidades,
     });
@@ -170,8 +212,11 @@ export const updatePublicidad = async (
     }
 
     const {
+      titulo,
       descripcion,
       fechaCaducidad,
+      fechaInicioEvento,
+      fechaFinEvento,
       autor,
       activa,
       publicacionRelacionada,
@@ -189,8 +234,11 @@ export const updatePublicidad = async (
       imagen = buildImageUrl(fileId);
     }
 
+    publicidad.titulo = titulo.trim();
     publicidad.imagen = imagen;
     publicidad.descripcion = descripcion.trim();
+    publicidad.fechaInicioEvento = parseFechaOpcional(fechaInicioEvento);
+    publicidad.fechaFinEvento = parseFechaOpcional(fechaFinEvento);
     publicidad.fechaCaducidad = fechaCaducidad;
     publicidad.autor = autor;
     publicidad.activa = parseActiva(activa);

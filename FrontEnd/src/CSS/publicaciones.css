@@ -352,3 +352,24 @@ button:hover {
 .suggestions-list {
     animation: fadeIn 0.2s ease-out;
 }
+
+/* Publicidad: barra de avance del carrusel y transición entre anuncios */
+@keyframes publicidad-progreso {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.publicidad-progreso {
+  transform-origin: left;
+  animation: publicidad-progreso var(--duracion, 8s) linear forwards;
+}
+
+@keyframes publicidad-aparecer {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.publicidad-aparecer {
+  animation: publicidad-aparecer 400ms ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .publicidad-aparecer { animation: none; }
+}

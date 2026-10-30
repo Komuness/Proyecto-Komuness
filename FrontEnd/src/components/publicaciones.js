@@ -1,9 +1,8 @@
 // src/components/publicaciones.js
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { IoMdArrowRoundBack } from "react-icons/io";
+import { FaTimes } from "react-icons/fa";
 import { toast } from "react-hot-toast";
-import { FaChevronLeft, FaChevronRight, FaTimes } from "react-icons/fa";
 import "../CSS/publicaciones.css";
 
 import PublicacionCard from "./publicacionCard";
@@ -22,6 +21,7 @@ import PriceFilter from "./generic/priceFilter";
 import ComunidadFilter from "./generic/comunidadFilter";
 import CarruselGenerico from "./CarruselGenerico";
 import CalendarView from "./Calendar";
+import PublicidadBanner from "./PublicidadBanner";
 
 // Base de API robusta (evita /api/api)
 const RAW = process.env.REACT_APP_BACKEND_URL || window.location.origin;
@@ -86,7 +86,6 @@ export const Publicaciones = ({ tag: propTag }) => {
   const [mostrarModalPublicidad, setMostrarModalPublicidad] = useState(false);
   const [publicidadEditando, setPublicidadEditando] = useState(null); // null = crear desde cero, objeto = editar publicidad
   const [publicidad, setPublicidad] = useState([]);
-  const [currentPublicidadIndex, setCurrentPublicidadIndex] = useState(0);
 
   //Variables de Usuario
   const UserType = {
@@ -102,15 +101,6 @@ export const Publicaciones = ({ tag: propTag }) => {
   useEffect(() => {
     fetchPublicidad();
   }, []);
-
-  // Pasar la publicidad automaticamente
-  useEffect(() => {
-    if (!publicidad || publicidad.length <= 1) return;
-    const interval = setInterval(() => {
-      nextPublicidad();
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [publicidad, currentPublicidadIndex]);
 
   useEffect(() => {
     const path = location.pathname;
@@ -273,20 +263,12 @@ export const Publicaciones = ({ tag: propTag }) => {
     setMostrarModalPublicidad(false);
   };
 
-  const nextPublicidad = () => {
-    setCurrentPublicidadIndex((prev) =>
-      prev === publicidad.length - 1 ? 0 : prev + 1,
-    );
-  };
-
-  const prevPublicidad = () => {
-    setCurrentPublicidadIndex((prev) =>
-      prev === 0 ? publicidad.length - 1 : prev - 1,
-    );
-  };
   const handleSubmitPublicidad = async ({
     imagen,
+    titulo,
     descripcion,
+    fechaInicioEvento,
+    fechaFinEvento,
     fechaCaducidad,
     autor,
     activa,
@@ -304,7 +286,11 @@ export const Publicaciones = ({ tag: propTag }) => {
       if (imagen instanceof File) {
         formData.append("imagen", imagen);
       }
+      formData.append("titulo", titulo);
       formData.append("descripcion", descripcion);
+      // Vacías se envían igual: el backend las guarda como null (así se pueden borrar al editar)
+      formData.append("fechaInicioEvento", fechaInicioEvento || "");
+      formData.append("fechaFinEvento", fechaFinEvento || "");
       formData.append("fechaCaducidad", fechaCaducidad);
       formData.append("autor", autor);
       formData.append("activa", activa);
@@ -352,10 +338,7 @@ export const Publicaciones = ({ tag: propTag }) => {
         },
       );
       if (response.ok) {
-        toast.success("Tutorial eliminado");
-        if (currentPublicidadIndex >= publicidad.length - 1) {
-          setCurrentPublicidadIndex(Math.max(0, publicidad.length - 2));
-        }
+        toast.success("Publicidad eliminada");
         fetchPublicidad();
       } else {
         const errorData = await response.json();
@@ -493,109 +476,34 @@ export const Publicaciones = ({ tag: propTag }) => {
       </div>
 
       {/*PUBLICIDAD*/}
-      <div className="w-full flex flex-col items-center justify-center gap-2 py-4 px-3 sm:px-6 md:px-10 lg:px-16 mt-4 rounded-xl bg-white/10">
-        {publicidad && publicidad.length > 0 && (
-          <div className="w-full max-w-[1920px] mx-auto relative bg-gray-800 rounded-2xl shadow-2xl overflow-hidden py-4">
-            {/*CARRUSEL*/}
-            <div className="relative w-full max-w-full h-[200px] sm:h-[260px] md:h-[360px] lg:h-[540px] mx-auto rounded-xl">
-              {/*Imagen*/}
-              <img
-                src={publicidad[currentPublicidadIndex]?.imagen}
-                alt="Publicidad"
-                className="w-full h-full object-cover"
-              />
-              {/*Flechas*/}
-              {publicidad.length > 1 && (
-                <>
-                  <button
-                    onClick={prevPublicidad}
-                    className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 sm:p-3 rounded-full text-sm sm:text-base"
-                  >
-                    <FaChevronLeft />
-                  </button>
+      {(publicidad.length > 0 || esAdmin) && (
+        <div className="w-full flex flex-col items-center gap-3 pt-4 px-3 sm:px-6 md:px-10 lg:px-16">
+          <PublicidadBanner
+            publicidades={publicidad}
+            esAdmin={esAdmin}
+            onEditar={abrirModalEditarPublicidad}
+            onEliminar={handleDeletePublicidad}
+          />
 
-                  <button
-                    onClick={nextPublicidad}
-                    className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-1.5 sm:p-3 rounded-full text-sm sm:text-base"
-                  >
-                    <FaChevronRight />
-                  </button>
-                </>
-              )}
-            </div>
-            {/*Descripcion*/}
-            <div className="mt-6 text-center">
-              <p className="text-gray-200 text-lg">
-                {" "}
-                {publicidad[currentPublicidadIndex]?.descripcion}{" "}
-              </p>
-            </div>
-            {/* Indicadores */}
-            {publicidad.length > 1 && (
-              <div className="flex justify-center mt-6 gap-2">
-                {publicidad.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentPublicidadIndex(index)}
-                    className={`w-3 h-3 rounded-full transition-all ${
-                      index === currentPublicidadIndex
-                        ? "bg-white scale-125"
-                        : "bg-gray-500 hover:bg-gray-400"
-                    }`}
-                  />
-                ))}
-              </div>
-            )}
+          {/*BOTON DE AGREGAR PUBLICIDAD SOLO PARA ADMINS*/}
+          {esAdmin && (
+            <button
+              onClick={abrirModalCrearPublicidad}
+              className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow"
+            >
+              + Agregar publicidad
+            </button>
+          )}
 
-            {/*EDITAR Y BORRAR SOLO PARA ADMINS*/}
-            {esAdmin && (
-              <div className="flex justify-center gap-3 mt-6">
-                <button
-                  onClick={() =>
-                    abrirModalEditarPublicidad(
-                      publicidad[currentPublicidadIndex],
-                    )
-                  }
-                  className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg"
-                >
-                  Editar
-                </button>
-
-                <button
-                  onClick={() =>
-                    handleDeletePublicidad(publicidad[currentPublicidadIndex])
-                  }
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg"
-                >
-                  Eliminar
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/*BOTON DE AGREGAR PUBLICIDAD SOLO PARA ADMINS*/}
-        {esAdmin && (
-          <div className="max-w-6xl px-4 py-2 text-white">
-            <div>
-              <button
-                onClick={() => abrirModalCrearPublicidad()}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium p-4 rounded-lg shadow"
-              >
-                + Agregar Publicidad
-              </button>
-            </div>
-
-            {mostrarModalPublicidad && (
-              <PublicidadModal
-                publicidad={publicidadEditando}
-                onClose={cerrarModalPublicidad}
-                onSubmit={handleSubmitPublicidad}
-              />
-            )}
-          </div>
-        )}
-      </div>
+          {mostrarModalPublicidad && (
+            <PublicidadModal
+              publicidad={publicidadEditando}
+              onClose={cerrarModalPublicidad}
+              onSubmit={handleSubmitPublicidad}
+            />
+          )}
+        </div>
+      )}
 
       {/* Mensaje de búsqueda */}
       {searchFilter && (

@@ -1,6 +1,15 @@
-import { use, useState } from "react";
+import { useState } from "react";
 import { toast } from "react-hot-toast"
 import { useAuth } from './context/AuthContext';
+import { TiraPublicidad } from "./PublicidadBanner";
+
+const TITULO_MAX = 80;
+
+// <input type="date"> necesita "YYYY-MM-DD"; las fechas se guardan como medianoche UTC
+const aInputFecha = (fecha) =>
+    fecha ? new Date(fecha).toISOString().slice(0, 10) : "";
+
+const inputClase = "w-full px-4 py-2 border text-black border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 const PublicidadModal = ({
     onClose,
@@ -10,12 +19,11 @@ const PublicidadModal = ({
     const { user } = useAuth();
     const [imagen, setImagen] = useState(publicidad?.imagen ?? "");
     const [preview, setPreview] = useState(publicidad?.imagen ?? "");
+    const [titulo, setTitulo] = useState(publicidad?.titulo ?? "");
     const [descripcion, setDescripcion] = useState(publicidad?.descripcion ?? "");
-    const [fechaCaducidad, setFechaCaducidad] = useState(
-        publicidad?.fechaCaducidad
-        ? new Date(publicidad.fechaCaducidad)
-        : new Date()
-    );
+    const [fechaInicioEvento, setFechaInicioEvento] = useState(aInputFecha(publicidad?.fechaInicioEvento));
+    const [fechaFinEvento, setFechaFinEvento] = useState(aInputFecha(publicidad?.fechaFinEvento));
+    const [fechaCaducidad, setFechaCaducidad] = useState(aInputFecha(publicidad?.fechaCaducidad));
     const [autor, setAutor] = useState(publicidad?.autor ?? user?._id ?? "");
     const [activa, setActiva] = useState(publicidad?.activa ?? true);
     const [publicacionRelacionada, setPublicacionRelacionada] = useState(publicidad?.publicacionRelacionada ?? "");
@@ -30,10 +38,26 @@ const PublicidadModal = ({
     };
 
     const handleSubmit = () => {
+        if (!titulo.trim()) {
+            toast.error("El título es obligatorio");
+            return;
+        }
+
         if (!descripcion.trim()) {
             toast.error(
                 "La descripción es obligatoria"
             );
+            return;
+        }
+
+        if (fechaFinEvento && !fechaInicioEvento) {
+            toast.error("Si indica una fecha de fin, también debe indicar la de inicio");
+            return;
+        }
+
+        // Comparar "YYYY-MM-DD" como texto funciona porque el formato es fijo
+        if (fechaInicioEvento && fechaFinEvento && fechaFinEvento < fechaInicioEvento) {
+            toast.error("La fecha de fin no puede ser anterior a la de inicio");
             return;
         }
 
@@ -60,7 +84,10 @@ const PublicidadModal = ({
 
         onSubmit({
             imagen,
+            titulo: titulo.trim(),
             descripcion: descripcion.trim(),
+            fechaInicioEvento,
+            fechaFinEvento,
             fechaCaducidad,
             autor: autor.trim(),
             activa,
@@ -69,29 +96,57 @@ const PublicidadModal = ({
     };
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-6xl shadow-lg">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">
+          <div className="bg-white rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-lg">
             <h3 className="text-lg font-semibold mb-4 text-gray-800">
               {modoCrear ? "Nueva publicidad" : "Editar publicidad"}
             </h3>
+
+        {/* Vista previa en vivo */}
+        <div className="mb-6">
+            <p className="block text-sm font-medium text-gray-700 mb-2">Vista previa</p>
+            <TiraPublicidad
+                publicidad={{
+                    imagen: preview,
+                    titulo: titulo || "Título de la publicidad",
+                    descripcion,
+                    fechaInicioEvento: fechaInicioEvento || null,
+                    fechaFinEvento: fechaFinEvento || null,
+                }}
+            />
+        </div>
     
         {/*Imagen*/}
-        <div className="campo-grupo">
-              <label className="campo-label">Imágen de la publicidad:</label>
+        <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Imagen</label>
+              <p className="text-xs text-gray-500 mb-2">
+                Recomendado: imagen cuadrada de al menos 600×600 px. En la tira se muestra
+                como miniatura y al abrirla se ve completa.
+              </p>
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleImageChange}
                 className="campo-input"
               />
-            {preview && (
-                <div>
-                    <img
-                        src={preview}
-                        className = "max-h-72 rounded-lg border object-contain" 
-                    />
-                </div>
-            )}
+        </div>
+
+        {/* Título */}
+        <div className="mb-6">
+            <div className="flex justify-between mb-2">
+                <label className="text-sm font-medium text-gray-700">Título</label>
+                <span className={`text-xs ${titulo.length > TITULO_MAX - 10 ? "text-orange-600" : "text-gray-500"}`}>
+                    {titulo.length}/{TITULO_MAX}
+                </span>
+            </div>
+            <input
+                type="text"
+                value={titulo}
+                maxLength={TITULO_MAX}
+                onChange={(e) => setTitulo(e.target.value)}
+                placeholder="Festival Ambiental Piedras Blancas de Osa"
+                className={inputClase}
+            />
         </div>
      
          {/* Descripción */}
@@ -102,22 +157,52 @@ const PublicidadModal = ({
             <textarea
                 value={descripcion}
                 onChange={(e) => setDescripcion(e.target.value)}
-                rows={1}
-                placeholder="Descripción de la publicidad"
-                className="w-full px-4 py-2 border text-black border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                rows={4}
+                placeholder="Se muestra completa al abrir la publicidad"
+                className={`${inputClase} resize-y`}
             />
          </div>
 
-        {/* Fecha */}
+        {/* Fechas visibles (opcionales) */}
         <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+                Fechas a mostrar <span className="font-normal text-gray-500">(opcional)</span>
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+                Las ve el público, por ejemplo las fechas del evento. Deje la de fin vacía si es un solo día.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                    type="date"
+                    value={fechaInicioEvento}
+                    onChange={(e) => setFechaInicioEvento(e.target.value)}
+                    aria-label="Fecha de inicio"
+                    className={inputClase}
+                />
+                <input
+                    type="date"
+                    value={fechaFinEvento}
+                    min={fechaInicioEvento || undefined}
+                    onChange={(e) => setFechaFinEvento(e.target.value)}
+                    aria-label="Fecha de fin"
+                    className={inputClase}
+                />
+            </div>
+        </div>
+
+        {/* Fecha de caducidad */}
+        <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
                 Fecha de caducidad
             </label>
+            <p className="text-xs text-gray-500 mb-2">
+                Ese día la publicidad se retira automáticamente. Solo la ven los administradores.
+            </p>
             <input
                 type="date"
                 value={fechaCaducidad}
                 onChange={(e) => setFechaCaducidad(e.target.value)}
-                className="w-full px-4 py-2 border text-black border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={inputClase}
             />
         </div>
 
