@@ -76,6 +76,22 @@ export const Biblioteca = () => {
   const [nombreCarpeta, setNombreCarpeta] = useState("")
   // RF023: Estado para controlar archivos ya subidos que se deben ocultar
   const [uploadedFileNames, setUploadedFileNames] = useState(new Set())
+  const [categorias, setCategorias] = useState([])
+  const [categoriaUpload, setCategoriaUpload] = useState('')
+  const [categoriaFiltro, setCategoriaFiltro] = useState('')
+
+  useEffect(() => {
+    const fetchCategorias = async () => {
+      try {
+        const response = await fetch(`${API_URL}/elements/categoria`)
+        const data = await response.json()
+        setCategorias((data.data || []).filter(c => c.estado !== false))
+      } catch (error) {
+        console.error("Error al obtener categorías:", error)
+      }
+    }
+    fetchCategorias()
+  }, [])
 
   // Mapa de iconos para el modal
   const modalIconMap = {
@@ -266,6 +282,11 @@ export const Biblioteca = () => {
   const handleOnSubmit = async (e) => {
     e.preventDefault()
 
+    if (!categoriaUpload) {
+      toast.error('Debes seleccionar una categoría antes de subir los archivos.')
+      return
+    }
+
     const data = new FormData()
     acceptedFiles.forEach((archivo) => {
       data.append("archivos", archivo)
@@ -273,6 +294,7 @@ export const Biblioteca = () => {
     data.append("userId", user._id)
     data.append("userType", user.tipoUsuario) // RF023: Enviar tipo de usuario
     data.append("folderId", id)
+    data.append("categoriaId", categoriaUpload)
 
     // Ejecutar la petición y usar toast.promise para el estado de la operación.
     const result = await toast.promise(
@@ -352,21 +374,19 @@ export const Biblioteca = () => {
   
   const handleSearch = useCallback(async () => {
     const q = nombre.trim()
-    if (q === '') return
+    if (q === '' && !categoriaFiltro) return
     const qLower = q.toLowerCase()
 
     try {
+      const params = new URLSearchParams({ global: 'true', orden: 'asc' })
+      if (q) params.set('nombre', q)
+      if (categoriaFiltro) params.set('categoria', categoriaFiltro)
       const respuesta = await fetch(
-        `${API_URL}/biblioteca/search?q=${q}${publicoParam}`,
-        {
-          headers: {
-            "Authorization": `Bearer ${localStorage.getItem("token")}`,
-          },
-        }
+        `${API_URL}/biblioteca/list/0?${params.toString()}${publicoParam}`
       )
       const data = await respuesta.json()
 
-      const archivos = (data.files || []).map(file => ({
+      const archivos = (data.contentFile || []).map(file => ({
         nombre: file.nombre,
         autor: file.autor?.nombre || "Desconocido",
         size: `${(file.tamano / (1024 * 1024)).toFixed(2)} MB`,
@@ -375,7 +395,7 @@ export const Biblioteca = () => {
         id: file._id
       }))
 
-      const carpetas = (data.folders || []).map(folder => ({
+      const carpetas = (data.contentFolder || []).map(folder => ({
         nombre: folder.nombre,
         autor: "",
         size: "",
@@ -384,15 +404,15 @@ export const Biblioteca = () => {
       }))
 
       const todos = [...carpetas, ...archivos]
-      const filtradosPorPrefijo = todos.filter(doc => 
-        doc.nombre.toLowerCase().startsWith(qLower)
-      )
+      const filtradosPorPrefijo = qLower
+        ? todos.filter(doc => doc.nombre.toLowerCase().startsWith(qLower))
+        : todos
       setDocumentos(filtradosPorPrefijo)
       setDocumentosFiltrados(filtradosPorPrefijo)
     } catch (error) {
       console.error("Error al obtener archivos:", error)
     }
-  }, [nombre, publicoParam])
+  }, [nombre, categoriaFiltro, publicoParam])
 
   // Crear carpeta
   const handleCrearCarpeta = async () => {
@@ -466,7 +486,7 @@ export const Biblioteca = () => {
   // Effect: Búsqueda con debounce
   useEffect(() => {
     const q = nombre.trim()
-    if (q === '') {
+    if (q === '' && !categoriaFiltro) {
       fetchFolderContents()
       return
     }
@@ -475,7 +495,7 @@ export const Biblioteca = () => {
       handleSearch()
     }, 400)
     return () => clearTimeout(delayDebounce)
-  }, [nombre, handleSearch, fetchFolderContents])
+  }, [nombre, categoriaFiltro, handleSearch, fetchFolderContents])
 
   // Effect: Cargar contenido inicial
   useEffect(() => {
@@ -697,7 +717,18 @@ export const Biblioteca = () => {
 
           {acceptedFiles.length !== 0 && (
             <div className="w-full max-w-6xl px-4 mt-6 space-y-6">
-              <div className="flex justify-center">
+              <div className="flex flex-col items-center gap-3">
+                <select
+                  value={categoriaUpload}
+                  onChange={(e) => setCategoriaUpload(e.target.value)}
+                  required
+                  className="w-full md:w-64 px-4 py-2 border rounded-xl text-black focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Selecciona una categoría *</option>
+                  {categorias.map(c => (
+                    <option key={c._id} value={c._id}>{c.nombre}</option>
+                  ))}
+                </select>
                 <button
                   onClick={handleOnSubmit}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-xl shadow-md transition focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -734,6 +765,16 @@ export const Biblioteca = () => {
             <option value="text">TXT</option>
             <option value="img">IMG</option>
             <option value="zip">ZIP</option>
+          </select>
+          <select
+            value={categoriaFiltro}
+            onChange={(e) => setCategoriaFiltro(e.target.value)}
+            className="w-full md:w-48 px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Todas las categorías</option>
+            {categorias.map(c => (
+              <option key={c._id} value={c._id}>{c.nombre}</option>
+            ))}
           </select>
           <button
             className="w-full focus:ring focus:outline md:w-auto px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors"

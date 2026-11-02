@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Archivo } from '../models/archivo.model';
 import { Folder } from '../models/folder.model';
 import { modelPerfil } from '../models/perfil.model';
+import { modelCategoria } from '../models/categoria.model';
 // import { uploadFile } from '../utils/digitalOceanSpace';
 // import { uploadFileStorage } from '../utils/digitalOceanSpace';
 import { IArchivo } from '../interfaces/archivo.interface';
@@ -124,7 +125,7 @@ class BibliotecaController {
      */
     static async uploadFiles(req: Request, res: Response) {
 
-        const { folderId, userId, userType } = req.body;
+        const { folderId, userId, userType, categoriaId } = req.body;
 
         
         if (!userId) {
@@ -139,6 +140,24 @@ class BibliotecaController {
             return res.status(400).json({
                 success: false,
                 message: 'userType es requerido',
+                errors: []
+            });
+        }
+
+        // La categoría es obligatoria al subir archivos
+        if (!categoriaId || !mongoose.Types.ObjectId.isValid(categoriaId)) {
+            return res.status(400).json({
+                success: false,
+                message: 'La categoría es obligatoria',
+                errors: []
+            });
+        }
+
+        const categoriaExiste = await modelCategoria.exists({ _id: categoriaId, estado: true });
+        if (!categoriaExiste) {
+            return res.status(400).json({
+                success: false,
+                message: 'La categoría seleccionada no existe',
                 errors: []
             });
         }
@@ -216,6 +235,7 @@ class BibliotecaController {
                         esPublico: esPublicoArchivo,
                         key: relKey,
                         folder: folderValue,
+                        categoria: new mongoose.Types.ObjectId(categoriaId),
                         estado: estadoArchivo,
                         uploadedBy: autorValue,
                     });
@@ -418,7 +438,7 @@ class BibliotecaController {
      */
     static async list(req: Request, res: Response) {
         const { id } = req.params;
-        const { nombre, global, publico, orden } = req.query;
+        const { nombre, global, publico, orden, categoria } = req.query;
         const ordenamiento = orden === 'asc' ? 1 : -1;
         if (!id) {
             return res.status(400).json({
@@ -445,6 +465,9 @@ class BibliotecaController {
             }),
             ...(nombre && { nombre: { $regex: nombre, $options: 'i' } }),
             ...(publico !== undefined && { esPublico: publico === 'true' }),
+            ...(categoria && mongoose.Types.ObjectId.isValid(categoria as string) && {
+                categoria: new mongoose.Types.ObjectId(categoria as string)
+            }),
             // RF023: IMPORTANTE - Solo mostrar archivos aprobados
             estado: 'aprobado'
         };
@@ -462,9 +485,10 @@ class BibliotecaController {
 
             const archivos = await Archivo.find(queryArchivos)
                 .populate('autor', 'nombre')
+                .populate('categoria', 'nombre')
                 .collation({ locale: 'es', strength: 2 })
                 .sort({ nombre: ordenamiento });
-            const folders = await Folder.find(queryFolders)
+            const folders = categoria ? [] : await Folder.find(queryFolders)
                 .collation({ locale: 'es', strength: 2 })
                 .sort({ nombre: ordenamiento });
 
@@ -715,13 +739,14 @@ class BibliotecaController {
      *   @param texto: Texto a buscar en el nombre del archivo o tipoArchivo (o folder)
      *   @param tipoArchivo: Tipo de archivo a buscar
      *   @param autor: ID del autor del archivo
+     *   @param categoria: ID de la categoría del archivo
      * @param req: Request
      * @param res: Response
      * @returns: Response
      */
     static async filterArchivo(req: Request, res: Response) {
         try {
-            const { texto, tipoArchivo, autor } = req.query;
+            const { texto, tipoArchivo, autor, categoria } = req.query;
 
             const filtro: any = {};
             let carpetasCoincidentes: string | any[] = [];
@@ -749,6 +774,15 @@ class BibliotecaController {
                     return;
                 }
                 filtro.autor = autor;
+            }
+
+            if (categoria) {
+                if (!mongoose.Types.ObjectId.isValid(categoria as string)) {
+                    res.status(400).json({ message: 'ID de categoría inválido' });
+                    return;
+                }
+                filtro.categoria = categoria;
+                carpetasCoincidentes = [];
             }
 
             // RF023: IMPORTANTE - Solo mostrar archivos aprobados en búsquedas
