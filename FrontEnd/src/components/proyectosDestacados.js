@@ -5,11 +5,16 @@ import { API_URL } from "../utils/api";
 import ProyectosDestacadosModal from "../components/proyectosDestacadosModal";
 import ReactMarkdown from "react-markdown";
 
+// Minúsculas y sin tildes, para que "orquesta comunitaria" encuentre "Orquesta Comunitaria"
+const normalizarTexto = (texto = "") =>
+  texto.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+
 export const ProyectosDestacados = () => {
   const { user } = useAuth();
   const [mostrarModal, setMostrarModal] = useState(false);
   const [proyectos, setProyectos] = useState([]);
   const [proyectoEditando, setProyectoEditando] = useState(null); // null = crear desde cero, objeto = editar tutorial
+  const [busqueda, setBusqueda] = useState("");
 
   useEffect(() => {
     fetchProyectos();
@@ -126,6 +131,12 @@ export const ProyectosDestacados = () => {
 
   const esAdmin = user && (user.tipoUsuario === 0 || user.tipoUsuario === 1);
 
+  // Buscador por nombre (UI64): filtra en el cliente mientras se escribe
+  const terminoBusqueda = normalizarTexto(busqueda);
+  const proyectosFiltrados = terminoBusqueda
+    ? proyectos.filter((p) => normalizarTexto(p.nombre).includes(terminoBusqueda))
+    : proyectos;
+
   ///////////////////////////////////////
 
   return (
@@ -158,8 +169,43 @@ export const ProyectosDestacados = () => {
         </div>
       )}
 
+      {/* Buscador por nombre */}
+      <div className="w-full max-w-6xl px-4 py-2">
+        <div className="relative">
+          <input
+            type="search"
+            aria-label="Buscar proyecto por nombre"
+            placeholder="Buscar proyecto por nombre..."
+            className="w-full px-4 py-2 pr-10 border rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 border-gray-300 shadow-sm text-black"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+          />
+          {busqueda && (
+            <button
+              type="button"
+              aria-label="Limpiar búsqueda"
+              onClick={() => setBusqueda("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 text-xl leading-none"
+            >
+              ×
+            </button>
+          )}
+        </div>
+        {terminoBusqueda && (
+          <p className="mt-2 text-sm text-gray-200">
+            {proyectosFiltrados.length} de {proyectos.length} proyectos
+          </p>
+        )}
+      </div>
+
+      {terminoBusqueda && proyectosFiltrados.length === 0 && (
+        <p className="w-full max-w-6xl text-center text-gray-200 bg-white/10 rounded-xl p-6">
+          No hay proyectos que coincidan con “{busqueda.trim()}”.
+        </p>
+      )}
+
       {/* cada tutorial tiene video si es de YT o link si no y el boton de borrar*/}
-      {proyectos.map((proyecto) => (
+      {proyectosFiltrados.map((proyecto) => (
         <div
           key={proyecto._id}
           className="w-full max-w-6xl bg-white/10 rounded-xl p-4"
