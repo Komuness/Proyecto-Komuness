@@ -118,7 +118,7 @@ const publicacionSchema = new Schema(
     fechaExpiracion: { type: Date, required: false, index: true },
     ubicacion: { type: ubicacionSchema, required: false }, // Ubicación en el mapa (evento o emprendimiento)
     comunidad: { type: String, required: false, trim: true, maxlength: 100, index: true }, // Comunidad/localidad de la publicación
-    publicacionOrigenId: { type: Schema.Types.ObjectId, ref: 'Publicacion', required: false }, // Si se generó automáticamente a partir de un evento/emprendimiento/tutorial/proyecto (solo informativo)
+    publicacionOrigenId: { type: Schema.Types.ObjectId, ref: 'Publicacion', required: false }, // Si se generó automáticamente a partir de un evento/emprendimiento/tutorial/proyecto (BKD67: si es evento/emprendimiento, se editan y se borran juntos)
 
     // categorías de área
 

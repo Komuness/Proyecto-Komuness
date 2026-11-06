@@ -68,10 +68,21 @@ export async function enviarRecordatoriosExpiracion(referencia: Date = new Date(
 }
 
 export async function purgeExpiredPublicaciones(referencia: Date = new Date()): Promise<number> {
-  const publicacionesCaducadas = await modelPublicacion.find({
+  const caducadas = await modelPublicacion.find({
     tag: { $in: ['publicacion', 'evento'] },
     fechaExpiracion: { $lte: referencia },
   });
+
+  // BKD67: si vence un evento, su publicación automática se va con él
+  // para que no quede huérfana. (Si vence solo la copia, el evento sigue.)
+  const idsCaducadas = new Set(caducadas.map((p) => p._id.toString()));
+  const copiasDeVencidos = await modelPublicacion.find({
+    publicacionOrigenId: { $in: caducadas.filter((p) => p.tag === 'evento').map((p) => p._id) },
+  });
+  const publicacionesCaducadas = [
+    ...caducadas,
+    ...copiasDeVencidos.filter((p) => !idsCaducadas.has(p._id.toString())),
+  ];
 
   for (const publicacion of publicacionesCaducadas) {
     const adjuntos = (publicacion.adjunto || []) as IAdjunto[];

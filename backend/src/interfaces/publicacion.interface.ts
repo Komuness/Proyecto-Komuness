@@ -31,7 +31,7 @@ export interface IPublicacion {
   telefono?: string;
   ubicacion?: IUbicacion; // Ubicación en el mapa (evento o emprendimiento)
   comunidad?: string; // Comunidad/localidad a la que pertenece la publicación
-  publicacionOrigenId?: string | Types.ObjectId; // Si esta publicación se generó automáticamente a partir de un evento/emprendimiento/tutorial/proyecto destacado, referencia a ese documento (solo informativo, sin sincronización)
+  publicacionOrigenId?: string | Types.ObjectId; // Si esta publicación se generó automáticamente a partir de un evento/emprendimiento/tutorial/proyecto destacado, referencia a ese documento (BKD67: si es evento/emprendimiento, se editan y se borran juntos)
   categoria: string | Types.ObjectId;
   fechaExpiracion?: string | Date | null;
   diasRestantes?: number | null;
@@ -123,7 +123,7 @@ export interface IPublicacionUpdate {
   telefono?: string;
   ubicacion?: IUbicacion; // Ubicación en el mapa para actualización
   comunidad?: string; // Comunidad/localidad a la que pertenece la publicación
-   publicacionOrigenId?: string | Types.ObjectId; // Si esta publicación se generó automáticamente a partir de un evento/emprendimiento/tutorial/proyecto destacado, referencia a ese documento (solo informativo, sin sincronización)
+   publicacionOrigenId?: string | Types.ObjectId; // Si esta publicación se generó automáticamente a partir de un evento/emprendimiento/tutorial/proyecto destacado, referencia a ese documento (BKD67: si es evento/emprendimiento, se editan y se borran juntos)
   categoria?: string | Types.ObjectId;  // ← Permitir ambos tipos
   adjunto?: IAdjunto[];
   requestedAt: string;

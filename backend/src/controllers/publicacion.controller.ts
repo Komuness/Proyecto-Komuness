@@ -19,6 +19,10 @@ import {
   calculatePublicationExpirationDate,
 } from "../utils/publicacionExpiration";
 import { validarUbicacion } from "../utils/ubicacion";
+import {
+  findPublicacionesEnlazadas,
+  sincronizarPublicacionesEnlazadas,
+} from "../utils/publicacionEnlazada";
 import { sendEmail } from "../utils/mail"; // usa el mismo transporter que recuperación
 import { modelUsuario } from "../models/usuario.model"; // ← Modelo de usuarios
 import { puedeGestionarCuentasRegresivas } from "../utils/cuentaRegresiva";
@@ -516,8 +520,8 @@ export const createPublicacionA = async (
     await crearCuentaRegresivaSiCorresponde(req, savePost);
 
     // BKD38: al crear un evento o emprendimiento, generar automáticamente
-    // una publicación independiente en el feed general. Solo ocurre al
-    // crear (no hay sincronización si luego se edita o borra el original).
+    // una publicación en el feed general, enlazada por publicacionOrigenId.
+    // Las ediciones y el borrado se sincronizan entre ambos (BKD67).
     if (tag === "evento" || tag === "emprendimiento") {
       try {
         // Copia independiente de los adjuntos: no reusar el mismo key de
@@ -913,6 +917,12 @@ export const updatePublicacion = async (
       }
     }
 
+    // BKD67: pasar los cambios de los campos compartidos al documento
+    // enlazado (original ↔ publicación automática). Incluye `publicado`,
+    // así que aprobar uno aprueba también el otro. Va después de BKD68 para
+    // que la publicación automática siga pendiente cuando se notifica arriba.
+    await sincronizarPublicacionesEnlazadas(publicacion, Object.keys(updatedData));
+
     // Notificación a usuarios suscritos a categoría.
     // BKD68: para evento/emprendimiento ya se notifica a todos mediante la
     // publicación automática, así que se omite para no duplicar el aviso.
@@ -958,29 +968,24 @@ export const deletePublicacion = async (
       return;
     }
 
-    try {
-      await eliminarCuentaRegresivaDeEvento(deletedPost._id);
-    } catch (error) {
-      console.warn("No se pudo eliminar la cuenta regresiva del evento", error);
+    // BKD67: un evento/emprendimiento y su publicación automática se borran
+    // juntos, se elimine cualquiera de los dos, para no dejar huérfanas.
+    const documentosBorrados: any[] = [deletedPost];
+    const enlazadas = await findPublicacionesEnlazadas(deletedPost);
+    if (enlazadas.length) {
+      await modelPublicacion.deleteMany({
+        _id: { $in: enlazadas.map((p) => p._id) },
+      });
+      documentosBorrados.push(...enlazadas);
     }
 
-    // BKD38: si se rechaza (borra) un evento/emprendimiento que todavía no
-    // estaba aprobado, borrar también su publicación automática pendiente.
-    // Las que ya están publicadas no se tocan (no hay sincronización).
-    const documentosBorrados: any[] = [deletedPost];
-    if (
-      !deletedPost.publicado &&
-      (deletedPost.tag === "evento" || deletedPost.tag === "emprendimiento")
-    ) {
-      const copias = await modelPublicacion.find({
-        publicacionOrigenId: deletedPost._id,
-        publicado: false,
-      });
-      if (copias.length) {
-        await modelPublicacion.deleteMany({
-          _id: { $in: copias.map((c) => c._id) },
-        });
-        documentosBorrados.push(...copias);
+    // UI65: si se borró un evento (directo o arrastrado por su publicación),
+    // se va también su cuenta regresiva.
+    for (const doc of documentosBorrados) {
+      try {
+        await eliminarCuentaRegresivaDeEvento(doc._id);
+      } catch (error) {
+        console.warn("No se pudo eliminar la cuenta regresiva del evento", error);
       }
     }
 

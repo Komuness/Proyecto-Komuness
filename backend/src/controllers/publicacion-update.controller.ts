@@ -13,6 +13,7 @@ import { saveMulterFileToGridFS, safeDeleteGridFS } from "../utils/gridfs";
 import { assertRealImages, ImageValidationError } from "../utils/imageUpload";
 import { calculatePublicationExpirationDate } from "../utils/publicacionExpiration";
 import { sincronizarCuentaRegresivaDeEvento } from "../services/cuentaRegresiva.service";
+import { sincronizarPublicacionesEnlazadas } from "../utils/publicacionEnlazada";
 
 const LOG_ON = process.env.LOG_PUBLICACION === "1";
 
@@ -557,6 +558,10 @@ export const approveUpdate = async (
     } catch (error) {
       console.warn("No se pudo sincronizar la cuenta regresiva del evento", error);
     }
+
+    // BKD67: la edición aprobada también se aplica a su evento/emprendimiento
+    // o a su publicación automática enlazada.
+    await sincronizarPublicacionesEnlazadas(updatedPublicacion, Object.keys(updateFields));
 
     // Recargar con populate
     const populatedPublicacion = await modelPublicacion
