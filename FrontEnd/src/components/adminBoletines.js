@@ -280,7 +280,7 @@ export const AdminBoletines = () => {
     return (
         <div className="admin-boletines-container">
             <div className="admin-boletines-header">
-                <button onClick={() => navigate("/")} className="btn-back">
+                <button onClick={() => navigate("/perfilUsuario")} className="btn-back">
                     <IoMdArrowRoundBack /> Volver
                 </button>
                 <h1>Gestión de Boletines</h1>

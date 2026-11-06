@@ -2,13 +2,26 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AiOutlineUser } from "react-icons/ai";
 import { toast } from "react-hot-toast";
-import { API_URL } from "../utils/api";
+import { API_URL, BASE_URL } from "../utils/api";
 import "../CSS/perfilUsuario.css";
 import { useAuth } from "./context/AuthContext";
 import ModalCambioContrasena from "./modalCambioContra";
 import { Link } from "react-router-dom";
 import { FaListAlt, FaEdit, FaHistory } from "react-icons/fa";
-import { FiSettings, FiCreditCard, FiMail, FiDroplet } from "react-icons/fi";
+import {
+  FiSettings,
+  FiCreditCard,
+  FiMail,
+  FiDroplet,
+  FiLock,
+  FiLogOut,
+  FiStar,
+  FiClock,
+  FiRefreshCw,
+  FiHome,
+  FiSearch,
+  FiX,
+} from "react-icons/fi";
 import ModalLimitesPublicaciones from "./modalLimitesPublicaciones";
 import ModalConfiguracionPagos from "./ModalConfiguracionPagos";
 import ModalConfiguracionTematica from "./ModalConfiguracionTematica";
@@ -38,6 +51,7 @@ export const PerfilUsuario = () => {
     useState(false);
   const [, setPerfilExistente] = useState(false);
   const [, setPerfilPublico] = useState(false);
+  const [fotoPerfil, setFotoPerfil] = useState(null);
 
   useEffect(() => {
     // Esperar a que AuthContext termine de validar la sesión; si no, al
@@ -244,7 +258,8 @@ export const PerfilUsuario = () => {
 
   useEffect(() => {
     const verificarPerfilAdmin = async () => {
-      if (user && (user.tipoUsuario === 0 || user.tipoUsuario === 1)) {
+      // Se consulta para cualquier usuario: así se muestra su foto de perfil
+      if (user) {
         try {
           const response = await fetch(`${API_URL}/perfil/usuario/me`, {
             headers: {
@@ -256,6 +271,7 @@ export const PerfilUsuario = () => {
             const data = await response.json();
             setPerfilExistente(true);
             setPerfilPublico(data.data.perfilPublico || false);
+            setFotoPerfil(data.data.fotoPerfil || null);
           } else if (response.status === 404) {
             setPerfilExistente(false);
             setPerfilPublico(false);
@@ -618,6 +634,29 @@ export const PerfilUsuario = () => {
     return "basico";
   };
 
+  // Fila de cambio "antes → después" en una sola línea
+  const renderCambioSimple = (key, etiqueta, antes, despues) => (
+    <div key={key} className="pu-cambio">
+      <strong className="pu-cambio-label">{etiqueta}:</strong>
+      <div className="pu-cambio-inline">
+        <span className="pu-old">{antes}</span>
+        <span className="pu-arrow">→</span>
+        <span className="pu-new">{despues}</span>
+      </div>
+    </div>
+  );
+
+  // Fila de cambio con textos largos (uno debajo del otro)
+  const renderCambioBloque = (key, etiqueta, antes, despues) => (
+    <div key={key} className="pu-cambio">
+      <strong className="pu-cambio-label">{etiqueta}:</strong>
+      <div className="pu-cambio-stack">
+        <div className="pu-old pu-bloque">{antes}</div>
+        <div className="pu-new pu-bloque">{despues}</div>
+      </div>
+    </div>
+  );
+
   // Función para mostrar cambios propuestos
   const renderCambiosPropuestos = (publicacion) => {
     if (!publicacion.pendingUpdate) return null;
@@ -628,60 +667,38 @@ export const PerfilUsuario = () => {
     // Título
     if (update.titulo && update.titulo !== publicacion.titulo) {
       cambios.push(
-        <div key="titulo" className="mb-3 p-3 bg-white rounded border">
-          <strong className="text-gray-800 block mb-2 text-sm font-semibold">
-            Título:
-          </strong>
-          <div className="space-y-2">
-            <div className="line-through text-red-600 text-sm break-words bg-red-50 p-2 rounded">
-              {publicacion.titulo || "Sin título"}
-            </div>
-            <div className="text-green-600 text-sm break-words bg-green-50 p-2 rounded">
-              {update.titulo}
-            </div>
-          </div>
-        </div>,
+        renderCambioBloque(
+          "titulo",
+          "Título",
+          publicacion.titulo || "Sin título",
+          update.titulo,
+        ),
       );
     }
 
     // Contenido/Descripción
     if (update.contenido && update.contenido !== publicacion.contenido) {
       cambios.push(
-        <div key="contenido" className="mb-3 p-3 bg-white rounded border">
-          <strong className="text-gray-800 block mb-2 text-sm font-semibold">
-            Descripción:
-          </strong>
-          <div className="space-y-2">
-            <div className="text-red-600 line-through text-sm break-words bg-red-50 p-2 rounded whitespace-pre-wrap">
-              {publicacion.contenido || "Sin descripción"}
-            </div>
-            <div className="text-green-600 text-sm break-words bg-green-50 p-2 rounded whitespace-pre-wrap">
-              {update.contenido}
-            </div>
-          </div>
-        </div>,
+        renderCambioBloque(
+          "contenido",
+          "Descripción",
+          publicacion.contenido || "Sin descripción",
+          update.contenido,
+        ),
       );
     }
 
     // Precio
     if (update.precio !== undefined && update.precio !== publicacion.precio) {
       cambios.push(
-        <div key="precio" className="mb-3 p-3 bg-white rounded border">
-          <strong className="text-gray-800 block mb-2 text-sm font-semibold">
-            Precio Regular:
-          </strong>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="line-through text-red-600 bg-red-50 px-2 py-1 rounded">
-              {publicacion.precio !== undefined && publicacion.precio !== null
-                ? `₡${publicacion.precio}`
-                : "No especificado"}
-            </span>
-            <span className="text-gray-500">→</span>
-            <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
-              ₡{update.precio}
-            </span>
-          </div>
-        </div>,
+        renderCambioSimple(
+          "precio",
+          "Precio Regular",
+          publicacion.precio !== undefined && publicacion.precio !== null
+            ? `₡${publicacion.precio}`
+            : "No especificado",
+          `₡${update.precio}`,
+        ),
       );
     }
 
@@ -691,28 +708,17 @@ export const PerfilUsuario = () => {
       update.precioEstudiante !== publicacion.precioEstudiante
     ) {
       cambios.push(
-        <div
-          key="precioEstudiante"
-          className="mb-3 p-3 bg-white rounded border"
-        >
-          <strong className="text-gray-800 block mb-2 text-sm font-semibold">
-            Precio Estudiante:
-          </strong>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="line-through text-red-600 bg-red-50 px-2 py-1 rounded">
-              {publicacion.precioEstudiante !== undefined &&
-              publicacion.precioEstudiante !== null
-                ? `₡${publicacion.precioEstudiante}`
-                : "No especificado"}
-            </span>
-            <span className="text-gray-500">→</span>
-            <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
-              {update.precioEstudiante !== null
-                ? `₡${update.precioEstudiante}`
-                : "Eliminado"}
-            </span>
-          </div>
-        </div>,
+        renderCambioSimple(
+          "precioEstudiante",
+          "Precio Estudiante",
+          publicacion.precioEstudiante !== undefined &&
+            publicacion.precioEstudiante !== null
+            ? `₡${publicacion.precioEstudiante}`
+            : "No especificado",
+          update.precioEstudiante !== null
+            ? `₡${update.precioEstudiante}`
+            : "Eliminado",
+        ),
       );
     }
 
@@ -722,88 +728,53 @@ export const PerfilUsuario = () => {
       update.precioCiudadanoOro !== publicacion.precioCiudadanoOro
     ) {
       cambios.push(
-        <div
-          key="precioCiudadanoOro"
-          className="mb-3 p-3 bg-white rounded border"
-        >
-          <strong className="text-gray-800 block mb-2 text-sm font-semibold">
-            Precio Ciudadano de Oro:
-          </strong>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="line-through text-red-600 bg-red-50 px-2 py-1 rounded">
-              {publicacion.precioCiudadanoOro !== undefined &&
-              publicacion.precioCiudadanoOro !== null
-                ? `₡${publicacion.precioCiudadanoOro}`
-                : "No especificado"}
-            </span>
-            <span className="text-gray-500">→</span>
-            <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
-              {update.precioCiudadanoOro !== null
-                ? `₡${update.precioCiudadanoOro}`
-                : "Eliminado"}
-            </span>
-          </div>
-        </div>,
+        renderCambioSimple(
+          "precioCiudadanoOro",
+          "Precio Ciudadano de Oro",
+          publicacion.precioCiudadanoOro !== undefined &&
+            publicacion.precioCiudadanoOro !== null
+            ? `₡${publicacion.precioCiudadanoOro}`
+            : "No especificado",
+          update.precioCiudadanoOro !== null
+            ? `₡${update.precioCiudadanoOro}`
+            : "Eliminado",
+        ),
       );
     }
 
     // Fecha Evento
     if (update.fechaEvento && update.fechaEvento !== publicacion.fechaEvento) {
       cambios.push(
-        <div key="fechaEvento" className="mb-3 p-3 bg-white rounded border">
-          <strong className="text-gray-800 block mb-2 text-sm font-semibold">
-            Fecha del Evento:
-          </strong>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="line-through text-red-600 bg-red-50 px-2 py-1 rounded">
-              {publicacion.fechaEvento || "No especificado"}
-            </span>
-            <span className="text-gray-500">→</span>
-            <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
-              {update.fechaEvento}
-            </span>
-          </div>
-        </div>,
+        renderCambioSimple(
+          "fechaEvento",
+          "Fecha del Evento",
+          publicacion.fechaEvento || "No especificado",
+          update.fechaEvento,
+        ),
       );
     }
 
     // Hora Evento
     if (update.horaEvento && update.horaEvento !== publicacion.horaEvento) {
       cambios.push(
-        <div key="horaEvento" className="mb-3 p-3 bg-white rounded border">
-          <strong className="text-gray-800 block mb-2 text-sm font-semibold">
-            Hora del Evento:
-          </strong>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="line-through text-red-600 bg-red-50 px-2 py-1 rounded">
-              {publicacion.horaEvento || "No especificado"}
-            </span>
-            <span className="text-gray-500">→</span>
-            <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
-              {update.horaEvento}
-            </span>
-          </div>
-        </div>,
+        renderCambioSimple(
+          "horaEvento",
+          "Hora del Evento",
+          publicacion.horaEvento || "No especificado",
+          update.horaEvento,
+        ),
       );
     }
 
     // Teléfono
     if (update.telefono && update.telefono !== publicacion.telefono) {
       cambios.push(
-        <div key="telefono" className="mb-3 p-3 bg-white rounded border">
-          <strong className="text-gray-800 block mb-2 text-sm font-semibold">
-            Teléfono:
-          </strong>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="line-through text-red-600 bg-red-50 px-2 py-1 rounded">
-              {publicacion.telefono || "No especificado"}
-            </span>
-            <span className="text-gray-500">→</span>
-            <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
-              {update.telefono}
-            </span>
-          </div>
-        </div>,
+        renderCambioSimple(
+          "telefono",
+          "Teléfono",
+          publicacion.telefono || "No especificado",
+          update.telefono,
+        ),
       );
     }
 
@@ -814,20 +785,12 @@ export const PerfilUsuario = () => {
       update.categoria !== publicacion.categoria
     ) {
       cambios.push(
-        <div key="categoria" className="mb-3 p-3 bg-white rounded border">
-          <strong className="text-gray-800 block mb-2 text-sm font-semibold">
-            Categoría:
-          </strong>
-          <div className="flex items-center gap-2 text-sm">
-            <span className="line-through text-red-600 bg-red-50 px-2 py-1 rounded">
-              {publicacion.categoria?.nombre || "Sin categoría"}
-            </span>
-            <span className="text-gray-500">→</span>
-            <span className="text-green-600 bg-green-50 px-2 py-1 rounded">
-              {update.categoria?.nombre || "Categoría actualizada"}
-            </span>
-          </div>
-        </div>,
+        renderCambioSimple(
+          "categoria",
+          "Categoría",
+          publicacion.categoria?.nombre || "Sin categoría",
+          update.categoria?.nombre || "Categoría actualizada",
+        ),
       );
     }
 
@@ -838,23 +801,16 @@ export const PerfilUsuario = () => {
         JSON.stringify(publicacion.enlacesExternos)
     ) {
       cambios.push(
-        <div key="enlacesExternos" className="mb-3 p-3 bg-white rounded border">
-          <strong className="text-gray-800 block mb-2 text-sm font-semibold">
-            Enlaces Externos:
-          </strong>
+        <div key="enlacesExternos" className="pu-cambio">
+          <strong className="pu-cambio-label">Enlaces Externos:</strong>
 
           {/* Enlaces actuales (eliminados/modificados) */}
           {publicacion.enlacesExternos &&
             publicacion.enlacesExternos.length > 0 && (
-              <div className="mb-2">
-                <span className="text-xs text-gray-600 font-medium">
-                  Enlaces actuales:
-                </span>
+              <div className="pu-cambio-stack">
+                <span className="pu-cambio-sub">Enlaces actuales:</span>
                 {publicacion.enlacesExternos.map((enlace, index) => (
-                  <div
-                    key={`old-${index}`}
-                    className="line-through text-red-600 text-sm break-words bg-red-50 p-2 rounded mt-1"
-                  >
+                  <div key={`old-${index}`} className="pu-old pu-bloque">
                     <strong>{enlace.nombre}:</strong> {enlace.url}
                   </div>
                 ))}
@@ -863,15 +819,10 @@ export const PerfilUsuario = () => {
 
           {/* Enlaces nuevos */}
           {update.enlacesExternos && update.enlacesExternos.length > 0 && (
-            <div>
-              <span className="text-xs text-gray-600 font-medium">
-                Enlaces propuestos:
-              </span>
+            <div className="pu-cambio-stack">
+              <span className="pu-cambio-sub">Enlaces propuestos:</span>
               {update.enlacesExternos.map((enlace, index) => (
-                <div
-                  key={`new-${index}`}
-                  className="text-green-600 text-sm break-words bg-green-50 p-2 rounded mt-1"
-                >
+                <div key={`new-${index}`} className="pu-new pu-bloque">
                   <strong>{enlace.nombre}:</strong> {enlace.url}
                 </div>
               ))}
@@ -882,7 +833,7 @@ export const PerfilUsuario = () => {
           {(!update.enlacesExternos || update.enlacesExternos.length === 0) &&
             publicacion.enlacesExternos &&
             publicacion.enlacesExternos.length > 0 && (
-              <div className="text-green-600 text-sm bg-green-50 p-2 rounded">
+              <div className="pu-new pu-bloque">
                 Todos los enlaces serán eliminados
               </div>
             )}
@@ -896,12 +847,10 @@ export const PerfilUsuario = () => {
       JSON.stringify(update.adjunto) !== JSON.stringify(publicacion.adjunto)
     ) {
       cambios.push(
-        <div key="adjunto" className="mb-3 p-3 bg-white rounded border">
-          <strong className="text-gray-800 block mb-2 text-sm font-semibold">
-            Imágenes:
-          </strong>
+        <div key="adjunto" className="pu-cambio">
+          <strong className="pu-cambio-label">Imágenes:</strong>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="pu-imagenes-grid">
             {/* Imágenes eliminadas */}
             {publicacion.adjunto &&
               publicacion.adjunto.map((img, index) => {
@@ -912,19 +861,14 @@ export const PerfilUsuario = () => {
                   return (
                     <div
                       key={`removed-${index}`}
-                      className="relative border-2 border-red-300 rounded p-2"
+                      className="pu-imagen eliminada"
                     >
-                      <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
-                        ✕
-                      </div>
+                      <span className="pu-imagen-badge">✕</span>
                       <img
                         src={img.url}
                         alt={`Imagen eliminada ${index + 1}`}
-                        className="w-full h-24 object-cover rounded opacity-60"
                       />
-                      <p className="text-xs text-red-600 text-center mt-1">
-                        Eliminada
-                      </p>
+                      <p>Eliminada</p>
                     </div>
                   );
                 }
@@ -940,21 +884,10 @@ export const PerfilUsuario = () => {
                 );
               if (isNew) {
                 return (
-                  <div
-                    key={`new-${index}`}
-                    className="relative border-2 border-green-300 rounded p-2"
-                  >
-                    <div className="absolute -top-2 -right-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs">
-                      +
-                    </div>
-                    <img
-                      src={img.url}
-                      alt={`Nueva imagen ${index + 1}`}
-                      className="w-full h-24 object-cover rounded"
-                    />
-                    <p className="text-xs text-green-600 text-center mt-1">
-                      Nueva
-                    </p>
+                  <div key={`new-${index}`} className="pu-imagen nueva">
+                    <span className="pu-imagen-badge">+</span>
+                    <img src={img.url} alt={`Nueva imagen ${index + 1}`} />
+                    <p>Nueva</p>
                   </div>
                 );
               }
@@ -970,18 +903,12 @@ export const PerfilUsuario = () => {
                 );
               if (wasInOriginal) {
                 return (
-                  <div
-                    key={`kept-${index}`}
-                    className="relative border border-gray-300 rounded p-2"
-                  >
+                  <div key={`kept-${index}`} className="pu-imagen">
                     <img
                       src={img.url}
                       alt={`Imagen mantenida ${index + 1}`}
-                      className="w-full h-24 object-cover rounded"
                     />
-                    <p className="text-xs text-gray-600 text-center mt-1">
-                      Mantenida
-                    </p>
+                    <p>Mantenida</p>
                   </div>
                 );
               }
@@ -995,69 +922,139 @@ export const PerfilUsuario = () => {
     return cambios.length > 0 ? (
       cambios
     ) : (
-      <p className="text-gray-500 text-sm">
+      <p className="pu-muted">
         No se detectaron cambios visibles en los campos principales.
       </p>
     );
   };
 
+  const esAdmin = user && (user.tipoUsuario === 0 || user.tipoUsuario === 1);
+
+  const etiquetaRol =
+    user?.tipoUsuario === 0 || user?.tipoUsuario === 1
+      ? "Administrador"
+      : user?.tipoUsuario === 3
+        ? "Premium"
+        : "Básico";
+
+  const claseTag = (tag) =>
+    tag === "evento"
+      ? "pu-tag evento"
+      : tag === "emprendimiento"
+        ? "pu-tag emprendimiento"
+        : "pu-tag";
+
+  const pestanas = [
+    {
+      id: "publicaciones",
+      label: "Publicaciones Nuevas",
+      icon: <FaListAlt />,
+      count: publicaciones.length,
+    },
+    {
+      id: "actualizaciones",
+      label: "Actualizaciones Pendientes",
+      icon: <FaEdit />,
+      count: pendingUpdates.length,
+    },
+    {
+      id: "archivos",
+      label: "Archivos Nuevos",
+      icon: <FaHistory />,
+      count: archivos.length,
+    },
+    {
+      id: "usuarios",
+      label: "Gestión de Usuarios",
+      icon: <AiOutlineUser />,
+    },
+  ];
+
   return (
-    <div
-      className={`flex flex-col md:flex-row gap-6 w-full min-h-screen bg-gray-800/80 p-4 md:p-6
-      ${user?.tipoUsuario === 2 || user?.tipoUsuario === 3 ? "justify-center" : ""}`}
-    >
-      {/* Sección de perfil del usuario */}
-      <div
-        className={`paginaUsuario flex flex-col items-center gap-4 w-full
-          ${
-            user?.tipoUsuario === 2
-              ? "items-center w-full max-w-md"
-              : "items-center w-full md:w-1/3"
-          }`}
-      >
-        <AiOutlineUser size={150} className="text-white" />
-        <div className="text-white text-center md:text-left w-full">
-          <div>
-            <span className="text-xl font-semibold">
+    <div className="perfil-usuario-container">
+      <div className={`pu-layout ${esAdmin ? "admin" : "solo"}`}>
+        {/* Sección de perfil del usuario */}
+        <aside className="pu-sidebar">
+          <div className="pu-panel pu-perfil-card">
+            <div className="pu-avatar">
+              {fotoPerfil ? (
+                <img
+                  src={`${BASE_URL}${fotoPerfil}`}
+                  alt={`${user?.nombre || ""} ${user?.apellido || ""}`}
+                />
+              ) : (
+                <AiOutlineUser className="pu-avatar-icon" />
+              )}
+            </div>
+
+            <h1 className="pu-nombre">
               {user?.nombre} {user?.apellido}
-            </span>
-          </div>
-          <div>
-            <a
-              href={`mailto:${user?.email}`}
-              className="text-blue-400 hover:underline"
-            >
+            </h1>
+            <a href={`mailto:${user?.email}`} className="pu-email">
               {user?.email}
             </a>
+            <span className="pu-rol">{etiquetaRol}</span>
+
+            <div className="pu-acciones">
+              <button
+                onClick={() => navigate("/mi-perfil/editar")}
+                className="pu-btn primario"
+              >
+                <FaEdit />
+                Modificar Perfil
+              </button>
+              <button
+                onClick={() => navigate(`/perfil/${user?._id}`)}
+                className="pu-btn secundario"
+              >
+                <AiOutlineUser />
+                Ver Perfil Público
+              </button>
+              <button
+                onClick={() => setModalAbierto(true)}
+                className="pu-btn secundario"
+              >
+                <FiLock />
+                Cambiar contraseña
+              </button>
+              <button
+                onClick={() => {
+                  logout();
+                  navigate("/");
+                }}
+                className="pu-btn peligro"
+              >
+                <FiLogOut />
+                Cerrar sesión
+              </button>
+            </div>
           </div>
 
           {/* Sección de membresía para usuario básico */}
           {user?.tipoUsuario === 2 && limiteData && (
-            <div className="mt-6 w-full bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-bold text-white">Tu Membresía</h3>
-                <span className="px-3 py-1 bg-gray-600 text-white text-xs font-semibold rounded-full">
+            <div className="pu-panel pu-membresia">
+              <div className="pu-membresia-header">
+                <h3>Tu Membresía</h3>
+                <span className="pu-chip">
                   {limiteData.tipoUsuario || "Básico"}
                 </span>
               </div>
 
               {/* Barra de progreso de publicaciones */}
-              <div className="mb-4">
+              <div className="pu-membresia-limite">
                 <LimitePublicaciones limiteData={limiteData} navBar={false} />
               </div>
 
               {/* Botón para actualizar a Premium */}
               <button
                 onClick={() => setModalPremiumAbierto(true)}
-                className="w-full px-4 py-3 bg-gradient-to-r from-[#ffc83d] to-[#f5a300] hover:from-[#f5a300] hover:to-[#e08e00] text-[#12141a] font-bold rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                className="pu-btn primario ancho"
               >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
+                <FiStar />
                 Actualizar a Premium
               </button>
 
-              <p className="text-xs text-gray-300 mt-3 text-center">
+              <p className="pu-muted pu-centro">
                 Obtén publicaciones adicionales y más beneficios
               </p>
             </div>
@@ -1065,39 +1062,25 @@ export const PerfilUsuario = () => {
 
           {/* SECCIÓN PARA USUARIOS PREMIUM */}
           {user?.tipoUsuario === 3 && limiteData && (
-            <div className="mt-6 w-full bg-gradient-to-r from-yellow-500/20 to-yellow-600/20 backdrop-blur-sm rounded-xl p-4 border border-yellow-400/30">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-lg font-bold text-white">
-                  Tu Membresía Premium
-                </h3>
-                <span className="px-3 py-1 bg-yellow-600 text-white text-xs font-semibold rounded-full">
+            <div className="pu-panel pu-membresia premium">
+              <div className="pu-membresia-header">
+                <h3>Tu Membresía Premium</h3>
+                <span className="pu-chip acento">
                   Premium {user?.plan === "anual" ? "Anual" : "Mensual"}
                 </span>
               </div>
 
               {/* Información de vencimiento */}
               {limiteData.fechaVencimientoPremium && (
-                <div className="mb-3 p-3 bg-white/10 rounded-lg border border-white/20">
-                  <div className="flex items-center gap-2 text-white mb-2">
-                    <svg
-                      className="w-4 h-4"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span className="text-sm font-semibold">
-                      Vencimiento del Plan
-                    </span>
+                <div className="pu-vencimiento">
+                  <div className="pu-vencimiento-titulo">
+                    <FiClock />
+                    <span>Vencimiento del Plan</span>
                   </div>
-                  <p className="text-white text-sm">
+                  <p>
                     Tu plan {limiteData.plan === "anual" ? "anual" : "mensual"}{" "}
                     se vence el{" "}
-                    <span className="font-bold text-yellow-300">
+                    <strong>
                       {new Date(
                         limiteData.fechaVencimientoPremium,
                       ).toLocaleDateString("es-ES", {
@@ -1106,10 +1089,10 @@ export const PerfilUsuario = () => {
                         month: "long",
                         day: "numeric",
                       })}
-                    </span>
+                    </strong>
                   </p>
                   {limiteData.premiumVencido && (
-                    <p className="text-red-300 text-xs mt-2">
+                    <p className="pu-alerta">
                       ⚠️ Tu plan premium ha vencido. Por favor, renueva tu
                       suscripción.
                     </p>
@@ -1120,395 +1103,277 @@ export const PerfilUsuario = () => {
               {/* Botón para renovar */}
               <button
                 onClick={() => setModalPremiumAbierto(true)}
-                className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                className="pu-btn primario ancho"
               >
-                <svg
-                  className="w-5 h-5"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path
-                    fillRule="evenodd"
-                    d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                    clipRule="evenodd"
-                  />
-                </svg>
+                <FiRefreshCw />
                 Renovar Plan Premium
               </button>
             </div>
           )}
+        </aside>
 
-          {/* Botones de Perfil Público */}
-          <div className="mt-4">
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => navigate("/mi-perfil/editar")}
-                className="flex-1 px-4 py-2 bg-[#2f8bf0] text-white rounded shadow-md hover:bg-[#1f78db] transition-colors duration-200 font-medium text-sm flex items-center justify-center gap-2"
-              >
-                <FaEdit />
-                Modificar Perfil
-              </button>
+        {/* Modal de cambio de contraseña */}
+        {modalAbierto && (
+          <ModalCambioContrasena
+            userId={user?._id}
+            onClose={() => setModalAbierto(false)}
+            API_URL={API_URL}
+          />
+        )}
 
-              <button
-                onClick={() => navigate(`/perfil/${user?._id}`)}
-                className="flex-1 px-4 py-2 bg-[#16a974] text-white rounded shadow-md hover:bg-[#12905f] transition-colors duration-200 font-medium text-sm flex items-center justify-center gap-2"
-              >
-                <AiOutlineUser />
-                Ver Perfil Público
-              </button>
-            </div>
-
-            <button
-              onClick={() => setModalAbierto(true)}
-              className="w-full px-4 py-2 bg-[#3a46b8] border border-white/20 text-white rounded shadow-md hover:bg-[#4a57d1] transition-colors duration-200 font-medium"
-            >
-              Cambiar contraseña
-            </button>
-          </div>
-          <div>
-            <button
-              onClick={() => {
-                logout();
-                navigate("/");
-              }}
-              className="mt-4 w-full bg-[#dc3a3a] text-white hover:bg-[#b82e2e] font-medium px-4 py-2 rounded shadow-md transition-colors duration-200"
-            >
-              Cerrar sesión
-            </button>
-          </div>
-        </div>
-      </div>
-      {/* Modal de cambio de contraseña */}
-      {modalAbierto && (
-        <ModalCambioContrasena
-          userId={user?._id}
-          onClose={() => setModalAbierto(false)}
-          API_URL={API_URL}
+        {/* Modal de alerta Premium */}
+        <AlertaLimitePublicaciones
+          show={modalPremiumAbierto}
+          onClose={() => setModalPremiumAbierto(false)}
         />
-      )}
 
-      {/* Modal de alerta Premium */}
-      <AlertaLimitePublicaciones
-        show={modalPremiumAbierto}
-        onClose={() => setModalPremiumAbierto(false)}
-      />
+        {/* Modal de configuración de pagos */}
+        <ModalConfiguracionPagos
+          isOpen={modalPagosAbierto}
+          onClose={() => setModalPagosAbierto(false)}
+        />
+        <ModalConfiguracionTematica
+          isOpen={modalTematicaAbierto}
+          onClose={() => setModalTematicaAbierto(false)}
+        />
 
-      {/* Modal de configuración de pagos */}
-      <ModalConfiguracionPagos
-        isOpen={modalPagosAbierto}
-        onClose={() => setModalPagosAbierto(false)}
-      />
-      <ModalConfiguracionTematica
-        isOpen={modalTematicaAbierto}
-        onClose={() => setModalTematicaAbierto(false)}
-      />
-
-      {user && (user.tipoUsuario === 0 || user.tipoUsuario === 1) && (
-        <div className="w-full md:w-2/3 flex flex-col gap-6 bg-gray-50 rounded-xl p-4 md:p-6 dashboard-scroll-container">
-          <h1 className="text-2xl font-bold text-black mb-4">
-            Dashboard Administrativo
-          </h1>
-
-          {/* Botones de configuración */}
-          {(user.tipoUsuario === 0 || user.tipoUsuario === 1) && (
-            <div className="config-buttons flex flex-wrap gap-2 mb-4">
-              <Link
-                to="/admin/categorias"
-                className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium text-sm"
-              >
-                <FaListAlt className="w-4 h-4 mr-2" />
-                Gestionar Clasificaciones
-              </Link>
-
-              <Link
-                to="/admin/boletines"
-                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium text-sm"
-              >
-                <FiMail className="w-4 h-4 mr-2" />
-                Gestionar Boletines
-              </Link>
-
-              <button
-                onClick={() => setModalLimitesAbierto(true)}
-                className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 font-medium text-sm"
-              >
-                <FiSettings className="w-4 h-4 mr-2" />
-                Configurar Límites
-              </button>
-
-              {/*  BOTÓN PARA CONFIGURAR PAGOS */}
-              <button
-                onClick={() => setModalPagosAbierto(true)}
-                className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium text-sm"
-              >
-                <FiCreditCard className="w-4 h-4 mr-2" />
-                Configurar Pagos
-              </button>
-
-              <button
-                onClick={() => setModalTematicaAbierto(true)}
-                className="inline-flex items-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors duration-200 font-medium text-sm"
-              >
-                <FiDroplet className="w-4 h-4 mr-2" />
-                Configurar Temática
-              </button>
+        {esAdmin && (
+          <section className="pu-dashboard">
+            {/* Encabezado */}
+            <div className="pu-panel pu-header">
+              <div>
+                <h1>Dashboard Administrativo</h1>
+                <p>
+                  Revisa contenido pendiente, gestiona usuarios y configura el
+                  sitio.
+                </p>
+              </div>
             </div>
-          )}
 
-          <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <h2 className="text-lg font-semibold text-black mb-2">
-              Contenido de la Página de Inicio
-            </h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Configura aquí el eslogan y la frase motivacional que se muestran
-              en la portada.
-            </p>
-
-            {cargandoInicioContenido ? (
-              <p className="text-sm text-gray-500">
-                Cargando contenido actual...
-              </p>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Eslogan
-                  </label>
-                  <input
-                    type="text"
-                    maxLength={180}
-                    value={inicioContenido.eslogan}
-                    onChange={(e) =>
-                      setInicioContenido((prev) => ({
-                        ...prev,
-                        eslogan: e.target.value,
-                      }))
-                    }
-                    placeholder="Ej: Conectamos ideas, creamos comunidad."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Frase motivacional
-                  </label>
-                  <textarea
-                    rows={3}
-                    maxLength={280}
-                    value={inicioContenido.frase}
-                    onChange={(e) =>
-                      setInicioContenido((prev) => ({
-                        ...prev,
-                        frase: e.target.value,
-                      }))
-                    }
-                    placeholder="Ej: Cada publicación es una oportunidad de aprender y crecer juntos."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-black focus:outline-none focus:ring-2 focus:ring-blue-400"
-                  />
-                </div>
-
+            {/* Botones de configuración */}
+            <div className="pu-panel pu-config">
+              <h2 className="pu-seccion-titulo">
+                <FiSettings />
+                Configuración del sitio
+              </h2>
+              <div className="pu-config-grid">
+                <Link to="/admin/categorias" className="pu-config-btn">
+                  <FaListAlt />
+                  Gestionar Clasificaciones
+                </Link>
+                <Link to="/admin/boletines" className="pu-config-btn">
+                  <FiMail />
+                  Gestionar Boletines
+                </Link>
                 <button
-                  type="button"
-                  onClick={guardarContenidoInicio}
-                  disabled={guardandoInicioContenido}
-                  className="px-4 py-2 bg-amber-500 text-white rounded-md hover:bg-amber-600 transition-colors duration-200 font-medium disabled:opacity-60"
+                  onClick={() => setModalLimitesAbierto(true)}
+                  className="pu-config-btn"
                 >
-                  {guardandoInicioContenido
-                    ? "Guardando..."
-                    : "Guardar contenido de inicio"}
+                  <FiSettings />
+                  Configurar Límites
+                </button>
+                <button
+                  onClick={() => setModalPagosAbierto(true)}
+                  className="pu-config-btn"
+                >
+                  <FiCreditCard />
+                  Configurar Pagos
+                </button>
+                <button
+                  onClick={() => setModalTematicaAbierto(true)}
+                  className="pu-config-btn"
+                >
+                  <FiDroplet />
+                  Configurar Temática
                 </button>
               </div>
-            )}
-          </div>
+            </div>
 
-          <ModalLimitesPublicaciones
-            isOpen={modalLimitesAbierto}
-            onClose={() => setModalLimitesAbierto(false)}
-          />
+            {/* Contenido de la página de inicio */}
+            <div className="pu-panel pu-inicio">
+              <h2 className="pu-seccion-titulo">
+                <FiHome />
+                Contenido de la Página de Inicio
+              </h2>
+              <p className="pu-muted">
+                Configura aquí el eslogan y la frase motivacional que se
+                muestran en la portada.
+              </p>
 
-          {/* Pestañas para navegación */}
-          <div className="dashboard-tabs flex flex-wrap gap-2 border-b border-gray-200 pb-2 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab("publicaciones")}
-              className={`py-2 px-3 border-b-2 font-medium text-sm whitespace-nowrap ${
-                activeTab === "publicaciones"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              <FaListAlt className="inline w-4 h-4 mr-2" />
-              Publicaciones Nuevas ({publicaciones.length})
-            </button>
+              {cargandoInicioContenido ? (
+                <p className="pu-muted">Cargando contenido actual...</p>
+              ) : (
+                <div className="pu-form">
+                  <label className="pu-label">
+                    Eslogan
+                    <input
+                      type="text"
+                      maxLength={180}
+                      value={inicioContenido.eslogan}
+                      onChange={(e) =>
+                        setInicioContenido((prev) => ({
+                          ...prev,
+                          eslogan: e.target.value,
+                        }))
+                      }
+                      placeholder="Ej: Conectamos ideas, creamos comunidad."
+                      className="pu-input"
+                    />
+                  </label>
 
-            <button
-              onClick={() => setActiveTab("actualizaciones")}
-              className={`py-2 px-3 border-b-2 font-medium text-sm whitespace-nowrap ${
-                activeTab === "actualizaciones"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              <FaEdit className="inline w-4 h-4 mr-2" />
-              Actualizaciones Pendientes ({pendingUpdates.length})
-            </button>
+                  <label className="pu-label">
+                    Frase motivacional
+                    <textarea
+                      rows={3}
+                      maxLength={280}
+                      value={inicioContenido.frase}
+                      onChange={(e) =>
+                        setInicioContenido((prev) => ({
+                          ...prev,
+                          frase: e.target.value,
+                        }))
+                      }
+                      placeholder="Ej: Cada publicación es una oportunidad de aprender y crecer juntos."
+                      className="pu-input"
+                    />
+                  </label>
 
-            <button
-              onClick={() => setActiveTab("archivos")}
-              className={`py-2 px-3 border-b-2 font-medium text-sm whitespace-nowrap ${
-                activeTab === "archivos"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              <FaHistory className="inline w-4 h-4 mr-2" />
-              Archivos Nuevos ({archivos.length})
-            </button>
-
-            <button
-              onClick={() => setActiveTab("usuarios")}
-              className={`py-2 px-3 border-b-2 font-medium text-sm whitespace-nowrap ${
-                activeTab === "usuarios"
-                  ? "border-blue-500 text-blue-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
-            >
-              <AiOutlineUser className="inline w-4 h-4 mr-2" />
-              Gestión de Usuarios
-            </button>
-          </div>
-
-          {/* Contenido de las pestañas */}
-          <div className="flex-1 overflow-hidden min-h-0 ">
-            {/* Pestaña: Publicaciones Nuevas */}
-            {activeTab === "publicaciones" && (
-              <div className="tab-table-container h-full overflow-auto">
-                <h2 className="text-lg font-semibold text-black mb-4">
-                  Publicaciones nuevas por aprobar
-                </h2>
-                {publicaciones && publicaciones.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="responsive-table min-w-full">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="text-left px-3 py-2 text-sm">Autor</th>
-                          <th className="text-left px-3 py-2 text-sm">
-                            Título
-                          </th>
-                          <th className="text-left px-3 py-2 text-sm">Tipo</th>
-                          <th className="text-left px-3 py-2 text-sm">Fecha</th>
-                          <th className="text-left px-3 py-2 text-sm">
-                            Vista Previa
-                          </th>
-                          <th className="text-left px-3 py-2 text-sm">
-                            Decisión
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {publicaciones.map((item) => (
-                          <tr
-                            key={item._id}
-                            className="border-t hover:bg-gray-50"
-                          >
-                            <td className="px-3 py-2 text-sm">
-                              {item.autor ? item.autor.nombre : "Sin autor"}
-                            </td>
-                            <td
-                              className="px-3 py-2 text-sm break-words max-w-[150px]"
-                              title={item.titulo}
-                            >
-                              {item.titulo}
-                            </td>
-                            <td className="px-3 py-2 text-sm">
-                              <span
-                                className={`px-2 py-1 rounded text-xs ${
-                                  item.tag === "evento"
-                                    ? "bg-blue-100 text-blue-800"
-                                    : item.tag === "emprendimiento"
-                                      ? "bg-green-100 text-green-800"
-                                      : "bg-gray-100 text-gray-800"
-                                }`}
-                              >
-                                {item.tag}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2 text-sm">{item.fecha}</td>
-                            <td className="px-3 py-2 text-sm">
-                              <a
-                                href={`/publicaciones/${item._id}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-500 hover:underline text-sm"
-                              >
-                                Ver publicación
-                              </a>
-                            </td>
-                            <td className="px-3 py-2 text-sm">
-                              <div className="table-actions flex flex-col sm:flex-row gap-1">
-                                <button
-                                  onClick={() => aceptarPost(item._id)}
-                                  className="bg-green-500 hover:bg-green-600 text-white font-medium px-2 py-1 rounded text-xs sm:text-sm"
-                                >
-                                  Aceptar
-                                </button>
-                                <button
-                                  onClick={() => rechazarPost(item._id)}
-                                  className="bg-red-500 hover:bg-red-600 text-white font-medium px-2 py-1 rounded text-xs sm:text-sm"
-                                >
-                                  Rechazar
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={guardarContenidoInicio}
+                      disabled={guardandoInicioContenido}
+                      className="pu-btn primario"
+                    >
+                      {guardandoInicioContenido
+                        ? "Guardando..."
+                        : "Guardar contenido de inicio"}
+                    </button>
                   </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    No hay publicaciones pendientes de aprobación.
-                  </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
 
-            {/* Actualizaciones Pendientes */}
-            {activeTab === "actualizaciones" && (
-              <div className="tab-table-container h-full flex flex-col">
-                <h2 className="text-lg font-semibold text-black mb-4">
-                  Actualizaciones pendientes de revisión
-                </h2>
-                {pendingUpdates && pendingUpdates.length > 0 ? (
-                  <div
-                    className="flex-1 overflow-y-auto"
-                    style={{ maxHeight: "400px" }}
+            <ModalLimitesPublicaciones
+              isOpen={modalLimitesAbierto}
+              onClose={() => setModalLimitesAbierto(false)}
+            />
+
+            {/* Pestañas para navegación */}
+            <div className="pu-tabs-wrap">
+              <div className="pu-tabs" role="tablist">
+                {pestanas.map((tab) => (
+                  <button
+                    key={tab.id}
+                    role="tab"
+                    aria-selected={activeTab === tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`pu-tab ${activeTab === tab.id ? "activo" : ""}`}
                   >
-                    <div className="space-y-4 p-1">
-                      {pendingUpdates.map((publicacion) => (
-                        <div
-                          key={publicacion._id}
-                          className="border rounded-lg p-4 bg-white shadow-sm hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-3 mb-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex flex-col sm:flex-row sm:items-start gap-2 mb-2">
-                                <h3 className="font-semibold text-lg text-black break-words w-full">
-                                  {publicacion.titulo}
-                                </h3>
-                                <span
-                                  className={`px-2 py-1 rounded text-xs whitespace-nowrap flex-shrink-0 ${
-                                    publicacion.tag === "evento"
-                                      ? "bg-blue-100 text-blue-800"
-                                      : publicacion.tag === "emprendimiento"
-                                        ? "bg-green-100 text-green-800"
-                                        : "bg-gray-100 text-gray-800"
-                                  }`}
+                    {tab.icon}
+                    {tab.label}
+                    {tab.count !== undefined && (
+                      <span className="pu-tab-count">{tab.count}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Contenido de las pestañas */}
+            <div className="pu-panel pu-tab-panel">
+              {/* Pestaña: Publicaciones Nuevas */}
+              {activeTab === "publicaciones" && (
+                <>
+                  <h2 className="pu-seccion-titulo">
+                    Publicaciones nuevas por aprobar
+                  </h2>
+                  {publicaciones && publicaciones.length > 0 ? (
+                    <div className="pu-tabla-wrapper">
+                      <table className="pu-tabla">
+                        <thead>
+                          <tr>
+                            <th>Autor</th>
+                            <th>Título</th>
+                            <th>Tipo</th>
+                            <th>Fecha</th>
+                            <th>Vista Previa</th>
+                            <th>Decisión</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {publicaciones.map((item) => (
+                            <tr key={item._id}>
+                              <td>
+                                {item.autor ? item.autor.nombre : "Sin autor"}
+                              </td>
+                              <td className="pu-celda-titulo" title={item.titulo}>
+                                {item.titulo}
+                              </td>
+                              <td>
+                                <span className={claseTag(item.tag)}>
+                                  {item.tag}
+                                </span>
+                              </td>
+                              <td>{item.fecha}</td>
+                              <td>
+                                <a
+                                  href={`/publicaciones/${item._id}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="pu-link"
                                 >
+                                  Ver publicación
+                                </a>
+                              </td>
+                              <td>
+                                <div className="pu-decision">
+                                  <button
+                                    onClick={() => aceptarPost(item._id)}
+                                    className="pu-btn-mini aprobar"
+                                  >
+                                    Aceptar
+                                  </button>
+                                  <button
+                                    onClick={() => rechazarPost(item._id)}
+                                    className="pu-btn-mini rechazar"
+                                  >
+                                    Rechazar
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="pu-vacio">
+                      No hay publicaciones pendientes de aprobación.
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Actualizaciones Pendientes */}
+              {activeTab === "actualizaciones" && (
+                <>
+                  <h2 className="pu-seccion-titulo">
+                    Actualizaciones pendientes de revisión
+                  </h2>
+                  {pendingUpdates && pendingUpdates.length > 0 ? (
+                    <div className="pu-lista-scroll">
+                      {pendingUpdates.map((publicacion) => (
+                        <div key={publicacion._id} className="pu-update-card">
+                          <div className="pu-update-top">
+                            <div className="pu-update-info">
+                              <div className="pu-update-titulo">
+                                <h3>{publicacion.titulo}</h3>
+                                <span className={claseTag(publicacion.tag)}>
                                   {publicacion.tag}
                                 </span>
                               </div>
-                              <p className="text-sm text-gray-600 break-words">
+                              <p className="pu-muted">
                                 <strong>Autor:</strong>{" "}
                                 {publicacion.autor?.nombre} •{" "}
                                 <strong> Solicitado:</strong>{" "}
@@ -1519,12 +1384,12 @@ export const PerfilUsuario = () => {
                                 {publicacion.editCount || 0}/3
                               </p>
                             </div>
-                            <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+                            <div className="pu-decision fila">
                               <button
                                 onClick={() =>
                                   aprobarActualizacion(publicacion._id)
                                 }
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm whitespace-nowrap transition-colors flex-1 min-w-[100px]"
+                                className="pu-btn-mini aprobar"
                               >
                                 Aprobar
                               </button>
@@ -1538,28 +1403,24 @@ export const PerfilUsuario = () => {
                                     reason,
                                   );
                                 }}
-                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm whitespace-nowrap transition-colors flex-1 min-w-[100px]"
+                                className="pu-btn-mini rechazar"
                               >
                                 Rechazar
                               </button>
                             </div>
                           </div>
 
-                          <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-                            <h4 className="font-medium text-black mb-3 text-lg">
-                              Cambios propuestos:
-                            </h4>
-                            <div className="space-y-3">
-                              {renderCambiosPropuestos(publicacion)}
-                            </div>
+                          <div className="pu-cambios">
+                            <h4>Cambios propuestos:</h4>
+                            {renderCambiosPropuestos(publicacion)}
                           </div>
 
-                          <div className="mt-3 pt-3 border-t">
+                          <div className="pu-update-footer">
                             <a
                               href={`/publicaciones/${publicacion._id}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-blue-500 hover:underline text-sm break-words inline-block font-medium"
+                              className="pu-link"
                             >
                               Ver publicación actual
                             </a>
@@ -1567,181 +1428,157 @@ export const PerfilUsuario = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    No hay actualizaciones pendientes de revisión.
-                  </div>
-                )}
-              </div>
-            )}
+                  ) : (
+                    <div className="pu-vacio">
+                      No hay actualizaciones pendientes de revisión.
+                    </div>
+                  )}
+                </>
+              )}
 
-            {/* Pestaña: Archivos Nuevos (RF023) */}
-            {activeTab === "archivos" && (
-              <div className="tab-table-container h-full overflow-auto">
-                <h2 className="text-lg font-semibold text-black mb-4">
-                  Archivos pendientes de aprobación
-                </h2>
-                {archivos && archivos.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full text-black text-sm">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="text-left px-3 py-2">Subido por</th>
-                          <th className="text-left px-3 py-2">
-                            Nombre del archivo
-                          </th>
-                          <th className="text-left px-3 py-2">Tipo</th>
-                          <th className="text-left px-3 py-2">Tamaño</th>
-                          <th className="text-left px-3 py-2">Fecha</th>
-                          <th className="text-left px-3 py-2">Vista previa</th>
-                          <th className="text-left px-3 py-2">Decisión</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {archivos.map((item) => (
-                          <tr
-                            key={item._id}
-                            className="border-t hover:bg-gray-50"
-                          >
-                            <td className="px-3 py-2 min-w-[220px]">
-                              <div className="text-sm font-medium text-gray-900 break-words">
-                                {(item.subidoPor?.nombre
-                                  ? `${item.subidoPor.nombre} ${item.subidoPor.apellido || ""}`
-                                  : item.usuario?.nombre
-                                    ? `${item.usuario.nombre} ${item.usuario.apellido || ""}`
-                                    : item.autor?.nombre
-                                      ? `${item.autor.nombre} ${item.autor.apellido || ""}`
-                                      : "Desconocido"
-                                ).trim()}
-                              </div>
-                              <div className="text-xs text-gray-600 break-words">
-                                {item.subidoPor?.email ||
-                                  item.usuario?.email ||
-                                  item.autor?.email ||
-                                  ""}
-                              </div>
-                            </td>
-
-                            <td
-                              className="px-3 py-2 break-words max-w-[200px]"
-                              title={item.nombre}
-                            >
-                              {item.nombre}
-                            </td>
-                            <td className="px-3 py-2">
-                              <span className="px-2 py-1 rounded text-xs bg-gray-100 text-gray-800">
-                                {item.tipoArchivo?.split("/").pop() ||
-                                  "Archivo"}
-                              </span>
-                            </td>
-                            <td className="px-3 py-2">
-                              {formatearTamano(item.tamano)}
-                            </td>
-                            <td className="px-3 py-2">
-                              {item.fechaSubida
-                                ? new Date(item.fechaSubida).toLocaleDateString(
-                                    "es-ES",
-                                  )
-                                : "Fecha no disponible"}
-                            </td>
-                            <td className="px-3 py-2">
-                              <a
-                                href={item.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-500 hover:underline text-sm"
-                              >
-                                Ver archivo
-                              </a>
-                            </td>
-                            <td className="px-3 py-2">
-                              <div className="flex flex-col gap-1">
-                                <button
-                                  onClick={() => aceptarArchivo(item._id)}
-                                  className="bg-green-500 hover:bg-green-600 text-white font-medium px-2 py-1 rounded text-xs sm:text-sm"
-                                >
-                                  ✓ Aprobar
-                                </button>
-                                <button
-                                  onClick={() => rechazarArchivo(item._id)}
-                                  className="bg-red-500 hover:bg-red-600 text-white font-medium px-2 py-1 rounded text-xs sm:text-sm"
-                                >
-                                  ✗ Rechazar
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    No hay archivos pendientes de aprobación.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Pestaña: Gestión de Usuarios */}
-            {activeTab === "usuarios" && (
-              <div className="tab-table-container h-full flex flex-col">
-                <h2 className="text-lg font-semibold text-black mb-4">
-                  Gestión de permisos de usuarios
-                </h2>
-
-                <input
-                  type="text"
-                  placeholder="Buscar por nombre, apellido o email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="mb-4 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400 text-black"
-                />
-
-                {usuariosFiltrados && usuariosFiltrados.length > 0 ? (
-                  <div
-                    className="flex-1 overflow-y-auto"
-                    style={{ maxHeight: "400px" }}
-                  >
-                    <div className="min-w-full">
-                      <table className="responsive-table min-w-full">
-                        <thead className="sticky top-0 bg-gray-100">
+              {/* Pestaña: Archivos Nuevos (RF023) */}
+              {activeTab === "archivos" && (
+                <>
+                  <h2 className="pu-seccion-titulo">
+                    Archivos pendientes de aprobación
+                  </h2>
+                  {archivos && archivos.length > 0 ? (
+                    <div className="pu-tabla-wrapper">
+                      <table className="pu-tabla">
+                        <thead>
                           <tr>
-                            <th className="text-left px-3 py-2 min-w-[120px]">
-                              Nombre
-                            </th>
-                            <th className="text-left px-3 py-2 min-w-[120px]">
-                              Apellidos
-                            </th>
-                            <th className="text-left px-3 py-2 min-w-[200px]">
-                              Email
-                            </th>
-                            <th className="text-left px-3 py-2 min-w-[220px]">
-                              Tipo de Usuario
-                            </th>
+                            <th>Subido por</th>
+                            <th>Nombre del archivo</th>
+                            <th>Tipo</th>
+                            <th>Tamaño</th>
+                            <th>Fecha</th>
+                            <th>Vista previa</th>
+                            <th>Decisión</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {archivos.map((item) => (
+                            <tr key={item._id}>
+                              <td className="pu-celda-autor">
+                                <div className="pu-autor-nombre">
+                                  {(item.subidoPor?.nombre
+                                    ? `${item.subidoPor.nombre} ${item.subidoPor.apellido || ""}`
+                                    : item.usuario?.nombre
+                                      ? `${item.usuario.nombre} ${item.usuario.apellido || ""}`
+                                      : item.autor?.nombre
+                                        ? `${item.autor.nombre} ${item.autor.apellido || ""}`
+                                        : "Desconocido"
+                                  ).trim()}
+                                </div>
+                                <div className="pu-autor-email">
+                                  {item.subidoPor?.email ||
+                                    item.usuario?.email ||
+                                    item.autor?.email ||
+                                    ""}
+                                </div>
+                              </td>
+                              <td className="pu-celda-titulo" title={item.nombre}>
+                                {item.nombre}
+                              </td>
+                              <td>
+                                <span className="pu-tag">
+                                  {item.tipoArchivo?.split("/").pop() ||
+                                    "Archivo"}
+                                </span>
+                              </td>
+                              <td>{formatearTamano(item.tamano)}</td>
+                              <td>
+                                {item.fechaSubida
+                                  ? new Date(
+                                      item.fechaSubida,
+                                    ).toLocaleDateString("es-ES")
+                                  : "Fecha no disponible"}
+                              </td>
+                              <td>
+                                <a
+                                  href={item.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="pu-link"
+                                >
+                                  Ver archivo
+                                </a>
+                              </td>
+                              <td>
+                                <div className="pu-decision">
+                                  <button
+                                    onClick={() => aceptarArchivo(item._id)}
+                                    className="pu-btn-mini aprobar"
+                                  >
+                                    ✓ Aprobar
+                                  </button>
+                                  <button
+                                    onClick={() => rechazarArchivo(item._id)}
+                                    className="pu-btn-mini rechazar"
+                                  >
+                                    ✗ Rechazar
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="pu-vacio">
+                      No hay archivos pendientes de aprobación.
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Pestaña: Gestión de Usuarios */}
+              {activeTab === "usuarios" && (
+                <>
+                  <h2 className="pu-seccion-titulo">
+                    Gestión de permisos de usuarios
+                  </h2>
+
+                  <div className="pu-buscador">
+                    <FiSearch />
+                    <input
+                      type="text"
+                      placeholder="Buscar por nombre, apellido o email..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    {searchTerm && (
+                      <button
+                        onClick={() => setSearchTerm("")}
+                        className="pu-limpiar"
+                        title="Limpiar"
+                      >
+                        <FiX />
+                      </button>
+                    )}
+                  </div>
+
+                  {usuariosFiltrados && usuariosFiltrados.length > 0 ? (
+                    <div className="pu-tabla-wrapper">
+                      <table className="pu-tabla">
+                        <thead>
+                          <tr>
+                            <th>Nombre</th>
+                            <th>Apellidos</th>
+                            <th>Email</th>
+                            <th>Tipo de Usuario</th>
                           </tr>
                         </thead>
                         <tbody>
                           {usuariosFiltrados.map((item) => (
-                            <tr
-                              key={item._id}
-                              className="border-t hover:bg-gray-50"
-                            >
-                              <td className="px-3 py-2 break-words min-w-[120px]">
-                                {item.nombre || "Sin nombre"}
-                              </td>
-                              <td className="px-3 py-2 break-words min-w-[120px]">
-                                {item.apellido || "Sin apellido"}
-                              </td>
-                              <td className="px-3 py-2 break-words min-w-[200px]">
-                                {item.email}
-                              </td>
-
-                              {/* ✅ CAMBIO: Dropdown real para Admin / Básico / Premium */}
-                              <td className="px-3 py-2 min-w-[220px]">
+                            <tr key={item._id}>
+                              <td>{item.nombre || "Sin nombre"}</td>
+                              <td>{item.apellido || "Sin apellido"}</td>
+                              <td className="pu-celda-email">{item.email}</td>
+                              <td className="pu-celda-select">
                                 <select
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-black"
+                                  className="pu-select"
                                   value={getTipoUsuarioSelectValue(item)}
                                   onChange={(e) =>
                                     actualizarMembresia(
@@ -1760,7 +1597,7 @@ export const PerfilUsuario = () => {
                                   </option>
                                 </select>
 
-                                <div className="text-xs text-gray-600 mt-1">
+                                <div className="pu-select-nota">
                                   {item.tipoUsuario === 3 &&
                                   item.fechaVencimientoPremium ? (
                                     <>
@@ -1781,17 +1618,15 @@ export const PerfilUsuario = () => {
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    No se encontraron usuarios.
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+                  ) : (
+                    <div className="pu-vacio">No se encontraron usuarios.</div>
+                  )}
+                </>
+              )}
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 };

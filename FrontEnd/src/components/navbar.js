@@ -259,7 +259,9 @@ export const Navbar = () => {
                 )
               }
               className={
-                isActive("/perfilUsuario") || isActive("/iniciarSesion")
+                isActive("/perfilUsuario") ||
+                isActive("/iniciarSesion") ||
+                isActive("/admin")
                   ? "activo"
                   : ""
               }
