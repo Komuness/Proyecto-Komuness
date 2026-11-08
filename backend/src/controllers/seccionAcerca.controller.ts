@@ -171,7 +171,8 @@ export const createOrUpdateSeccionAcerca = async (req: Request, res: Response): 
       uneteCausa,
       informacionDonaciones,
       contactos,
-      equipo
+      equipo,
+      imagenesProyectos
     } = req.body;
 
     if (!titulo && !contenido) {
@@ -182,6 +183,28 @@ export const createOrUpdateSeccionAcerca = async (req: Request, res: Response): 
     const seccion = await modelSeccionAcerca.findOne({ estado: true });
 
     if (seccion) {
+      // imagenesProyectos solo se acepta como un REORDENAMIENTO de las
+      // imágenes que ya existen (mismas URLs, distinto orden). Subir y borrar
+      // imágenes sigue pasando por /upload y /imagen, que validan archivos.
+      let imagenesOrdenadas: string[] | undefined;
+      if (imagenesProyectos !== undefined) {
+        const actuales: string[] = (seccion.imagenesProyectos || []).map(String);
+        const esReordenamiento =
+          Array.isArray(imagenesProyectos) &&
+          imagenesProyectos.every((img: unknown) => typeof img === 'string') &&
+          imagenesProyectos.length === actuales.length &&
+          [...imagenesProyectos].sort().join('\n') === [...actuales].sort().join('\n');
+
+        if (!esReordenamiento) {
+          res.status(409).json({
+            message:
+              "La lista de imágenes del carrusel cambió mientras editabas. Recarga la página e inténtalo de nuevo."
+          });
+          return;
+        }
+        imagenesOrdenadas = imagenesProyectos as string[];
+      }
+
       const updateData = {
         titulo: titulo !== undefined ? titulo : seccion.titulo,
         contenido: contenido !== undefined ? contenido : seccion.contenido,
@@ -194,7 +217,8 @@ export const createOrUpdateSeccionAcerca = async (req: Request, res: Response): 
         uneteCausa: uneteCausa !== undefined ? uneteCausa : seccion.uneteCausa,
         informacionDonaciones: informacionDonaciones !== undefined ? informacionDonaciones : seccion.informacionDonaciones,
         contactos: contactos !== undefined ? contactos : seccion.contactos,
-        equipo: equipo !== undefined ? equipo : seccion.equipo
+        equipo: equipo !== undefined ? equipo : seccion.equipo,
+        imagenesProyectos: imagenesOrdenadas !== undefined ? imagenesOrdenadas : seccion.imagenesProyectos
       };
 
       const updated = await modelSeccionAcerca.findOneAndUpdate(
