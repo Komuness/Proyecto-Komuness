@@ -2,10 +2,6 @@ import { useState } from "react";
 import {
   FaFacebook,
   FaInstagram,
-  FaChevronLeft,
-  FaChevronRight,
-  FaExpand,
-  FaTimes,
   FaGraduationCap,
   FaBriefcase,
   FaTrophy,
@@ -31,22 +27,14 @@ const CAPITULOS = [
 ];
 
 export const QuienesSomosSection = ({ data }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [expandedMember, setExpandedMember] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
 
   if (!data) return null;
 
-  const proyectos = data.imagenesProyectos || [];
   const equipo = data.equipo || [];
   const donaciones = data.informacionDonaciones || {};
   const contactos = data.contactos || {};
   const capitulos = CAPITULOS.filter((c) => data[c.key]);
-
-  const nextImage = () =>
-    setCurrentImageIndex((i) => (i === proyectos.length - 1 ? 0 : i + 1));
-  const prevImage = () =>
-    setCurrentImageIndex((i) => (i === 0 ? proyectos.length - 1 : i - 1));
 
   const toggleMember = (index) =>
     setExpandedMember((current) => (current === index ? null : index));
@@ -77,86 +65,6 @@ export const QuienesSomosSection = ({ data }) => {
               </article>
             ))}
           </div>
-        </section>
-      )}
-
-      {/* Carrusel de proyectos */}
-      {proyectos.length > 0 && (
-        <section className="qs-block qs-proyectos">
-          <h3 className="qs-block-title">Nuestros proyectos</h3>
-          <div className="qs-carousel">
-            <div
-              className="qs-carousel-frame"
-              onClick={() => setModalOpen(true)}
-            >
-              <img
-                src={proyectos[currentImageIndex]}
-                alt={`Proyecto ${currentImageIndex + 1}`}
-                className="qs-carousel-image"
-              />
-              {proyectos.length > 1 && (
-                <>
-                  <button
-                    type="button"
-                    className="qs-carousel-nav qs-carousel-nav--prev"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      prevImage();
-                    }}
-                    aria-label="Proyecto anterior"
-                  >
-                    <FaChevronLeft />
-                  </button>
-                  <button
-                    type="button"
-                    className="qs-carousel-nav qs-carousel-nav--next"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      nextImage();
-                    }}
-                    aria-label="Siguiente proyecto"
-                  >
-                    <FaChevronRight />
-                  </button>
-                </>
-              )}
-              <span className="qs-carousel-expand">
-                <FaExpand /> Ver más grande
-              </span>
-            </div>
-            {proyectos.length > 1 && (
-              <div className="qs-carousel-dots">
-                {proyectos.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    className={`qs-dot ${i === currentImageIndex ? "qs-dot--active" : ""}`}
-                    onClick={() => setCurrentImageIndex(i)}
-                    aria-label={`Ir al proyecto ${i + 1}`}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-
-          {modalOpen && (
-            <div className="qs-modal" onClick={() => setModalOpen(false)}>
-              <button
-                type="button"
-                className="qs-modal-close"
-                onClick={() => setModalOpen(false)}
-                aria-label="Cerrar imagen"
-              >
-                <FaTimes />
-              </button>
-              <img
-                src={proyectos[currentImageIndex]}
-                alt={`Proyecto ${currentImageIndex + 1}`}
-                className="qs-modal-image"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          )}
         </section>
       )}
 
