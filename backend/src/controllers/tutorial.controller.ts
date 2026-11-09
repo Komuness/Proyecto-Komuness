@@ -1,5 +1,6 @@
-import { Request, Response} from "express";
+import { Request, Response } from "express";
 import { modelTutorial } from "../models/tutorial.model";
+import { notificarPublicacionAutomatica } from "../services/notificacion.service";
 
 /*
  * Crear un tutorial
@@ -23,6 +24,17 @@ export const createTutorial = async (req: Request, res: Response): Promise<void>
     });
 
     const saved = await nuevoTutorial.save();
+
+    try {
+      await notificarPublicacionAutomatica({
+        publicacionId: saved._id.toString(),
+        titulo: saved.nombre,
+        tagOrigen: "tutorial",
+      });
+    } catch (notiError) {
+      console.warn("No se pudo notificar la creación del tutorial:", notiError);
+    }
+
     res.status(201).json(saved);
   } catch (error: any) {
     console.error(error);
@@ -109,5 +121,3 @@ export const updateTutorial = async (req: Request, res: Response): Promise<void>
     res.status(500).json({ message: "Error al actualizar el tutorial" });
   }
 };
-
-

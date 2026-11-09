@@ -53,7 +53,7 @@ export const getNotificaciones = async (
     // Notificaciones específicas y generales
     if (finalUserId) {
       filtro.$or = [
-        { recipientes: userId },
+        { recipientes: finalUserId },
         { recipientes: [] }
       ];
       filtro.$and = [
@@ -86,7 +86,7 @@ export const getNotificaciones = async (
     // Si tiene filtro, revisar por usuario el visto
     const notificacionesConVisto = notificaciones.map((notificacion) => {
       const visto = notificacion.vistoPor?.some(
-        (id) => id.toString() === userId
+        (id) => id.toString() === finalUserId
       );
 
       const {

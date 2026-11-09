@@ -5,6 +5,12 @@ import { modelCategoriaPreferencia } from "../models/categoriaPreferencia.model"
 import { IPublicacionNotification } from "../interfaces/publicacion.interface";
 
 // ==========================================
+// Constantes
+// ==========================================
+
+const DEFAULT_CADUCIDAD_DIAS = 3;
+
+// ==========================================
 // Tipos
 // ==========================================
 
@@ -43,6 +49,12 @@ type NotificarNuevaActividadInput = {
   nombreActividad: string;
   descripcionActividad: string;
   ubicacionEscrita: string;
+};
+
+type NotificarPublicacionAutomaticaInput = {
+  publicacionId: string;
+  titulo?: string;
+  tagOrigen?: string; // "evento" | "emprendimiento" | "tutorial" | "biblioteca"...
 };
 
 // ==========================================
@@ -184,6 +196,47 @@ export const notificarNuevaPublicacion = async (
     descripcion: `${publicacion.contenidoBreve} - ${publicacion.autor}`,
     recipientes: seguidores,
     publicacionId: publicacion.publicacionId,
+  });
+};
+
+// ==========================================
+// BKD68: Notificación de publicación automática (para todos los usuarios)
+// ==========================================
+
+const ETIQUETA_TAG: Record<string, string> = {
+  evento: "evento",
+  emprendimiento: "emprendimiento",
+  tutorial: "tutorial",
+  biblioteca: "recurso de la biblioteca",
+};
+
+// Una notificación general (recipientes: [] = la ven todos los usuarios)
+// por cada publicación automática.
+export const notificarPublicacionAutomatica = async (
+  input: NotificarPublicacionAutomaticaInput
+) => {
+  const { publicacionId, titulo, tagOrigen } = input;
+  ensureObjectId(publicacionId, "publicacionId");
+
+  // Evita duplicados si se llama dos veces para la misma publicación
+  const yaExiste = await modelNotificacion.exists({
+    publicacionId,
+    tipo: "general",
+    recipientes: { $size: 0 },
+  });
+  if (yaExiste) return null;
+
+  const etiqueta = (tagOrigen && ETIQUETA_TAG[tagOrigen]) || "publicación";
+  const fechaCaducidad = new Date();
+  fechaCaducidad.setDate(fechaCaducidad.getDate() + DEFAULT_CADUCIDAD_DIAS);
+
+  return createNotificacion({
+    nombre: `Nuevo ${etiqueta}`,
+    descripcion: titulo?.trim() || `Se publicó un nuevo ${etiqueta}`,
+    recipientes: [], // todos los usuarios
+    publicacionId,
+    fechaCaducidad,
+    tipo: "general",
   });
 };
 

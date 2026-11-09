@@ -35,7 +35,7 @@ const router = Router();
 // solo los tipoUsuarios 0, 1 y 2 pueden subir archivos
 // router.post("/upload", upload.array('archivos'), authMiddleware, verificarRoles([0, 1, 2]), BibliotecaController.uploadFiles as any);
 // RF023: Ahora usuarios básicos (2) y premium (3) también pueden subir archivos
-router.post("/upload", authMiddleware, verificarRoles([0, 1, 2, 3]), uploadLibrary.array('archivos'), secureUploads('library'), BibliotecaController.uploadFiles as any
+router.post("/upload", authMiddleware, verificarRoles([0, 1, 2, 3]), uploadLibrary, secureUploads('library'), BibliotecaController.uploadFiles as any
 );
 
 
