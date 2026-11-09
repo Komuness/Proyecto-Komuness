@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { uploadImageMemory } from "../utils/imageUpload";
+import { secureUploads } from "../utils/uploadSecurity";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { verificarRoles } from "../middlewares/roles.middleware";
 
@@ -21,6 +22,7 @@ router.post(
   authMiddleware,
   verificarRoles([0, 1]),
   uploadImageMemory.single("imagen"),
+  secureUploads("images"),
   createPublicidad,
 );
 
@@ -36,6 +38,7 @@ router.put(
   authMiddleware,
   verificarRoles([0, 1]),
   uploadImageMemory.single("imagen"),
+  secureUploads("images"),
   updatePublicidad,
 );
 

@@ -1,3 +1,4 @@
+import { verifySingleFile, acceptAttr } from '../utils/fileValidation';
 import { useState } from "react";
 import { toast } from "react-hot-toast"
 import { useAuth } from './context/AuthContext';
@@ -29,9 +30,10 @@ const PublicidadModal = ({
     const [publicacionRelacionada, setPublicacionRelacionada] = useState(publicidad?.publicacionRelacionada ?? "");
     const modoCrear = (publicidad == null);
 
-    const handleImageChange = (e) => {
+    const handleImageChange = async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
+        if (!(await verifySingleFile(file, "images"))) { e.target.value = ""; return; }
         setImagen(file);
         const localPreview = URL.createObjectURL(file);
         setPreview(localPreview);
@@ -125,7 +127,7 @@ const PublicidadModal = ({
               </p>
               <input
                 type="file"
-                accept="image/*"
+                accept={acceptAttr('images')}
                 onChange={handleImageChange}
                 className="campo-input"
               />

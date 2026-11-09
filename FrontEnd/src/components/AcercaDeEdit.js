@@ -1,3 +1,4 @@
+import { verifySingleFile, acceptAttr } from '../utils/fileValidation';
 import { useState, useCallback, useMemo } from 'react';
 import { API_URL } from '../utils/api';
 import { toast } from 'react-hot-toast';
@@ -196,6 +197,7 @@ const AcercaDeEdit = ({ data, onUpdate, onCancel }) => {
 const handleImageUpload = async (event, tipo) => {
   const file = event.target.files[0];
   if (!file) return;
+  if (!(await verifySingleFile(file, 'images'))) { event.target.value = ''; return; }
 
   const token = localStorage.getItem('token');
   if (!token) {
@@ -315,6 +317,7 @@ const handleImageUpload = async (event, tipo) => {
   const handleMemberImageUpload = async (event, memberIndex) => {
   const file = event.target.files[0];
   if (!file) return;
+  if (!(await verifySingleFile(file, 'images'))) { event.target.value = ''; return; }
 
   const token = localStorage.getItem('token');
   if (!token) {
@@ -452,7 +455,7 @@ const handleImageUpload = async (event, tipo) => {
                 type="file"
                 id="proyectos-upload"
                 name="proyectos-upload"
-                accept="image/*"
+                accept={acceptAttr('images')}
                 onChange={(e) => handleImageUpload(e, 'proyectos')}
                 className="hidden"
                 disabled={loading}
@@ -853,7 +856,7 @@ const handleImageUpload = async (event, tipo) => {
                       <input
                         type="file"
                         id={`member-avatar-${index}`}
-                        accept="image/*"
+                        accept={acceptAttr('images')}
                         onChange={(e) => handleMemberImageUpload(e, index)}
                         className="hidden"
                         disabled={loading}

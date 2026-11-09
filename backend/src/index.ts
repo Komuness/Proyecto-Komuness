@@ -24,7 +24,7 @@ import paqueteSuscripcionRoutes from "./routes/paqueteSuscripcion.routes";
 import publicidadRoutes from "./routes/publicidad.routes";
 import proyectosDestacadosRoutes from "./routes/proyectosDestacados.routes";
 import actividadesRoutes from "./routes/actividades.routes";
-import { uploadErrorHandler } from "./utils/imageUpload";
+import { uploadErrorHandler, ImageValidationError } from "./utils/imageUpload";
 
 // Rutas de PayPal
 import paypalRoutes from "./routes/paypal.routes";
@@ -149,6 +149,11 @@ const globalErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
         "Hubo un problema de conexión durante la carga. Intenta nuevamente.",
       errorCode: err.code,
     });
+    return;
+  }
+
+  if (err && err.name === "ImageValidationError" || err instanceof ImageValidationError) {
+    res.status(400).json({ success: false, message: err.message, errorCode: "INVALID_FILE_TYPE" });
     return;
   }
 

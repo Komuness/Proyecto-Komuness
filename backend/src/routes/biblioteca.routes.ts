@@ -4,6 +4,7 @@ import BibliotecaController, { uploadLibrary } from "../controllers/biblioteca.c
 // import { upload } from "../middlewares/multer.middleware";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { verificarRoles } from "../middlewares/roles.middleware";
+import { secureUploads } from "../utils/uploadSecurity";
 //const storage = multer.memoryStorage();
 //const upload = multer({ storage });
 
@@ -34,7 +35,7 @@ const router = Router();
 // solo los tipoUsuarios 0, 1 y 2 pueden subir archivos
 // router.post("/upload", upload.array('archivos'), authMiddleware, verificarRoles([0, 1, 2]), BibliotecaController.uploadFiles as any);
 // RF023: Ahora usuarios básicos (2) y premium (3) también pueden subir archivos
-router.post("/upload", authMiddleware, verificarRoles([0, 1, 2, 3]), uploadLibrary.array('archivos'), BibliotecaController.uploadFiles as any
+router.post("/upload", authMiddleware, verificarRoles([0, 1, 2, 3]), uploadLibrary.array('archivos'), secureUploads('library'), BibliotecaController.uploadFiles as any
 );
 
 

@@ -17,6 +17,7 @@ import { IoMdArrowRoundBack } from "react-icons/io"
 import { useDropzone } from 'react-dropzone'
 import { CheckmarkIcon, toast } from "react-hot-toast"
 import { useAuth } from "../components/context/AuthContext"
+import { filterValidFiles } from '../utils/fileValidation'
 import { API_URL } from '../utils/api'
 
 // Función auxiliar para mapear tipos de archivo
@@ -31,6 +32,25 @@ const mapTipoArchivo = (tipo) => {
   if (tipoLower.includes('zip') || tipoLower.includes('compressed')) return 'zip'
   return 'default'
 }
+
+
+// Campo para renombrar un archivo antes de subirlo (la extensión no es editable)
+const FileNameField = ({ value, ext, error, onChange }) => (
+  <div className="w-full max-w-md flex flex-col gap-1">
+    <label className="text-sm text-gray-600">Nombre del archivo</label>
+    <div className="flex items-center gap-2">
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        maxLength={150}
+        className={`flex-1 px-3 py-2 border rounded-lg text-black focus:outline-none focus:ring-2 ${error ? 'border-red-500 focus:ring-red-400' : 'focus:ring-blue-500'}`}
+      />
+      <span className="text-gray-500 text-sm">{ext}</span>
+    </div>
+    {error && <span className="text-red-600 text-xs">{error}</span>}
+  </div>
+)
 
 export const Biblioteca = () => {
   const { id } = useParams();
@@ -78,6 +98,11 @@ export const Biblioteca = () => {
   const [uploadedFileNames, setUploadedFileNames] = useState(new Set())
   const [categorias, setCategorias] = useState([])
   const [categoriaUpload, setCategoriaUpload] = useState('')
+  // Nombres personalizados (sin extensión) por archivo seleccionado
+  const [customNames, setCustomNames] = useState({})
+  // Archivos seleccionados que ya pasaron la verificación de contenido real (no solo extensión/MIME)
+  const [verifiedFiles, setVerifiedFiles] = useState([])
+  const [contentRejectedCount, setContentRejectedCount] = useState(0)
   const [categoriaFiltro, setCategoriaFiltro] = useState('')
 
   useEffect(() => {
@@ -133,8 +158,23 @@ export const Biblioteca = () => {
   const getExt = (filename) => {
     return '.' + filename.split('.').pop().toLowerCase()
   }
+  const MAX_NAME_LENGTH = 150
+  const INVALID_NAME_CHARS = /[\\/:*?"<>|\x00-\x1f]/
+  const fileKey = (file) => `${file.name}-${file.size}-${file.lastModified ?? ''}`
+  const splitName = (filename) => {
+    const i = filename.lastIndexOf('.')
+    return i > 0 ? { base: filename.slice(0, i), ext: filename.slice(i) } : { base: filename, ext: '' }
+  }
+  // Devuelve un mensaje de error o null si el nombre es válido
+  const validateBaseName = (base, ext) => {
+    const v = base.trim()
+    if (!v) return 'El nombre no puede estar vacío'
+    if (INVALID_NAME_CHARS.test(v)) return 'No se permiten los caracteres \\ / : * ? " < > |'
+    if (v.startsWith('.')) return 'El nombre no puede comenzar con un punto'
+    if (v.length + ext.length > MAX_NAME_LENGTH) return `Máximo ${MAX_NAME_LENGTH} caracteres`
+    return null
+  }
   const {
-    acceptedFiles,
     fileRejections,
     getRootProps,
     getInputProps,
@@ -143,6 +183,13 @@ export const Biblioteca = () => {
   } = useDropzone({
     maxSize,
     accept: ALLOWED_LIBRARY_ACCEPT,
+    // Tras el filtro por extensión/MIME/tamaño, se lee el contenido real de cada archivo
+    // (firmas, ejecutables disfrazados, macros, zips peligrosos...). Solo los verificados se pueden subir.
+    onDrop: async (accepted) => {
+      const { valid, rejected } = await filterValidFiles(accepted, 'library')
+      setVerifiedFiles(valid)
+      setContentRejectedCount(rejected.length)
+    },
     validator: (file) => {
       const ext = getExt(file.name)
       if (!ALLOWED_EXTENSIONS.has(ext)) {
@@ -287,10 +334,24 @@ export const Biblioteca = () => {
       return
     }
 
+    // Validar los nombres antes de enviar
+    const nombres = []
+    for (const archivo of verifiedFiles) {
+      const { base, ext } = splitName(archivo.name)
+      const chosen = customNames[fileKey(archivo)] ?? base
+      const err = validateBaseName(chosen, ext)
+      if (err) {
+        toast.error(`${archivo.name}: ${err}`)
+        return
+      }
+      nombres.push(chosen.trim())
+    }
+
     const data = new FormData()
-    acceptedFiles.forEach((archivo) => {
+    verifiedFiles.forEach((archivo) => {
       data.append("archivos", archivo)
     })
+    data.append("nombres", JSON.stringify(nombres))
     data.append("userId", user._id)
     data.append("userType", user.tipoUsuario) // RF023: Enviar tipo de usuario
     data.append("folderId", id)
@@ -327,7 +388,7 @@ export const Biblioteca = () => {
         success: (data) => {
           // RF023: Marcar archivos como subidos para ocultarlos de la UI
           const newUploadedNames = new Set(uploadedFileNames);
-          acceptedFiles.forEach(file => newUploadedNames.add(file.name));
+          verifiedFiles.forEach(file => newUploadedNames.add(file.name));
           setUploadedFileNames(newUploadedNames);
           
           // Limpiar input
@@ -461,15 +522,21 @@ export const Biblioteca = () => {
   }
 
   // Renderizar archivos aceptados (RF023: filtrar los que ya fueron subidos)
-  const files = acceptedFiles
+  const files = verifiedFiles
     .filter(file => !uploadedFileNames.has(file.name))
     .map(file => (
     <div
-      key={`${file.name}-${file.size}-${file.lastModified ?? ''}`}
+      key={fileKey(file)}
       className='flex flex-wrap justify-center gap-4 w-full max-w-6xl p-4'
     >
+      <FileNameField
+        ext={splitName(file.name).ext}
+        value={customNames[fileKey(file)] ?? splitName(file.name).base}
+        error={validateBaseName(customNames[fileKey(file)] ?? splitName(file.name).base, splitName(file.name).ext)}
+        onChange={(v) => setCustomNames(prev => ({ ...prev, [fileKey(file)]: v }))}
+      />
       <DocumentCard
-        name={file.name}
+        name={customNames[fileKey(file)] !== undefined ? customNames[fileKey(file)].trim() + splitName(file.name).ext : file.name}
         author={user?.nombre || "Anónimo"}
         size={`${(file.size / (1024 * 1024)).toFixed(2)} MB`}
         type={file.type}
@@ -477,11 +544,12 @@ export const Biblioteca = () => {
     </div>
   ))
 
-  // RF023: Resetear el Set cuando acceptedFiles cambie (nueva selección)
+  // RF023: Resetear el Set cuando verifiedFiles cambie (nueva selección)
   useEffect(() => {
     // Cuando el usuario selecciona archivos (nuevos o los mismos), limpiar el Set
     setUploadedFileNames(new Set());
-  }, [acceptedFiles])
+    setCustomNames({});
+  }, [verifiedFiles])
 
   // Effect: Búsqueda con debounce
   useEffect(() => {
@@ -709,13 +777,17 @@ export const Biblioteca = () => {
             )}
           </div>
 
-          {fileRejections.length > 0 && (
+          {(fileRejections.length > 0 || contentRejectedCount > 0) && (
             <div className="mt-4 text-red-600">
-              Algunos archivos no se pudieron subir por exceder el tamaño máximo permitido de 80 MB.
+              {(() => {
+                const n = fileRejections.length + contentRejectedCount
+                return n === 1 ? 'Un archivo fue rechazado' : `${n} archivos fueron rechazados`
+              })()}:
+              {' '}formato no permitido (solo PDF, Excel, Word, PPT, TXT, PNG, JPG, WEBP, ZIP y RAR), contenido que no coincide con la extensión o tamaño superior a 200 MB.
             </div>
           )}
 
-          {acceptedFiles.length !== 0 && (
+          {verifiedFiles.length !== 0 && (
             <div className="w-full max-w-6xl px-4 mt-6 space-y-6">
               <div className="flex flex-col items-center gap-3">
                 <select

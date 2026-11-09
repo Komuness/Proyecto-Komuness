@@ -1,3 +1,4 @@
+import { filterValidFiles, acceptAttr } from '../utils/fileValidation';
 import { useState, useEffect } from "react";
 import { IoMdClose, IoMdRemove, IoMdAdd } from "react-icons/io";
 import { API_URL } from "../utils/api";
@@ -212,14 +213,15 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
     }));
   };
 
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files || []);
+  const handleImageChange = async (e) => {
+    const selected = Array.from(e.target.files || []);
+    // Permite volver a elegir el mismo archivo después de quitarlo de la vista previa
+    e.target.value = "";
+    const { valid: files } = await filterValidFiles(selected, "images");
     if (files.length > 0) {
       setHasChanges(true);
     }
     setFormData((prev) => ({ ...prev, archivos: [...prev.archivos, ...files] }));
-    // Permite volver a elegir el mismo archivo después de quitarlo de la vista previa
-    e.target.value = "";
   };
 
   const handleRemoveImage = (index) => {
@@ -741,7 +743,7 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
               <label className="campo-label">Imágenes *:</label>
               <input
                 type="file"
-                accept="image/*"
+                accept={acceptAttr('images')}
                 multiple
                 onChange={handleImageChange}
                 className="campo-input"

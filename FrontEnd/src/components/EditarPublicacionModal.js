@@ -1,3 +1,4 @@
+import { filterValidFiles, acceptAttr } from '../utils/fileValidation';
 import { useState, useEffect } from "react";
 import { IoMdClose, IoMdRemove, IoMdAdd } from "react-icons/io";
 import { API_URL } from "../utils/api";
@@ -216,8 +217,10 @@ export const EditarPublicacionModal = ({
     }));
   };
 
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files || []);
+  const handleImageChange = async (e) => {
+    const selected = Array.from(e.target.files || []);
+    e.target.value = "";
+    const { valid: files } = await filterValidFiles(selected, "images");
     setNuevasImagenes((prev) => [...prev, ...files]);
   };
 
@@ -799,7 +802,7 @@ export const EditarPublicacionModal = ({
             <input
               id="nuevasImagenes"
               type="file"
-              accept="image/*"
+              accept={acceptAttr('images')}
               multiple
               onChange={handleImageChange}
               className="campo-input"

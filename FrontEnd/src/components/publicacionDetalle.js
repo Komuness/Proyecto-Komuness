@@ -1,3 +1,4 @@
+import { filterValidFiles, acceptAttr } from '../utils/fileValidation';
 import {
   IoMdArrowRoundBack,
   IoMdCall,
@@ -151,8 +152,9 @@ export const PublicacionDetalle = () => {
   });
 
   const handleSubirFotos = async (e) => {
-    const files = Array.from(e.target.files || []);
+    const selected = Array.from(e.target.files || []);
     e.target.value = "";
+    const { valid: files } = await filterValidFiles(selected, "images");
     if (files.length === 0) return;
     setFotosError(null);
     setSubiendoFotos(true);
@@ -479,7 +481,7 @@ export const PublicacionDetalle = () => {
                   <input
                     ref={fotosInputRef}
                     type="file"
-                    accept="image/*"
+                    accept={acceptAttr('images')}
                     multiple
                     hidden
                     onChange={handleSubirFotos}

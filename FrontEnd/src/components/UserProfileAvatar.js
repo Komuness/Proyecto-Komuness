@@ -1,3 +1,4 @@
+import { verifySingleFile, acceptAttr } from '../utils/fileValidation';
 import { useState, useRef } from "react";
 import { FaCamera, FaTrash } from "react-icons/fa";
 import { BiLoaderAlt } from "react-icons/bi";
@@ -27,6 +28,11 @@ const UserProfileAvatar = ({
 
     if (!file.type.startsWith("image/")) {
       setError("Por favor selecciona un archivo de imagen");
+      return;
+    }
+
+    if (!(await verifySingleFile(file, "images"))) {
+      e.target.value = "";
       return;
     }
 
@@ -118,7 +124,7 @@ const UserProfileAvatar = ({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={acceptAttr('images')}
         className="hidden"
         onChange={handleImageChange}
         aria-label="Subir imagen de perfil"

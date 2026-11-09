@@ -13,6 +13,7 @@ import path from 'path';
 import fs from 'fs';
 import fsp from 'fs/promises';
 import multer from 'multer';
+import crypto from 'crypto';
 
 /**
  * Carpeta base para los binarios de la BIBLIOTECA en la VM.
@@ -38,6 +39,39 @@ async function ensureDestDir(): Promise<string> {
 /** Sanitiza el nombre del archivo */
 function sanitizeName(name: string) {
   return name.replace(/[^\w.\- ]+/g, '_');
+}
+
+const MAX_FILE_NAME_LENGTH = 150;
+
+/**
+ * Resuelve el nombre final de un archivo subido.
+ * - Sin nombre personalizado: se usa el original.
+ * - Con nombre personalizado: se valida y se conserva SIEMPRE la extensión original
+ *   (el usuario no puede cambiar el formato del archivo renombrándolo).
+ */
+export function resolveFileName(
+  originalName: string,
+  custom: unknown
+): { name: string } | { error: string } {
+  if (custom === undefined || custom === null || custom === '') {
+    return { name: originalName };
+  }
+  if (typeof custom !== 'string') return { error: 'El nombre del archivo no es válido' };
+
+  const ext = path.extname(originalName).toLowerCase();
+  let base = custom.trim();
+  // Si el usuario escribió la extensión, se quita para no duplicarla
+  if (ext && base.toLowerCase().endsWith(ext)) base = base.slice(0, -ext.length).trim();
+
+  if (!base) return { error: 'El nombre del archivo no puede estar vacío' };
+  if (/[\\/:*?"<>|\x00-\x1f]/.test(base)) {
+    return { error: 'El nombre contiene caracteres no permitidos (\\ / : * ? " < > |)' };
+  }
+  if (base.startsWith('.')) return { error: 'El nombre no puede comenzar con un punto' };
+  if (base.length + ext.length > MAX_FILE_NAME_LENGTH) {
+    return { error: `El nombre es demasiado largo (máximo ${MAX_FILE_NAME_LENGTH} caracteres)` };
+  }
+  return { name: base + ext };
 }
 
 /**
@@ -104,8 +138,9 @@ export const uploadLibrary = multer({
       }
     },
     filename: (_req, file, cb) => {
-      const safe = sanitizeName(file.originalname);
-      cb(null, `${Date.now()}-${safe}`);
+      // Nombre en disco aleatorio (no depende del nombre que mande el cliente); el nombre visible va en la BD
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`);
     },
   }),
   fileFilter: libraryFileFilter,
@@ -172,6 +207,36 @@ class BibliotecaController {
             });
         }
 
+        // Nombres personalizados (opcional): JSON array alineado con el orden de `archivos`
+        let customNames: unknown[] = [];
+        if (req.body.nombres) {
+            try {
+                const parsed = JSON.parse(req.body.nombres);
+                if (Array.isArray(parsed)) customNames = parsed;
+            } catch {
+                await Promise.all(files.map(f => fsp.unlink(f.path).catch(() => {})));
+                return res.status(400).json({
+                    success: false,
+                    message: 'El formato de los nombres de archivo no es válido',
+                    errors: []
+                });
+            }
+        }
+
+        const finalNames: string[] = [];
+        for (let i = 0; i < files.length; i++) {
+            const resolved = resolveFileName(files[i].originalname, customNames[i]);
+            if ('error' in resolved) {
+                await Promise.all(files.map(f => fsp.unlink(f.path).catch(() => {})));
+                return res.status(400).json({
+                    success: false,
+                    message: `${files[i].originalname}: ${resolved.error}`,
+                    errors: []
+                });
+            }
+            finalNames.push(resolved.name);
+        }
+
         // RF023: Convertir userType a número (puede venir como string desde FormData)
         const userTypeNum = parseInt(userType);
         
@@ -183,8 +248,9 @@ class BibliotecaController {
             //3.5.4 - Validación de usuarios dentro del banco
             const perfil = await modelPerfil.findOne({ usuarioId: userId });
 
+            // Estas respuestas son errores (4xx): secureUploads borra del disco los archivos recibidos
             if (!perfil) {
-                res.status(200).json({
+                res.status(404).json({
                     success: false,
                     message: "El perfil público no existe"
                 });
@@ -192,14 +258,15 @@ class BibliotecaController {
             }
 
             if (!perfil?.enBancoProfesionales){
-                res.status(200).json({
+                res.status(403).json({
                     success: false,
                     message: "Este usuario no está en el banco de profesionales"
                 });
                 return; 
             }
 
-            const results = await Promise.all(files.map(async (file) => {
+            const results = await Promise.all(files.map(async (file, index) => {
+                const displayName = finalNames[index];
 
                 try {
                     /* ===========================================================
@@ -227,7 +294,7 @@ class BibliotecaController {
 
                     // 1) Instancia (Mongoose ya asigna _id antes de guardar)
                     const archivo = new Archivo({
-                        nombre: file.originalname,
+                        nombre: displayName,
                         fechaSubida: new Date(),
                         tipoArchivo: file.mimetype,
                         tamano: file.size,
@@ -255,6 +322,8 @@ class BibliotecaController {
 
                 } catch (error) {
                     console.error('Error detallado:', error); // Mejor logging
+                    // Un archivo que no se registró en la BD no debe quedarse en disco
+                    await fsp.unlink(file.path).catch(() => {});
                     return {
                         success: false,
                         nombre: file.originalname,
@@ -863,6 +932,9 @@ class BibliotecaController {
             }
 
             if (doc.tipoArchivo) res.setHeader('Content-Type', doc.tipoArchivo);
+            // Evita que el navegador "adivine" otro tipo y ejecute contenido activo; aísla lo que se muestra inline
+            res.setHeader('X-Content-Type-Options', 'nosniff');
+            res.setHeader('Content-Security-Policy', "sandbox; default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'");
 
             /* ====================== NUEVO: decidir inline vs attachment ====================== */
             const wantsDownload = req.query.download === '1';

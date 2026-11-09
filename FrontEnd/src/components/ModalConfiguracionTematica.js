@@ -1,3 +1,4 @@
+import { verifySingleFile, acceptAttr } from '../utils/fileValidation';
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-hot-toast";
 import {
@@ -249,6 +250,7 @@ const ModalConfiguracionTematica = ({ isOpen, onClose }) => {
     const file = event.target.files?.[0];
     event.target.value = "";
     if (!file) return;
+    if (!(await verifySingleFile(file, "images"))) return;
 
     setUploadingScheduleImage(true);
     try {
@@ -556,7 +558,7 @@ const ModalConfiguracionTematica = ({ isOpen, onClose }) => {
                               Seleccionar imagen
                               <input
                                 type="file"
-                                accept="image/png,image/jpeg,image/jpg,image/webp,image/gif"
+                                accept={acceptAttr("images")}
                                 className="hidden"
                                 onChange={handleScheduleBackgroundUpload}
                                 disabled={uploadingScheduleImage}

@@ -32,6 +32,7 @@ import { authMiddleware } from '../middlewares/auth.middleware';
 import { verificarRoles } from '../middlewares/roles.middleware';
 import { validarLimitePublicaciones } from '../middlewares/limitePublicaciones.middleware';
 import { uploadImageMemory } from '../utils/imageUpload';
+import { secureUploads } from '../utils/uploadSecurity';
 
 const multiFields = uploadImageMemory.fields([
   { name: 'archivos', maxCount: 10 },
@@ -102,7 +103,9 @@ router.post(
         });
       }
 
-      createPublicacionA(req, res).catch(next);
+      secureUploads('images')(req, res, () => {
+        createPublicacionA(req, res).catch(next);
+      });
     });
   }
 );
@@ -119,7 +122,9 @@ router.post('/:id/fotos', authMiddleware, (req, res, next) => {
       });
     }
 
-    addFotosEmprendimiento(req, res).catch(next);
+    secureUploads('images')(req, res, () => {
+      addFotosEmprendimiento(req, res).catch(next);
+    });
   });
 });
 
@@ -146,6 +151,7 @@ router.put(
   '/:id/request-update',
   authMiddleware,
   multiFields,
+  secureUploads('images'),
   requestUpdatePublicacion
 );
 

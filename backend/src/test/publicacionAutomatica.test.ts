@@ -9,8 +9,11 @@ import { crearUsuarioConToken, crearCategoria } from './helpers/testData';
 
 jest.setTimeout(30000);
 
-// PNG mínimo válido (el backend revisa la firma real del archivo).
-const PNG = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010806000000', 'hex');
+// PNG de 1x1 completo (el backend revisa la firma y que el archivo termine en IEND).
+const PNG = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    'base64'
+);
 
 describe('Publicación automática de eventos y emprendimientos (BKD38)', () => {
     let auth: string;

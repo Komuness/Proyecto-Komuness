@@ -21,6 +21,7 @@ import {
 import { authMiddleware } from '../middlewares/auth.middleware';
 import { verificarRoles } from '../middlewares/roles.middleware';
 import { uploadThemeBackground } from '../middlewares/multer.middleware';
+import { secureUploads } from '../utils/uploadSecurity';
 
 const router = Router();
 
@@ -33,7 +34,7 @@ router.put('/inicio-contenido', authMiddleware, verificarRoles([0, 1]), actualiz
 router.get('/tematica', getTematicaPublica);
 router.get('/tematica/admin', authMiddleware, verificarRoles([0, 1]), getTematicaAdmin);
 router.put('/tematica', authMiddleware, verificarRoles([0, 1]), actualizarTematica);
-router.post('/tematica/background', authMiddleware, verificarRoles([0, 1]), uploadThemeBackground.single('image'), subirImagenFondoTematica);
+router.post('/tematica/background', authMiddleware, verificarRoles([0, 1]), uploadThemeBackground.single('image'), secureUploads('images'), subirImagenFondoTematica);
 router.get('/tematica/background/:fileName', getImagenFondoTematica);
 
 router.get('/pagos', authMiddleware, getConfiguracionPagos);
