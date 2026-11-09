@@ -25,6 +25,7 @@ import {
   createComentarioPublicacionNotificacion,
   createRespuestaComentarioNotificacion,
   notificarNuevaPublicacion,
+  notificarPublicacionAutomatica,
 } from "../services/notificacion.service";
 
 const LOG_ON = process.env.LOG_PUBLICACION === "1";
@@ -513,7 +514,25 @@ export const createPublicacionA = async (
           publicacionOrigenId: savePost._id,
         });
 
-        await publicacionAutomatica.save();
+        const autoGuardada = await publicacionAutomatica.save();
+
+        // BKD68: si la automática ya nace publicada (la creó un admin),
+        // notificar a todos los usuarios. Si nace pendiente, la notificación
+        // se envía cuando se aprueba el evento/emprendimiento (updatePublicacion).
+        if (autoGuardada.publicado) {
+          try {
+            await notificarPublicacionAutomatica({
+              publicacionId: autoGuardada._id.toString(),
+              titulo: autoGuardada.titulo,
+              tagOrigen: tag,
+            });
+          } catch (notiError) {
+            console.warn(
+              "[Publicaciones][createPublicacionA] No se pudo notificar la publicación automática:",
+              notiError,
+            );
+          }
+        }
       } catch (e) {
         console.warn(
           "[Publicaciones][createPublicacionA] No se pudo crear la publicación automática:",
@@ -813,35 +832,69 @@ export const updatePublicacion = async (
       return;
     }
 
-    // BKD38: al aprobar un evento/emprendimiento, aprobar también la
-    // publicación automática que se generó con él (si sigue pendiente).
-    const seAprobo = !publicacionActual.publicado && updatedData.publicado === true;
-    if (
-      seAprobo &&
-      (publicacion.tag === "evento" || publicacion.tag === "emprendimiento")
-    ) {
-      await modelPublicacion.updateMany(
-        { publicacionOrigenId: publicacion._id, publicado: false },
-        { $set: { publicado: true } },
-      );
+    // BKD68: parseBoolean para soportar "true" (string) que llega por
+    // multipart/form-data; antes `=== true` nunca se cumplía en ese caso.
+    const seAprobo =
+      !publicacionActual.publicado &&
+      parseBoolean(updatedData.publicado) === true;
+
+    const esEventoOEmprendimiento =
+      publicacion.tag === "evento" || publicacion.tag === "emprendimiento";
+
+    // BKD38 + BKD68: al aprobar un evento/emprendimiento, aprobar también la
+    // publicación automática que se generó con él (si sigue pendiente) y
+    // notificar a todos los usuarios por cada una.
+    if (seAprobo && esEventoOEmprendimiento) {
+      const pendientes = await modelPublicacion
+        .find({ publicacionOrigenId: publicacion._id, publicado: false })
+        .select("_id titulo");
+
+      if (pendientes.length) {
+        await modelPublicacion.updateMany(
+          { _id: { $in: pendientes.map((p) => p._id) } },
+          { $set: { publicado: true } },
+        );
+
+        for (const auto of pendientes) {
+          try {
+            await notificarPublicacionAutomatica({
+              publicacionId: auto._id.toString(),
+              titulo: auto.titulo,
+              tagOrigen: publicacion.tag,
+            });
+          } catch (notiError) {
+            console.warn(
+              "No se pudo notificar la publicación automática",
+              notiError,
+            );
+          }
+        }
+      }
     }
 
-    //Notificación a usuarios suscritos a categoría
+    // Notificación a usuarios suscritos a categoría.
+    // BKD68: para evento/emprendimiento ya se notifica a todos mediante la
+    // publicación automática, así que se omite para no duplicar el aviso.
     const autor = publicacionActual.autor as any;
-    if(seAprobo){
-      const nombreAutor = [autor.nombre, autor.apellido].filter(Boolean).join(" ").trim();
+    if (seAprobo && !esEventoOEmprendimiento) {
+      const nombreAutor = [autor.nombre, autor.apellido]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
       try {
         await notificarNuevaPublicacion({
           autor: nombreAutor,
           contenidoBreve: publicacionActual.contenidoBreve,
           publicacionId: id,
-          categoriaId: publicacionActual.categoria.toString()
+          categoriaId: publicacionActual.categoria.toString(),
         });
       } catch (notificacionError) {
-        console.warn('No se pudo crear notificación de publicación', notificacionError);
+        console.warn(
+          "No se pudo crear notificación de publicación",
+          notificacionError,
+        );
       }
     }
-    
 
     res.status(200).json(publicacion);
   } catch (error) {
