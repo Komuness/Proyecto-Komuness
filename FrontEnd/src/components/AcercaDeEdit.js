@@ -1,8 +1,10 @@
 import { useState, useCallback, useMemo } from 'react';
 import { API_URL } from '../utils/api';
 import { toast } from 'react-hot-toast';
-import { 
-  FaSave, 
+import {
+  FaArrowLeft,
+  FaArrowRight,
+  FaSave,
   FaPlus, 
   FaTrash, 
   FaUpload,
@@ -82,6 +84,18 @@ const AcercaDeEdit = ({ data, onUpdate, onCancel }) => {
         [field]: value
       }
     }));
+  }, []);
+
+  // Cambiar el orden de las imágenes del carrusel. La primera es la
+  // portada. El orden se guarda con "Guardar Cambios".
+  const moverImagenProyecto = useCallback((index, direccion) => {
+    setFormData(prev => {
+      const lista = [...(prev.imagenesProyectos || [])];
+      const destino = index + direccion;
+      if (destino < 0 || destino >= lista.length) return prev;
+      [lista[index], lista[destino]] = [lista[destino], lista[index]];
+      return { ...prev, imagenesProyectos: lista };
+    });
   }, []);
 
   const handleTextChange = useCallback((field, value) => {
@@ -455,9 +469,17 @@ const handleImageUpload = async (event, tipo) => {
             </div>
           </div>
           
+          {formData.imagenesProyectos?.length > 1 && (
+            <p className="text-sm text-gray-400 mb-4">
+              Usa las flechas para cambiar el orden. La primera imagen es la portada
+              de la página de inicio. El orden se guarda al hacer clic en
+              Guardar Cambios.
+            </p>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {formData.imagenesProyectos?.map((imagen, index) => (
-              <div key={index} className="relative group">
+              <div key={imagen} className="relative group">
                 <img
                   src={imagen}
                   alt={`Proyecto ${index + 1}`}
@@ -471,8 +493,32 @@ const handleImageUpload = async (event, tipo) => {
                   <FaTrash size={12} />
                 </button>
                 <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                  {index + 1}
+                  {index === 0 ? '1 · Portada' : index + 1}
                 </div>
+                {formData.imagenesProyectos.length > 1 && (
+                  <div className="absolute bottom-2 right-2 flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => moverImagenProyecto(index, -1)}
+                      disabled={loading || index === 0}
+                      aria-label={`Mover la imagen ${index + 1} antes`}
+                      title="Mover antes"
+                      className="bg-black/70 hover:bg-black/90 text-white p-2 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <FaArrowLeft size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moverImagenProyecto(index, 1)}
+                      disabled={loading || index === formData.imagenesProyectos.length - 1}
+                      aria-label={`Mover la imagen ${index + 1} después`}
+                      title="Mover después"
+                      className="bg-black/70 hover:bg-black/90 text-white p-2 rounded-full disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      <FaArrowRight size={12} />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -185,7 +185,7 @@ export const AdminCategorias = () => {
   };
 
   const handleGoBack = () => {
-    navigate(-1); // Vuelve a la página anterior
+    navigate("/perfilUsuario"); // Vuelve al dashboard administrativo
   };
 
   if (loading) {
@@ -202,8 +202,13 @@ export const AdminCategorias = () => {
     <div className="admin-categorias-container">
       <div className="admin-categorias-content">
         <div className="admin-categorias-header">
-          <button onClick={handleGoBack} className="admin-categorias-back-btn">
-            <IoMdArrowRoundBack color={"black"} size={25} />
+          <button
+            onClick={handleGoBack}
+            className="admin-categorias-back-btn"
+            title="Volver al perfil"
+            aria-label="Volver al perfil"
+          >
+            <IoMdArrowRoundBack size={22} />
           </button>
           <h1 className="admin-categorias-title">
             Administración de Clasificaciones

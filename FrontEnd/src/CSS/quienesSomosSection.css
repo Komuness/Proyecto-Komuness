@@ -20,46 +20,63 @@
   --kw-text: #f5f6fa;
   --kw-text-muted: #b7bbd9;
 
+  /* Escala de espacios (la misma de la portada) y una sola columna
+     de 72rem para que títulos y contenido compartan el borde izquierdo */
+  --kw-space-section: clamp(4rem, 8vw, 6rem);
+  --kw-space-title: 1.5rem;
+  --kw-wrap: 72rem;
+  --kw-measure: 62ch;
+
   position: relative;
   color: var(--kw-text);
 }
 
 .qs-block {
-  padding: clamp(2.5rem, 5vw, 4rem) clamp(1.25rem, 5vw, 3rem);
+  padding: var(--kw-space-section) clamp(1.25rem, 5vw, 3rem);
 }
 
 .qs-block-title {
+  max-width: var(--kw-wrap);
+  margin: 0 auto var(--kw-space-title);
   font-weight: 700;
-  font-size: clamp(1.4rem, 2.6vw, 1.85rem);
-  margin-bottom: 1.75rem;
-  text-align: center;
+  font-size: clamp(1.5rem, 2.6vw, 1.9rem);
+  letter-spacing: -0.01em;
+  text-align: left;
 }
 
 /* ===== Presentación (banda sólida) ===== */
+/* Continúa la banda del eslogan (mismo color): una línea fina marca
+   el cambio de tema sin abrir otro bloque vacío */
 .qs-intro {
   background: var(--kw-navy-soft);
-  text-align: center;
-  padding-top: clamp(1.5rem, 4vw, 2.5rem);
-  padding-bottom: clamp(2.5rem, 5vw, 3.5rem);
+  text-align: left;
+  padding-top: 0;
 }
 
 .qs-intro-inner {
-  max-width: 46rem;
+  max-width: var(--kw-wrap);
   margin: 0 auto;
+  padding-top: calc(var(--kw-space-section) * 0.75);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .qs-eyebrow-free {
+  max-width: 24ch;
   font-weight: 700;
-  font-size: clamp(1.6rem, 3.4vw, 2.3rem);
-  line-height: 1.15;
-  margin-bottom: 1rem;
+  font-size: clamp(1.75rem, 3.4vw, 2.4rem);
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  margin: 0 0 var(--kw-space-title);
 }
 
 .qs-lede {
-  font-size: clamp(1rem, 1.5vw, 1.15rem);
-  line-height: 1.6;
+  max-width: var(--kw-measure);
+  font-size: clamp(1.05rem, 1.5vw, 1.15rem);
+  line-height: 1.65;
   color: var(--kw-text-muted);
   white-space: pre-line;
+  text-wrap: pretty;
 }
 
 /* ===== Capítulos: banda con el patrón del sitio ===== */
@@ -70,211 +87,84 @@
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  padding: clamp(3rem, 6vw, 4.5rem) clamp(1.25rem, 5vw, 3rem);
+  padding: var(--kw-space-section) clamp(1.25rem, 5vw, 3rem);
 }
 
-/* Capa oscura pareja sobre el patrón: sin esto, el texto blanco
-   se pierde donde el patrón trae tonos claros/amarillos */
+/* Capa oscura sobre el patrón: lo deja como una textura de fondo
+   (igual de atenuado que detrás de la portada) para que no compita
+   con el texto */
 .qs-chapters-band-overlay {
   position: absolute;
   inset: 0;
   background: linear-gradient(
     180deg,
-    rgba(18, 20, 61, 0.72) 0%,
-    rgba(18, 20, 61, 0.82) 100%
+    rgba(18, 20, 61, 0.9) 0%,
+    rgba(18, 20, 61, 0.94) 100%
   );
 }
 
+/* Capítulos como lista editorial: una fila por capítulo (ícono,
+   título, texto), alineada a la izquierda. Cada fila mide lo que
+   mide su texto: sin tarjetas estiradas ni huecos vacíos. */
 .qs-chapters-grid {
   position: relative;
   z-index: 1;
-  max-width: 72rem;
+  max-width: var(--kw-wrap);
   margin: 0 auto;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  grid-auto-rows: 1fr;
-  gap: 1.5rem;
+  display: flex;
+  flex-direction: column;
 }
 
 .qs-chapter-card {
-  background: var(--kw-card);
-  border: 1px solid var(--kw-card-border);
-  border-radius: 20px;
-  padding: 2rem 1.5rem 1.75rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  box-shadow: 0 20px 40px -28px rgba(0, 0, 0, 0.6);
+  display: grid;
+  grid-template-columns: 2.5rem minmax(10rem, 15rem) minmax(0, 1fr);
+  column-gap: 1.5rem;
+  align-items: start;
+  padding: 2rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: left;
+}
+
+.qs-chapter-card:last-child {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .qs-chapter-icon {
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 12px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: rgba(255, 255, 255, 0.06);
+  height: 1.6rem;
   color: var(--kw-accent);
-  font-size: 1.1rem;
-  margin-bottom: 1.1rem;
+  font-size: 1.15rem;
 }
 
 .qs-chapter-label {
+  margin: 0;
   font-weight: 700;
-  font-size: 1.05rem;
-  margin-bottom: 0.6rem;
+  font-size: 1.15rem;
+  line-height: 1.35;
 }
 
 .qs-chapter-text {
-  line-height: 1.6;
-  font-size: 0.92rem;
+  max-width: var(--kw-measure);
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.65;
   color: var(--kw-text-muted);
   white-space: pre-line;
+  text-wrap: pretty;
 }
 
-@media (max-width: 980px) {
-  .qs-chapters-grid {
-    grid-template-columns: repeat(2, 1fr);
+@media (max-width: 768px) {
+  .qs-chapter-card {
+    grid-template-columns: 1.75rem minmax(0, 1fr);
+    column-gap: 0.75rem;
+    row-gap: 0.75rem;
+    padding: 1.75rem 0;
   }
-}
 
-@media (max-width: 640px) {
-  .qs-chapters-grid {
-    grid-template-columns: 1fr;
+  .qs-chapter-text {
+    grid-column: 2;
   }
-}
-
-/* ===== Proyectos (banda sólida) ===== */
-.qs-proyectos {
-  background: var(--kw-navy);
-}
-
-.qs-carousel {
-  max-width: 56rem;
-  margin: 0 auto;
-}
-
-.qs-carousel-frame {
-  position: relative;
-  border-radius: 16px;
-  overflow: hidden;
-  border: 1px solid var(--kw-card-border);
-  cursor: pointer;
-  aspect-ratio: 16 / 9;
-}
-
-.qs-carousel-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.qs-carousel-nav {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  background: rgba(18, 20, 61, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  color: #fff;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.qs-carousel-nav:hover {
-  background: rgba(18, 20, 61, 0.9);
-}
-
-.qs-carousel-nav--prev {
-  left: 0.75rem;
-}
-
-.qs-carousel-nav--next {
-  right: 0.75rem;
-}
-
-.qs-carousel-expand {
-  position: absolute;
-  bottom: 0.75rem;
-  right: 0.75rem;
-  background: rgba(18, 20, 61, 0.75);
-  color: #fff;
-  font-size: 0.8rem;
-  padding: 0.35rem 0.7rem;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-  pointer-events: none;
-}
-
-.qs-carousel-frame:hover .qs-carousel-expand {
-  opacity: 1;
-}
-
-.qs-carousel-dots {
-  display: flex;
-  justify-content: center;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.qs-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  cursor: pointer;
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-
-.qs-dot--active {
-  background: var(--kw-accent);
-  transform: scale(1.3);
-}
-
-.qs-modal {
-  position: fixed;
-  inset: 0;
-  background: rgba(9, 10, 30, 0.92);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem;
-  z-index: 100;
-}
-
-.qs-modal-image {
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: 8px;
-}
-
-.qs-modal-close {
-  position: absolute;
-  top: 1.25rem;
-  right: 1.25rem;
-  background: rgba(255, 255, 255, 0.12);
-  border: none;
-  color: #fff;
-  width: 2.75rem;
-  height: 2.75rem;
-  border-radius: 50%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* ===== Equipo (banda sólida) ===== */
@@ -283,7 +173,7 @@
 }
 
 .qs-equipo-grid {
-  max-width: 72rem;
+  max-width: var(--kw-wrap);
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
@@ -293,7 +183,7 @@
 .qs-member {
   background: var(--kw-card);
   border: 1px solid var(--kw-card-border);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 1.5rem;
 }
 
@@ -397,7 +287,7 @@
 }
 
 .qs-colaborar-grid {
-  max-width: 72rem;
+  max-width: var(--kw-wrap);
   margin: 0 auto;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
@@ -407,14 +297,15 @@
 .qs-colaborar-card {
   background: var(--kw-card);
   border: 1px solid var(--kw-card-border);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 1.75rem;
 }
 
 .qs-colaborar-heading {
   display: block;
   font-weight: 700;
-  margin-bottom: 1.25rem;
+  font-size: 1.05rem;
+  margin-bottom: 1rem;
   color: var(--kw-text);
 }
 
@@ -447,9 +338,18 @@
   color: var(--kw-text-muted);
 }
 
+/* Sangría francesa: si el texto ocupa dos líneas, la segunda
+   arranca alineada con la primera y no debajo del guion */
+.qs-especie-list li {
+  position: relative;
+  padding-left: 1.5em;
+  text-wrap: pretty;
+}
+
 .qs-especie-list li::before {
   content: "—";
-  margin-right: 0.5rem;
+  position: absolute;
+  left: 0;
   color: var(--kw-accent);
 }
 
@@ -478,7 +378,6 @@
 
 /* ===== Accesibilidad ===== */
 @media (prefers-reduced-motion: reduce) {
-  .qs-carousel-nav,
   .qs-colaborar-social a {
     transition: none;
   }

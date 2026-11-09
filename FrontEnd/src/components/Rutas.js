@@ -18,7 +18,6 @@ import { NuevaContra } from "./nuevaContra";
 import { CrearUsuario } from "./crearUsuario";
 import AdminCategorias from "./adminCategorias";
 import AdminBoletines from "./adminBoletines";
-import AcercaDe from "./AcercaDe";
 import Footer from "./Footer";
 import CheckoutPremium from "./CheckoutPremium";
 import PerfilPublico from "./PerfilPublico";
@@ -58,10 +57,9 @@ export const Rutas = () => {
         <Route path="/calendario" element={<Navigate to="/eventos" replace />} />
         <Route path="/admin/categorias" element={<AdminCategorias />} />
         <Route path="/admin/boletines" element={<AdminBoletines />} />
-        {/* Antes era la vista pública de "Quiénes somos"; ahora vive en "/".
-            Se conserva solo como acceso de administración para editar el
-            contenido (título, misión, equipo, donaciones, etc.). */}
-        <Route path="/admin/acerca-de" element={<AcercaDe />} />
+        {/* "Quiénes somos" y su edición viven ahora en "/" (botón "Editar
+            página de inicio" para administración). La ruta vieja redirige. */}
+        <Route path="/admin/acerca-de" element={<Navigate to="/" replace />} />
         <Route path="/acerca-de" element={<Navigate to="/#quienes-somos" replace />} />
         <Route path="/checkout-premium" element={<CheckoutPremium />} />
         <Route path="/perfil/:id" element={<PerfilPublico />} />
