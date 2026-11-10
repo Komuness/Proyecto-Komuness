@@ -145,19 +145,61 @@ export const getTagsByUser = async (req: Request, res: Response): Promise<void> 
 };
 
 // Controlador para actualizar un usuario
+// Campos de perfil que se pueden cambiar por PUT /usuario/:id. Todo lo demás
+// (tipoUsuario, plan, fechaVencimientoPremium, limitePublicaciones,
+// puedeCrearCuentaRegresiva, email, emailConfirmado, tokenConfirmacion*, codigo...)
+// se ignora aquí, incluso para admins: esos cambios van por sus rutas dedicadas
+// (/:id/membresia, /:id/limite, /:id/premium-vencimiento, /:id/cuenta-regresiva),
+// que aplican las reglas de jerarquía entre roles.
+const CAMPOS_EDITABLES_USUARIO = ['nombre', 'apellido', 'password', 'encuestaInicio'] as const;
+
 export const updateUsuario = async (req: Request, res: Response): Promise<void> => {
     try {
         const id = req.params.id;
-        const usuario: Partial<Usuario> = req.body;
+        const actor: any = (req as any).user;
+        const actorId = actor?._id ? String(actor._id) : '';
+        const actorTipo = Number(actor?.tipoUsuario);
+        const esPropio = actorId !== '' && actorId === String(id);
 
-        // If password is included in the update, hash it before saving
-        if (usuario.password) {
+        if (!esPropio) {
+            // Básicos/premium solo pueden editarse a sí mismos.
+            if (actorTipo !== 0 && actorTipo !== 1) {
+                res.status(403).json({ message: 'No autorizado: solo puede modificar su propio usuario' });
+                return;
+            }
+            const objetivo: any = await modelUsuario.findById(id).select('tipoUsuario');
+            if (!objetivo) {
+                res.status(404).json({ message: 'Usuario no encontrado' });
+                return;
+            }
+            // Un admin (1) no puede modificar a otro admin ni al superadmin.
+            if (actorTipo === 1 && (objetivo.tipoUsuario === 0 || objetivo.tipoUsuario === 1)) {
+                res.status(403).json({ message: 'No autorizado: un admin no puede modificar a otro admin/superadmin' });
+                return;
+            }
+        }
+
+        const body: any = req.body || {};
+        const usuario: Record<string, any> = {};
+        for (const campo of CAMPOS_EDITABLES_USUARIO) {
+            if (body[campo] !== undefined) usuario[campo] = body[campo];
+        }
+
+        if (usuario.password !== undefined) {
+            if (typeof usuario.password !== 'string' || !usuario.password.trim()) {
+                res.status(400).json({ message: 'La contraseña no puede estar vacía' });
+                return;
+            }
             usuario.password = await hashPassword(usuario.password);
         }
-        if ((req.body as any).encuestaInicio !== undefined) {
-            (usuario as any).encuestaInicio = normalizeEncuestaInicio((req.body as any).encuestaInicio);
+        if (usuario.encuestaInicio !== undefined) {
+            usuario.encuestaInicio = normalizeEncuestaInicio(usuario.encuestaInicio);
         }
-        const user = await modelUsuario.findByIdAndUpdate(id, usuario, { new: true }).select('-password');
+        const user = await modelUsuario.findByIdAndUpdate(id, { $set: usuario }, { new: true }).select('-password');
+        if (!user) {
+            res.status(404).json({ message: 'Usuario no encontrado' });
+            return;
+        }
         res.status(200).json(user);
     } catch (error) {
         const err = error as Error;

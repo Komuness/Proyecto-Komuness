@@ -520,41 +520,14 @@ export const PerfilUsuario = () => {
     const token = localStorage.getItem("token");
 
     const promesa = (async () => {
-      // ✅ ADMIN: usar el endpoint que ya sabes que funciona (versión vieja)
-      if (opcion === "admin") {
-        const res = await fetch(`${API_URL}/usuario/${id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ tipoUsuario: 1 }),
-        });
-
-        const payload = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(payload?.message || `Error ${res.status}`);
-
-        const usuarioActualizado = payload?.data ?? payload;
-
-        //  ACTUALIZAR EL CONTEXTO SI ES EL USUARIO ACTUAL
-        if (user?._id === id && updateUser) {
-          updateUser({
-            ...usuarioActualizado,
-            plan: usuarioActualizado.plan || null,
-          });
-        }
-
-        return {
-          ...usuarioActualizado,
-          plan: usuarioActualizado.plan || null,
-        };
-      }
-
-      // ✅ BÁSICO / PREMIUM: usar /membresia
+      // ADMIN / BÁSICO / PREMIUM: todo cambio de rol va por /membresia
+      // (PUT /usuario/:id ya no acepta tipoUsuario).
       let tipoUsuario = 2;
       let plan;
 
-      if (opcion === "basico") {
+      if (opcion === "admin") {
+        tipoUsuario = 1;
+      } else if (opcion === "basico") {
         tipoUsuario = 2;
       } else if (opcion === "premium_mensual") {
         tipoUsuario = 3;
