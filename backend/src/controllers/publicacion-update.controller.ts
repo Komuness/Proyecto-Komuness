@@ -12,6 +12,7 @@ import mongoose from "mongoose";
 import { saveMulterFileToGridFS, safeDeleteGridFS } from "../utils/gridfs";
 import { assertRealImages, ImageValidationError } from "../utils/imageUpload";
 import { calculatePublicationExpirationDate } from "../utils/publicacionExpiration";
+import { sincronizarCuentaRegresivaDeEvento } from "../services/cuentaRegresiva.service";
 
 const LOG_ON = process.env.LOG_PUBLICACION === "1";
 
@@ -549,6 +550,13 @@ export const approveUpdate = async (
     console.log("💾 Intentando guardar la publicación...");
     const updatedPublicacion = await publicacion.save();
     console.log("✅ Publicación guardada exitosamente");
+
+    // UI65: si el evento tiene cuenta regresiva, seguir su nueva fecha/título.
+    try {
+      await sincronizarCuentaRegresivaDeEvento(updatedPublicacion as any, { crearSiNoExiste: false });
+    } catch (error) {
+      console.warn("No se pudo sincronizar la cuenta regresiva del evento", error);
+    }
 
     // Recargar con populate
     const populatedPublicacion = await modelPublicacion

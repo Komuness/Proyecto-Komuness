@@ -4,6 +4,7 @@ import { IoMdClose, IoMdRemove, IoMdAdd } from "react-icons/io";
 import { API_URL } from "../utils/api";
 import { toast } from "react-hot-toast";
 import CategoriaSelector from "./generic/categoriaSelector";
+import { CuentaRegresivaEventoToggle } from "./CuentaRegresivaEventoToggle";
 import "../CSS/formularioPublicacion.css";
 import { useLockBodyScroll } from "../hooks/useLockBodyScroll";
 import {
@@ -866,6 +867,8 @@ export const EditarPublicacionModal = ({
                   required
                 />
               </div>
+
+              <CuentaRegresivaEventoToggle publicacion={publicacion} />
             </>
           )}
 

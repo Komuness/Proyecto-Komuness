@@ -27,6 +27,7 @@ import ModalConfiguracionPagos from "./ModalConfiguracionPagos";
 import ModalConfiguracionTematica from "./ModalConfiguracionTematica";
 import AlertaLimitePublicaciones from "./AlertaLimitePublicaciones";
 import LimitePublicaciones from "./limiteDePublicaciones";
+import { puedeGestionarCuentasRegresivas } from "../utils/permisos";
 
 export const PerfilUsuario = () => {
   const navigate = useNavigate();
@@ -614,6 +615,32 @@ export const PerfilUsuario = () => {
     }
   };
 
+  // UI65: dar o quitar el permiso de crear cuentas regresivas
+  const actualizarPermisoCuentaRegresiva = async (id, valor) => {
+    const anterior = usuarios.find((u) => u._id === id)?.puedeCrearCuentaRegresiva === true;
+    setUsuarios((prev) =>
+      prev.map((u) => (u._id === id ? { ...u, puedeCrearCuentaRegresiva: valor } : u)),
+    );
+    try {
+      const res = await fetch(`${API_URL}/usuario/${id}/cuenta-regresiva`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
+        },
+        body: JSON.stringify({ puedeCrearCuentaRegresiva: valor }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.message || "No se pudo actualizar el permiso");
+      toast.success(valor ? "Permiso de cuenta regresiva activado" : "Permiso de cuenta regresiva quitado");
+    } catch (error) {
+      setUsuarios((prev) =>
+        prev.map((u) => (u._id === id ? { ...u, puedeCrearCuentaRegresiva: anterior } : u)),
+      );
+      toast.error(error.message);
+    }
+  };
+
   const [searchTerm, setSearchTerm] = useState("");
 
   const usuariosFiltrados = usuarios.filter((item) => {
@@ -1010,6 +1037,15 @@ export const PerfilUsuario = () => {
                 <AiOutlineUser />
                 Ver Perfil Público
               </button>
+              {puedeGestionarCuentasRegresivas(user) && (
+                <button
+                  onClick={() => navigate("/cuentas-regresivas")}
+                  className="pu-btn secundario"
+                >
+                  <FiClock />
+                  Cuentas regresivas
+                </button>
+              )}
               <button
                 onClick={() => setModalAbierto(true)}
                 className="pu-btn secundario"
@@ -1568,6 +1604,7 @@ export const PerfilUsuario = () => {
                             <th>Apellidos</th>
                             <th>Email</th>
                             <th>Tipo de Usuario</th>
+                            <th>Cuenta regresiva</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1612,6 +1649,34 @@ export const PerfilUsuario = () => {
                                     "Sin vencimiento premium"
                                   )}
                                 </div>
+                              </td>
+                              <td className="pu-celda-switch">
+                                {(() => {
+                                  const esAdminFila = item.tipoUsuario === 0 || item.tipoUsuario === 1;
+                                  const activo = esAdminFila || item.puedeCrearCuentaRegresiva === true;
+                                  return (
+                                    <label
+                                      className="pu-switch"
+                                      title={
+                                        esAdminFila
+                                          ? "Los administradores siempre tienen este permiso"
+                                          : undefined
+                                      }
+                                    >
+                                      <input
+                                        type="checkbox"
+                                        role="switch"
+                                        aria-label={`Cuenta regresiva para ${item.nombre || item.email}`}
+                                        checked={activo}
+                                        disabled={esAdminFila}
+                                        onChange={(e) =>
+                                          actualizarPermisoCuentaRegresiva(item._id, e.target.checked)
+                                        }
+                                      />
+                                      <span className="pu-switch-pista" aria-hidden="true" />
+                                    </label>
+                                  );
+                                })()}
                               </td>
                             </tr>
                           ))}

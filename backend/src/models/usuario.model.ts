@@ -40,7 +40,9 @@ const usuarioSchema = new Schema({
     emailConfirmado: { type: Boolean, default: false },
     tokenConfirmacion: { type: String, required: false, default: null },
     tokenConfirmacionExpira: { type: Date, required: false, default: null },
-    encuestaInicio: { type: encuestaInicioSchema, default: undefined }
+    encuestaInicio: { type: encuestaInicioSchema, default: undefined },
+    // UI65: puede crear cuentas regresivas para la principal (admins siempre pueden)
+    puedeCrearCuentaRegresiva: { type: Boolean, default: false }
 });
 
 export const modelUsuario = model<IUsuario>("Usuario", usuarioSchema);

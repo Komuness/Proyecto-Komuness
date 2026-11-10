@@ -17,6 +17,7 @@ import { RecuperarContra } from "./recuperarContra";
 import { NuevaContra } from "./nuevaContra";
 import { CrearUsuario } from "./crearUsuario";
 import AdminCategorias from "./adminCategorias";
+import AdminCuentasRegresivas from "./adminCuentasRegresivas";
 import AdminBoletines from "./adminBoletines";
 import Footer from "./Footer";
 import CheckoutPremium from "./CheckoutPremium";
@@ -56,6 +57,7 @@ export const Rutas = () => {
         <Route path="/crearUsr" element={<CrearUsuario />} />
         <Route path="/calendario" element={<Navigate to="/eventos" replace />} />
         <Route path="/admin/categorias" element={<AdminCategorias />} />
+        <Route path="/cuentas-regresivas" element={<AdminCuentasRegresivas />} />
         <Route path="/admin/boletines" element={<AdminBoletines />} />
         {/* "Quiénes somos" y su edición viven ahora en "/" (botón "Editar
             página de inicio" para administración). La ruta vieja redirige. */}

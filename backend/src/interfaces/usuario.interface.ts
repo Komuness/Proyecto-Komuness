@@ -28,4 +28,5 @@ export interface IUsuario extends Document {
     tokenConfirmacion?: string | null;
     tokenConfirmacionExpira?: Date | null;
     encuestaInicio?: IEncuestaInicio;
+    puedeCrearCuentaRegresiva?: boolean; // UI65
 }

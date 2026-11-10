@@ -21,6 +21,11 @@ import {
 import { validarUbicacion } from "../utils/ubicacion";
 import { sendEmail } from "../utils/mail"; // usa el mismo transporter que recuperación
 import { modelUsuario } from "../models/usuario.model"; // ← Modelo de usuarios
+import { puedeGestionarCuentasRegresivas } from "../utils/cuentaRegresiva";
+import {
+  sincronizarCuentaRegresivaDeEvento,
+  eliminarCuentaRegresivaDeEvento,
+} from "../services/cuentaRegresiva.service";
 import {
   createComentarioPublicacionNotificacion,
   createRespuestaComentarioNotificacion,
@@ -236,6 +241,30 @@ function validateAndNormalizePricing(
   };
 }
 
+// UI65: crea el contador de la principal si quien crea el evento marcó la
+// casilla y tiene permiso. Un fallo aquí nunca debe romper la publicación.
+async function crearCuentaRegresivaSiCorresponde(req: Request, savePost: any) {
+  try {
+    const usuario = (req as any).user;
+    if (parseBoolean((req.body as any)?.mostrarCuentaRegresiva) !== true) return;
+    if (!puedeGestionarCuentasRegresivas(usuario)) return;
+    await sincronizarCuentaRegresivaDeEvento(savePost, {
+      crearSiNoExiste: true,
+      creadoPor: String(usuario._id),
+    });
+  } catch (error) {
+    console.warn("No se pudo crear la cuenta regresiva del evento", error);
+  }
+}
+
+async function sincronizarCuentaRegresiva(publicacion: any) {
+  try {
+    await sincronizarCuentaRegresivaDeEvento(publicacion, { crearSiNoExiste: false });
+  } catch (error) {
+    console.warn("No se pudo sincronizar la cuenta regresiva del evento", error);
+  }
+}
+
 // Normaliza hora del evento en formato HH:mm (24h). Si no cumple, se ignora.
 function parseHoraEvento(input: any): string | undefined {
   if (typeof input !== "string") return undefined;
@@ -323,6 +352,7 @@ export const createPublicacion = async (
     const nuevaPublicacion = new modelPublicacion(publicacion);
 
     const savePost = await nuevaPublicacion.save();
+    await crearCuentaRegresivaSiCorresponde(req, savePost);
 
     // Notificación por correo a admins (aprobación)
     try {
@@ -475,6 +505,7 @@ export const createPublicacionA = async (
     });
 
     const savePost = await nuevaPublicacion.save();
+    await crearCuentaRegresivaSiCorresponde(req, savePost);
 
     // BKD38: al crear un evento o emprendimiento, generar automáticamente
     // una publicación independiente en el feed general. Solo ocurre al
@@ -832,6 +863,8 @@ export const updatePublicacion = async (
       return;
     }
 
+    await sincronizarCuentaRegresiva(publicacion);
+
     // BKD68: parseBoolean para soportar "true" (string) que llega por
     // multipart/form-data; antes `=== true` nunca se cumplía en ese caso.
     const seAprobo =
@@ -915,6 +948,12 @@ export const deletePublicacion = async (
     if (!deletedPost) {
       res.status(404).json({ message: "Publicación no encontrada" });
       return;
+    }
+
+    try {
+      await eliminarCuentaRegresivaDeEvento(deletedPost._id);
+    } catch (error) {
+      console.warn("No se pudo eliminar la cuenta regresiva del evento", error);
     }
 
     // BKD38: si se rechaza (borra) un evento/emprendimiento que todavía no

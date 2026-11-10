@@ -2,9 +2,10 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { FaFacebookF, FaInstagram } from "react-icons/fa";
 import { CarruselPortada } from "./CarruselPortada";
+import { CuentasRegresivas } from "./CuentasRegresivas";
 import "../CSS/inicioPrincipal.css";
 
-export const InicioPrincipal = ({ inicioData, acercaData, cargando, heroImage }) => {
+export const InicioPrincipal = ({ inicioData, acercaData, cargando, heroImage, cuentasRegresivas }) => {
   // Imágenes y videos de proyectos (los administra "Acerca de").
   const medios = (acercaData?.imagenesProyectos || []).filter(Boolean);
   // Mientras carga se reserva el espacio de la galería para que la
@@ -83,6 +84,9 @@ export const InicioPrincipal = ({ inicioData, acercaData, cargando, heroImage })
           </div>
         </div>
       </section>
+
+      {/* UI65: cuentas regresivas (se oculta sola si no hay ninguna) */}
+      <CuentasRegresivas cuentas={cuentasRegresivas} />
     </main>
   );
 };

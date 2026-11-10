@@ -8,6 +8,7 @@ import {
   checkAuth,
   enviarCorreoRecuperacion,
   actualizarLimiteUsuario,
+  actualizarPermisoCuentaRegresiva,
   actualizarVencimientoPremium,
   actualizarMembresiaUsuarioAdmin,
   activarPremiumActual,
@@ -49,6 +50,7 @@ router.delete("/:id", authMiddleware, verificarRoles([0]), deleteUsuario);
 
 // Endpoints para administradores: gestion de limites y premium
 router.put("/:id/limite", authMiddleware, verificarRoles([0, 1]), actualizarLimiteUsuario);
+router.put("/:id/cuenta-regresiva", authMiddleware, verificarRoles([0, 1]), actualizarPermisoCuentaRegresiva);
 router.put("/:id/premium-vencimiento", authMiddleware, verificarRoles([0, 1]), actualizarVencimientoPremium);
 
 // Endpoints de admins/superadmin: cambiar tipoUsuario (ahora 1/2/3) con calculo automatico en premium

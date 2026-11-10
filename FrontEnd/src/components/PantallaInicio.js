@@ -9,6 +9,7 @@ import { API_URL } from "../utils/api";
 export const PantallaInicio = () => {
   const [inicioData, setInicioData] = useState(null);
   const [acercaData, setAcercaData] = useState(null);
+  const [cuentasRegresivas, setCuentasRegresivas] = useState([]);
   const [cargando, setCargando] = useState(true);
   // Administración edita aquí mismo el contenido de la portada y de
   // "Quiénes somos" (galería, misión, equipo, donaciones, contactos).
@@ -20,9 +21,15 @@ export const PantallaInicio = () => {
   const cargarTodo = useCallback(async () => {
     try {
       setCargando(true);
-      const [contenidoRes, acercaRes] = await Promise.all([
+      // Las cuentas regresivas son opcionales: si fallan, la página sigue.
+      const cuentasPromesa = fetch(`${API_URL}/cuentas-regresivas/activas`)
+        .then((r) => (r.ok ? r.json() : { data: [] }))
+        .catch(() => ({ data: [] }));
+
+      const [contenidoRes, acercaRes, cuentasData] = await Promise.all([
         fetch(`${API_URL}/configuracion/inicio-contenido`),
         fetch(`${API_URL}/acerca-de`),
+        cuentasPromesa,
       ]);
 
       const contenidoData = await contenidoRes.json().catch(() => ({}));
@@ -32,6 +39,7 @@ export const PantallaInicio = () => {
 
       setInicioData(contenidoData?.data || {});
       setAcercaData(acercaData || null);
+      setCuentasRegresivas(Array.isArray(cuentasData?.data) ? cuentasData.data : []);
     } catch (error) {
       console.error("Error al cargar la pantalla de inicio:", error);
     } finally {
@@ -75,6 +83,7 @@ export const PantallaInicio = () => {
         inicioData={inicioData}
         acercaData={acercaData}
         cargando={cargando}
+        cuentasRegresivas={cuentasRegresivas}
       />
       <QuienesSomosSection data={acercaData} />
 

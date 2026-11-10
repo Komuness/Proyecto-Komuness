@@ -2,6 +2,9 @@ import { filterValidFiles, acceptAttr } from '../utils/fileValidation';
 import { useState, useEffect } from "react";
 import { IoMdClose, IoMdRemove, IoMdAdd } from "react-icons/io";
 import { API_URL } from "../utils/api";
+import { useAuth } from "../components/context/AuthContext";
+import { puedeGestionarCuentasRegresivas } from "../utils/permisos";
+import { fechaHoraCRaISO } from "../utils/cuentaRegresiva";
 import { toast } from "react-hot-toast";
 import CategoriaSelector from '../components/generic/categoriaSelector';
 import AlertaLimitePublicaciones from '../components/AlertaLimitePublicaciones';
@@ -77,6 +80,7 @@ const getInitialFormValues = (tag) => ({
   publicado: false,
   fechaEvento: "",
   horaEvento: "",
+  mostrarCuentaRegresiva: false,
   precio: "",
   moneda: "CRC",
   precioNegociable: false,
@@ -94,6 +98,8 @@ const getPersistedFormData = (formData) => {
 };
 
 export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
+  const { user } = useAuth();
+  const puedeCuentaRegresiva = puedeGestionarCuentasRegresivas(user);
   const [mostrarAlerta, setMostrarAlerta] = useState(false);
   const [enlacesExternos, setEnlacesExternos] = useState(createDefaultEnlaces);
   const [ubicacion, setUbicacion] = useState(createDefaultUbicacion);
@@ -326,6 +332,9 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
     data.append("publicado", String(formData.publicado));
     data.append("fechaEvento", formData.fechaEvento || "");
     data.append("horaEvento", formData.horaEvento || "");
+    const conCuentaRegresiva =
+      formData.tag === "evento" && puedeCuentaRegresiva && formData.mostrarCuentaRegresiva === true;
+    data.append("mostrarCuentaRegresiva", String(conCuentaRegresiva));
     data.append("precio", formData.precio || "");
     data.append("moneda", formData.moneda || "CRC");
     data.append("precioNegociable", String(formData.precioNegociable));
@@ -355,6 +364,12 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
 
     try {
       await enviarPublicacion(data);
+      if (conCuentaRegresiva) {
+        const objetivo = fechaHoraCRaISO(formData.fechaEvento, formData.horaEvento);
+        if (!objetivo || Date.parse(objetivo) <= Date.now()) {
+          toast("El evento se creó, pero no tiene una fecha futura para la cuenta regresiva");
+        }
+      }
       removeSessionDraft(draftStorageKey);
       onClose?.();
     } catch (error) {
@@ -803,6 +818,30 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
                   />
                 </div>
 
+                {puedeCuentaRegresiva && (
+                  <div className="precio-negociable-box" style={{ gridColumn: "1 / -1" }}>
+                    <div className="precio-negociable-header">
+                      <input
+                        id="mostrarCuentaRegresivaCrear"
+                        type="checkbox"
+                        name="mostrarCuentaRegresiva"
+                        checked={formData.mostrarCuentaRegresiva === true}
+                        onChange={handleChange}
+                        className="precio-negociable-checkbox"
+                      />
+                      <label
+                        htmlFor="mostrarCuentaRegresivaCrear"
+                        className="precio-negociable-label"
+                      >
+                        Mostrar cuenta regresiva en la principal
+                      </label>
+                    </div>
+                    <p className="precio-negociable-help">
+                      Aparece en la página de inicio cuando el evento esté
+                      publicado.
+                    </p>
+                  </div>
+                )}
               </>
             )}
 

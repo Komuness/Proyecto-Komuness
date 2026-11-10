@@ -32,6 +32,7 @@ import bancoProfesionalesRoutes from "./routes/bancoProfesionales.routes";
 
 // Rutas de Boletines
 import boletinRoutes from "./routes/boletin.routes";
+import cuentaRegresivaRoutes from "./routes/cuentaRegresiva.routes";
 
 const app: Express = express();
 
@@ -103,6 +104,7 @@ app.use("/api/paquetes-suscripcion", paqueteSuscripcionRoutes);
 app.use("/api/publicidad", publicidadRoutes);
 app.use("/api/boletines", boletinRoutes);
 app.use("/api/actividades", actividadesRoutes);
+app.use("/api/cuentas-regresivas", cuentaRegresivaRoutes);
 
 /** Smoke test mínimo */
 app.get("/api/", (_req: Request, res: Response) => {

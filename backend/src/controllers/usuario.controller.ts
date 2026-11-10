@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 import { IUsuario, IUsuario as Usuario } from '../interfaces/usuario.interface';
 import { modelUsuario } from '../models/usuario.model';
 import { generarToken, verificarToken } from '../utils/jwt';
@@ -501,6 +502,49 @@ export const actualizarLimiteUsuario = async (req: Request, res: Response): Prom
             success: false,
             message: err.message
         });
+    }
+};
+
+/**
+ * UI65: dar o quitar el permiso de crear cuentas regresivas (solo admins)
+ */
+export const actualizarPermisoCuentaRegresiva = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { puedeCrearCuentaRegresiva } = req.body;
+
+        if (typeof puedeCrearCuentaRegresiva !== 'boolean') {
+            res.status(400).json({
+                success: false,
+                message: 'puedeCrearCuentaRegresiva debe ser true o false'
+            });
+            return;
+        }
+
+        if (!mongoose.isValidObjectId(id)) {
+            res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+            return;
+        }
+
+        const usuario = await modelUsuario.findByIdAndUpdate(
+            id,
+            { puedeCrearCuentaRegresiva },
+            { new: true }
+        ).select('-password');
+
+        if (!usuario) {
+            res.status(404).json({ success: false, message: 'Usuario no encontrado' });
+            return;
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Permiso de cuenta regresiva actualizado',
+            data: usuario
+        });
+    } catch (error) {
+        const err = error as Error;
+        res.status(500).json({ success: false, message: err.message });
     }
 };
 
