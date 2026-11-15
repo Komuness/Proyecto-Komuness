@@ -296,6 +296,10 @@ export const createPublicacion = async (
   try {
     const body = req.body as IPublicacion & Record<string, any>;
 
+    // Solo el backend puede marcar una publicación como automática; así no se
+    // puede omitir la categoría obligatoria enviando publicacionOrigenId.
+    delete body.publicacionOrigenId;
+
     // 🔴 Autor siempre desde el token
     const userId = (req as any).user?._id;
     if (!userId) {
@@ -395,6 +399,10 @@ export const createPublicacionA = async (
   try {
     const publicacion = req.body as IPublicacion & Record<string, any>;
     const user = req.user;
+
+    // Solo el backend puede marcar una publicación como automática; así no se
+    // puede omitir la categoría obligatoria enviando publicacionOrigenId.
+    delete publicacion.publicacionOrigenId;
 
     if (!user) {
       res.status(401).json({ message: "No autorizado" });

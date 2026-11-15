@@ -15,6 +15,7 @@ const Notificaciones = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
+  const [vaciando, setVaciando] = useState(false);
   const [formData, setFormData] = useState({
     nombre: "",
     descripcion: "",
@@ -192,6 +193,44 @@ const Notificaciones = ({
     }
   };
 
+  const eliminarTodas = async () => {
+    if (!token || vaciando) return false;
+    if (
+      !window.confirm(
+        "¿Eliminar todas tus notificaciones? Solo desaparecerán para ti; los demás usuarios no se verán afectados."
+      )
+    ) {
+      return false;
+    }
+
+    const prev = ntfs;
+    setNtfs([]);
+    syncCount([]);
+    setVaciando(true);
+    setError("");
+
+    try {
+      const res = await fetch(`${API_URL}/notificaciones`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error("No se pudieron eliminar las notificaciones");
+      }
+      return true;
+    } catch (_err) {
+      setNtfs(prev);
+      syncCount(prev);
+      setError("No se pudieron eliminar las notificaciones");
+      return false;
+    } finally {
+      setVaciando(false);
+    }
+  };
+
   const handleNotificacionClick = async (ntf) => {
     await marcarComoVista(ntf._id);
 
@@ -287,14 +326,29 @@ const Notificaciones = ({
       onClick={!standalone ? closePanel : undefined}
     >
       <div className={panelClass} onClick={(e) => e.stopPropagation()}>
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex justify-between items-center gap-2 mb-4">
           <h2 className="text-lg font-bold">Notificaciones</h2>
 
-          {!standalone && (
-            <button onClick={closePanel}>
-              <AiOutlineClose className="w-5 h-5" />
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {token && userId && !loading && (ntfs.length > 0 || vaciando) && (
+              <button
+                type="button"
+                onClick={eliminarTodas}
+                disabled={vaciando}
+                className="px-2 py-1 rounded bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-60"
+                aria-label="Vaciar notificaciones"
+                title="Vaciar notificaciones"
+              >
+                {vaciando ? "Vaciando..." : "Vaciar"}
+              </button>
+            )}
+
+            {!standalone && (
+              <button onClick={closePanel}>
+                <AiOutlineClose className="w-5 h-5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {esAdmin && (
@@ -373,16 +427,20 @@ const Notificaciones = ({
           </form>
         )}
 
+        {error && (
+          <p className="text-sm text-red-200 mb-2">{error}</p>
+        )}
+
         {!token || !userId ? (
           <p className="text-sm text-slate-200">
             Inicia sesión para ver tus notificaciones.
           </p>
         ) : loading ? (
           <p className="text-sm text-slate-200">Cargando notificaciones...</p>
-        ) : error ? (
-          <p className="text-sm text-red-200">{error}</p>
         ) : ntfs.length === 0 ? (
-          <p className="text-sm text-slate-200">No tienes notificaciones.</p>
+          error ? null : (
+            <p className="text-sm text-slate-200">No tienes notificaciones.</p>
+          )
         ) : (
           <div className="flex flex-col gap-2">
 
@@ -434,7 +492,7 @@ const Notificaciones = ({
                         title="Notificacion no vista"
                       />
                     )}
-                    {esAdmin && (
+                    {token && userId && (
                       <button
                         className="text-slate-100 hover:text-red-300 transition-colors"
                         onClick={(e) => {

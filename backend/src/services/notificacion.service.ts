@@ -54,7 +54,7 @@ type NotificarNuevaActividadInput = {
 type NotificarPublicacionAutomaticaInput = {
   publicacionId: string;
   titulo?: string;
-  tagOrigen?: string; // "evento" | "emprendimiento" | "tutorial" | "biblioteca"...
+  tagOrigen?: string; // "evento" | "emprendimiento" | "tutorial" | "proyecto-destacado" | "biblioteca"...
 };
 
 // ==========================================
@@ -207,6 +207,7 @@ const ETIQUETA_TAG: Record<string, string> = {
   evento: "evento",
   emprendimiento: "emprendimiento",
   tutorial: "tutorial",
+  "proyecto-destacado": "proyecto destacado",
   biblioteca: "recurso de la biblioteca",
 };
 

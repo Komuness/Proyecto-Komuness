@@ -3,6 +3,7 @@ import {
   getNotificaciones,
   createNotificacion,
   deleteNotificacion,
+  deleteAllNotificaciones,
   updateNotificacion,
   notificacionSeenBy
 } from "../controllers/notificacion.controller";
@@ -16,10 +17,13 @@ const router = Router();
 // Filtro se vería algo como notificaciones?userId=...
 router.get("/", authMiddleware, getNotificaciones);
 
-// Crud (solo admin/super-admin)
+// Crear y editar (solo admin/super-admin)
 router.post("/", authMiddleware, verificarRoles([0, 1]), createNotificacion);
-router.delete("/:id", authMiddleware, verificarRoles([0, 1]), deleteNotificacion);
 router.put("/:id", authMiddleware, verificarRoles([0, 1]), updateNotificacion);
+
+// Cada usuario puede eliminar sus notificaciones sin afectar a los demás
+router.delete("/", authMiddleware, deleteAllNotificaciones);
+router.delete("/:id", authMiddleware, deleteNotificacion);
 
 // Un usuario vio la notificación
 router.patch("/:id/visto", authMiddleware, notificacionSeenBy);

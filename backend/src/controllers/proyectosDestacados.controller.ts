@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { modelProyectoDestacado } from "../models/ProyectoDestacado.model";
+import { crearPublicacionAutomatica } from "../services/publicacionAutomatica.service";
 
 /*
  * Crear un proyecto destacado
@@ -28,6 +29,28 @@ export const createProyectoDestacado = async (
     });
 
     const saved = await nuevoProyectoDestacado.save();
+
+    // BKD70: al publicar un proyecto destacado se genera una publicación
+    // automática en el feed general, igual que con eventos y emprendimientos.
+    try {
+      const autorId = (req as any).user?._id;
+      if (!autorId) throw new Error("Usuario no autenticado");
+
+      await crearPublicacionAutomatica({
+        titulo: saved.nombre,
+        descripcion: saved.descripcion,
+        url: saved.url,
+        autorId,
+        publicacionOrigenId: saved._id,
+        tagOrigen: "proyecto-destacado",
+      });
+    } catch (autoError) {
+      console.warn(
+        "No se pudo crear la publicación automática del proyecto destacado:",
+        autoError,
+      );
+    }
+
     res.status(201).json(saved);
   } catch (error: any) {
     console.error(error);

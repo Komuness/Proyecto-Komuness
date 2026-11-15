@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { modelNotificacion } from "../models/notificacion.model";
-import { ObjectId } from "mongoose";
 import { createNotificacion as createNotificacionService } from "../services/notificacion.service";
 
 const DEFAULT_CADUCIDAD_DIAS = 3;
@@ -13,6 +12,19 @@ function getRequestUserId(req: Request): string | null {
     (req as any).userId?.toString?.();
 
   return userId || null;
+}
+
+// Una notificación es visible para un usuario si se la enviaron a él,
+// si es de tipo general (sin recipientes) o si es una notificación antigua
+// que solo tiene destinatario.
+function filtroVisibleParaUsuario(userId: string) {
+  return {
+    $or: [
+      { recipientes: userId },
+      { destinatario: userId },
+      { recipientes: { $size: 0 } },
+    ],
+  };
 }
 
 function agregarDias(fecha: Date, dias: number): Date {
@@ -52,25 +64,32 @@ export const getNotificaciones = async (
 
     // Notificaciones específicas y generales
     if (finalUserId) {
-      filtro.$or = [
-        { recipientes: finalUserId },
-        { recipientes: [] }
-      ];
-      filtro.$and = [
-        {
-          $or: [
-            { fechaCaducidad: null },
-            { fechaCaducidad: { $gte: now } },
-          ],
-        },
-      ];
+      filtro = {
+        // Notificaciones que le corresponden (o generales para todos)
+        ...filtroVisibleParaUsuario(finalUserId),
+        // Ocultar solo las que este usuario eliminó para sí mismo. El
+        // documento sigue existiendo para el resto de destinatarios.
+        eliminadasPor: { $ne: finalUserId },
+        $and: [
+          {
+            $or: [
+              { fechaCaducidad: null },
+              { fechaCaducidad: { $gte: now } },
+            ],
+          },
+        ],
+      };
       // Solo no leídas
       if (String(onlyUnread).toLowerCase() === "true") {
         filtro.vistoPor = { $ne: finalUserId };
       }
     }
 
-    const notificaciones = await modelNotificacion.find(filtro).sort({ createdAt: -1 }).lean();
+    const notificaciones = await modelNotificacion
+      .find(filtro)
+      .select("-eliminadasPor")
+      .sort({ createdAt: -1 })
+      .lean();
 
     if (notificaciones.length === 0) {
       res.status(200).json({ data: [], message: "Este usuario no posee notificaciones" });
@@ -241,15 +260,18 @@ export const deleteNotificacion = async (
       return;
     }
 
-    const userTipo = Number((req as any).user?.tipoUsuario);
-    const isAdmin = userTipo === 0 || userTipo === 1;
-
-    const filtro: any = { _id: id };
-    if (!isAdmin) {
-      filtro.destinatario = userId;
-    }
-
-    const notificacionAEliminar = await modelNotificacion.findOneAndDelete(filtro);
+    // Eliminación por usuario: la notificación se oculta solo para quien
+    // la elimina. Las notificaciones generales (recipientes: []) siguen
+    // visibles para el resto de usuarios.
+    const notificacionAEliminar = await modelNotificacion.findOneAndUpdate(
+      {
+        _id: id,
+        ...filtroVisibleParaUsuario(userId),
+        eliminadasPor: { $ne: userId },
+      },
+      { $addToSet: { eliminadasPor: userId } },
+      { new: true }
+    );
 
     if (!notificacionAEliminar) {
       res.status(404).json({ message: "No se encontró la notificación" });
@@ -260,6 +282,36 @@ export const deleteNotificacion = async (
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error al eliminar la notificación" });
+  }
+};
+
+export const deleteAllNotificaciones = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const userId = getRequestUserId(req);
+
+    if (!userId) {
+      res.status(401).json({ message: "No autorizado" });
+      return;
+    }
+
+    const resultado = await modelNotificacion.updateMany(
+      {
+        ...filtroVisibleParaUsuario(userId),
+        eliminadasPor: { $ne: userId },
+      },
+      { $addToSet: { eliminadasPor: userId } }
+    );
+
+    res.status(200).json({
+      data: { eliminadas: resultado.modifiedCount },
+      message: "Notificaciones eliminadas correctamente",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al eliminar las notificaciones" });
   }
 };
 
@@ -400,16 +452,14 @@ export const notificacionSeenBy = async (
     const notificacionActualizada = await modelNotificacion.findOneAndUpdate(
       {
         _id: id,
-        $or: [
-          { recipientes: viewerId },
-          { recipientes: { $size: 0 } },
-        ],
+        ...filtroVisibleParaUsuario(viewerId),
+        eliminadasPor: { $ne: viewerId },
       },
       {
         $addToSet: { vistoPor: viewerId },
       },
       { new: true }
-    );
+    ).select("-eliminadasPor");
 
     if (!notificacionActualizada) {
       res.status(404).json({ message: "Notificación no encontrada" });

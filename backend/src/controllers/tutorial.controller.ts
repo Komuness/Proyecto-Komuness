@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { modelTutorial } from "../models/tutorial.model";
-import { notificarPublicacionAutomatica } from "../services/notificacion.service";
+import { crearPublicacionAutomatica } from "../services/publicacionAutomatica.service";
 
 /*
  * Crear un tutorial
@@ -25,14 +25,25 @@ export const createTutorial = async (req: Request, res: Response): Promise<void>
 
     const saved = await nuevoTutorial.save();
 
+    // BKD70: al publicar un tutorial se genera una publicación automática en
+    // el feed general, igual que ocurre con eventos y emprendimientos.
     try {
-      await notificarPublicacionAutomatica({
-        publicacionId: saved._id.toString(),
+      const autorId = (req as any).user?._id;
+      if (!autorId) throw new Error("Usuario no autenticado");
+
+      await crearPublicacionAutomatica({
         titulo: saved.nombre,
+        descripcion: saved.descripcion,
+        url: saved.url,
+        autorId,
+        publicacionOrigenId: saved._id,
         tagOrigen: "tutorial",
       });
-    } catch (notiError) {
-      console.warn("No se pudo notificar la creación del tutorial:", notiError);
+    } catch (autoError) {
+      console.warn(
+        "No se pudo crear la publicación automática del tutorial:",
+        autoError,
+      );
     }
 
     res.status(201).json(saved);
