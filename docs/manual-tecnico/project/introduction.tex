@@ -1,0 +1,142 @@
+\chapter{Introducción}
+
+\section{Sobre este manual}
+Este manual técnico documenta el diseño, la arquitectura, la persistencia, la API y el procedimiento de instalación del sistema Komuness. Su propósito es servir como referencia para cualquier persona desarrolladora que necesite comprender, mantener, desplegar o extender el sistema, sin necesidad de haber participado en su desarrollo original.
+
+Corresponde a la \textbf{versión 3}, entregable del \textbf{Sprint 3 (tercer MVP)} y, como lo establece el anteproyecto, es \textbf{acumulativo}: incorpora lo documentado en los Sprints 1 y 2 y agrega los cambios del Sprint 3. El contenido refleja el estado del proyecto en la rama \texttt{branch-testing-changes} del repositorio \url{https://github.com/Komuness/Proyecto-Komuness}. Los cambios más recientes respecto a la versión 2 del manual (Sprint 2) son: las cuentas regresivas de eventos en la página principal con su permiso por usuario; la sincronización de ediciones, aprobación y eliminación entre un evento o emprendimiento y su publicación automática; la publicación automática de tutoriales, proyectos destacados y archivos de la biblioteca; la eliminación de notificaciones por usuario; la biblioteca con categoría obligatoria, nombre personalizado y filtro por categoría; la verificación del contenido real de los archivos subidos; las restricciones de seguridad a la actualización de usuarios; el rediseño de la publicidad (título y fechas del evento), el carrusel de la portada con imágenes reordenables y la edición de ``Quiénes somos'' directamente desde la página de inicio; los buscadores de tutoriales y de proyectos destacados; y la nueva interfaz del banco de profesionales.
+
+\section{Descripción y Alcance del proyecto}
+\subsection{Antecedentes}
+Komuness CR es una organización comunitaria derivada de Coopesinergia R.L., cooperativa costarricense (cédula jurídica 3-002-639930) cuyo lema es ``Tejiendo Futuro en Comunidad''. La organización está ubicada en el barrio de Tejarcillos de Alajuelita y se dedica a promover proyectos y actividades que fortalezcan el desarrollo social, cultural y educativo de la comunidad. Esta zona enfrenta retos vinculados con la exclusión social, la falta de oportunidades laborales y educativas, y problemáticas de violencia y narcotráfico.
+
+Antes de la plataforma, la información cultural y comunitaria de la zona se encontraba dispersa en redes sociales, boletines y comunicación informal, sin un punto de acceso centralizado. El único intento formal de resolverlo fue el desarrollo inicial de la plataforma digital de Komuness CR, realizado por un equipo de estudiantes anterior. Ese desarrollo quedó parcial: presenta fallos de estabilidad, usabilidad limitada y funcionalidades incompletas, por lo que la comunidad no lo adoptó de forma activa.
+
+Por ello, este proyecto no construye un sistema nuevo, sino que \textbf{refactoriza los módulos que ya están en producción}: corrige los fallos heredados, reorganiza la interfaz e incorpora las funcionalidades pendientes (categorización de contenidos, calendario de eventos, roles de usuario, perfiles públicos y banco de profesionales).
+
+Los beneficiarios directos son los jóvenes y vecinos de Tejarcillos que usan la plataforma para promover sus emprendimientos, talentos y eventos, y los administradores de Komuness CR, encargados de moderar y gestionar el sistema. Los beneficiarios indirectos son la comunidad de Tejarcillos en general y los visitantes interesados en su agenda cultural.
+
+\subsection{Propósito}
+Que la organización cuente con una plataforma confiable, ordenada y mantenible que centralice la información comunitaria, impulse las iniciativas locales y apoye la reducción de la brecha tecnológica del barrio, fortaleciendo el empoderamiento juvenil, la inclusión tecnológica y la participación cultural.
+
+\subsection{Tecnologías utilizadas}
+El anteproyecto fija React, JavaScript, HTML5, CSS3 y MongoDB como tecnologías principales, a las que se suman servicios y APIs externas para mapas, geolocalización y notificaciones. La Tabla \ref{tab:tecnologias} resume cómo se usan en el estado actual del sistema.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|p{3.3cm}|p{11.5cm}|}
+\hline
+\textbf{Tecnología} & \textbf{Uso en Komuness} \\
+\hline
+React \cite{reactjs2024} & Interfaz web como \textit{Single Page Application} (React 19, \texttt{react-router-dom}); componentes reutilizables para tarjetas, carruseles, filtros, formularios, calendario (\texttt{react-big-calendar}) y cuentas regresivas. \\
+\hline
+JavaScript \cite{mdnjs2026} & Lógica interactiva del cliente (búsquedas, filtros, calendario, carruseles, formularios) y consumo de la API con \texttt{fetch}. \\
+\hline
+HTML5 \cite{mdnhtml2026} & Estructura de las páginas y componentes. \\
+\hline
+CSS3 \cite{mdncss2026} & Presentación visual y diseño adaptable a computadora, tableta y celular (hojas CSS propias y Tailwind CSS). \\
+\hline
+MongoDB \cite{mongodb2026} y Mongoose \cite{mongoosejs2024} & Base de datos documental con usuarios, publicaciones, perfiles, actividades, biblioteca y demás datos; GridFS para archivos servidos desde la base. \\
+\hline
+Node.js, Express \cite{expressjs2024} y TypeScript & Backend con API REST, autenticación JWT \cite{jwt2015} y lógica de negocio. \\
+\hline
+Servicios externos & Leaflet y OpenStreetMap/Nominatim (mapas y geocodificación), PayPal \cite{paypaldev2024} (membresías) y Nodemailer (correo, con Gmail o un servidor SMTP). Los archivos se guardan en el disco del servidor y en GridFS. \\
+\hline
+\end{tabular}
+\caption{\textbf{Tecnologías del proyecto}}
+\label{tab:tecnologias}
+\end{table}
+
+\subsection{Productos y MVP}
+La plataforma está estructurada en cinco módulos: Inicio, Actividades Culturales (cartelera de eventos), Emprendimientos, Banco de Profesionales y Biblioteca. El desarrollo se organiza en tres Sprints; al final de cada uno se entrega el MVP correspondiente, un Manual de Usuario y un Manual Técnico, ambos acumulativos.
+\begin{itemize}
+    \item \textbf{MVP 1 (Sprint 1):} módulo de Inicio (``Quiénes somos'', diseño adaptable, carrusel dinámico y buscador global) y módulo de Actividades Culturales (calendario, filtros, notificaciones y mapa).
+    \item \textbf{MVP 2 (Sprint 2):} lo anterior, más los módulos de Emprendimientos y Banco de Profesionales, e incluye los ajustes derivados de la retroalimentación: calendario unificado con la pantalla de eventos, creación automática de publicaciones, búsqueda por ubicación, botón para borrar filtros y notificaciones corregidas.
+    \item \textbf{MVP 3 (Sprint 3):} módulo de Biblioteca (categorías, etiquetas, filtros, proyectos destacados y videos) y funciones avanzadas del Banco de Profesionales (búsqueda por profesión, especialidad y ubicación, estado de disponibilidad y verificación de perfiles), con un despliegue general. En el estado documentado se completaron la clasificación por categorías de la biblioteca, la publicación automática de sus archivos, las cuentas regresivas, el rediseño de la portada y la publicidad, y el endurecimiento de la seguridad de las cargas; el detalle de lo pendiente está en el capítulo de conclusiones. \textit{Este manual corresponde a este MVP.}
+\end{itemize}
+
+\subsection{Alcance}
+Dentro del alcance se encuentran las funcionalidades de los cinco módulos descritas arriba, distribuidas en los tres MVP; funcionan además como criterios de aceptación iniciales entre la organización y el equipo desarrollador. Queda \textbf{fuera del alcance} el uso de algoritmos de inteligencia artificial o motores de analítica predictiva para la recomendación personalizada de contenidos. El botón de contacto directo por WhatsApp en emprendimientos ya existía en la plataforma, por lo que se conserva y no forma parte del trabajo del proyecto.
+
+\subsection{Objetivos}
+
+\begin{itemize}
+    \item \textbf{Objetivo General}
+    \begin{itemize}
+        \item Refactorizar los módulos de Inicio, Actividades Culturales, Emprendimientos, Banco de Profesionales y Biblioteca que se encuentran en producción en el sistema de Komuness CR, para la estabilidad, la usabilidad y la accesibilidad de la plataforma, mediante la corrección de los fallos heredados, la reorganización de la interfaz y la incorporación de las funcionalidades pendientes de cada módulo.
+    \end{itemize}
+    \item \textbf{Objetivos Específicos}
+    \begin{enumerate}
+        \item \textit{(MVP 1)} Integrar un diseño adaptable a computadoras, tabletas y celulares en el módulo de Inicio, para la visualización clara de la información, mediante el rediseño de la pantalla principal, la sección ``Quiénes somos'', los ajustes para celular y tableta, y un carrusel dinámico.
+        \item \textit{(MVP 1 y 2)} Incorporar herramientas de búsqueda en los módulos de Inicio y Actividades Culturales, para la localización ágil de la información, mediante un buscador global, filtros por fecha, categoría, comunidad y ubicación, y un botón para borrar los filtros aplicados.
+        \item \textit{(MVP 1 y 2)} Implementar la gestión y visualización de actividades culturales, para la difusión oportuna de los eventos comunitarios, mediante un calendario dinámico unificado con la pantalla de eventos, mapas con geolocalización, notificaciones de nuevas actividades y la creación automática de publicaciones.
+        \item \textit{(MVP 2)} Integrar la gestión de emprendimientos y perfiles profesionales, para la promoción de los servicios locales, mediante el modelo de datos, la ficha individual, la carga de imágenes, la información de medios de contacto y la edición de perfiles por parte del usuario.
+        \item \textit{(MVP 2 y 3)} Ampliar el banco de profesionales con funcionalidades que faciliten el registro, la actualización y la consulta de perfiles.
+        \item \textit{(MVP 3)} Ampliar la biblioteca digital para el acceso y la consulta de sus recursos, mediante la clasificación y la estructuración de los materiales.
+    \end{enumerate}
+\end{itemize}
+Cada objetivo específico se mide por la cantidad de elementos de su lista que están completados y probados. El avance de cada uno al cierre del Sprint 3 se resume en la sección ``Estado de avance respecto al anteproyecto'' del capítulo de conclusiones.
+
+\subsection{Trazabilidad de los objetivos}
+La Tabla \ref{tab:trazabilidad} relaciona cada objetivo específico con el MVP en que se entrega, el módulo que interviene y los entregables que permiten medir su cumplimiento.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|p{1.7cm}|p{1.6cm}|p{3cm}|p{8.2cm}|}
+\hline
+\textbf{Objetivo} & \textbf{MVP} & \textbf{Módulo} & \textbf{Entregables} \\
+\hline
+Específico 1 & MVP 1 & Inicio & Pantalla principal rediseñada, sección ``Quiénes somos'', ajustes para celular y tableta, carrusel dinámico. \\
+\hline
+Específico 2 & MVP 1 y 2 & Inicio y Actividades Culturales & Buscador global, filtros por fecha, categoría, comunidad y ubicación, botón para borrar filtros. \\
+\hline
+Específico 3 & MVP 1 y 2 & Actividades Culturales & Calendario dinámico unificado con eventos, mapas y geolocalización, notificaciones, creación automática de publicaciones, relación entre comunidad, actividad, emprendimiento y profesional. \\
+\hline
+Específico 4 & MVP 2 & Emprendimientos y Banco de Profesionales & Modelo de datos, ficha individual con medios de contacto, carga de imágenes, edición de perfil por el usuario. \\
+\hline
+Específico 5 & MVP 2 y 3 & Banco de Profesionales & Perfiles profesionales y su edición (MVP 2); búsqueda avanzada, estado activo/inactivo y verificación de perfiles (MVP 3). \\
+\hline
+Específico 6 & MVP 3 & Biblioteca & Clasificación de los materiales por categoría (obligatoria al subir), nombre personalizado, filtro por categoría y publicación automática en el feed; verificación del contenido de los archivos subidos. \\
+\hline
+\end{tabular}
+\caption{\textbf{Trazabilidad entre objetivos, MVP, módulos y entregables}}
+\label{tab:trazabilidad}
+\end{table}
+
+\subsection{Personal involucrado}
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|p{4.2cm}|p{3.4cm}|p{4.2cm}|p{3cm}|}
+\hline
+\textbf{Nombre} & \textbf{Puesto} & \textbf{Contacto} & \textbf{Expectativas} \\
+\hline
+Paola Monge & Directora de Komuness & komunesscr@gmail.com & Supervisar y validar el contenido y las funcionalidades entregadas. \\
+\hline
+Tatiana Chaverry & Coordinadora de Komuness & komunesscr@gmail.com & Coordinar la comunicación entre la comunidad y el equipo desarrollador. \\
+\hline
+Jordano Escalante López & Desarrollador & jordano.shordi@estudiantec.cr & Desarrollar y entregar los módulos según el cronograma. \\
+\hline
+Brasly Villarebia Morales & Desarrollador & Bvillarebia@estudiantec.cr & Ídem. \\
+\hline
+Jose Andrés Arrieta Alfaro & Desarrollador & j.arrieta.3@estudiantec.cr & Ídem. \\
+\hline
+Jose Andres Solano & Desarrollador & jos.solano@estudiantec.cr & Ídem. \\
+\hline
+Sebastián Rodríguez Sánchez & Desarrollador & seb\_rodriguez@estudiantec.cr & Ídem. \\
+\hline
+\end{tabular}
+\caption{\textbf{Personal involucrado en el proyecto}}
+\end{table}
+
+\subsection{Duración y cronograma}
+Cada Sprint dura aproximadamente un mes e incluye una reunión final con el cliente para evaluar el avance y ajustar el rumbo.
+\begin{itemize}
+    \item \textbf{Sprint 1:} del 01/09/26 al 28/09/26.
+    \item \textbf{Sprint 2:} del 29/09/26 al 26/10/26.
+    \item \textbf{Sprint 3:} del 27/10/26 al 23/11/26 \textit{(este manual)}.
+\end{itemize}
+
+\subsection{Contacto}
+Para consultas y soporte sobre el sistema, contacte a: komunesscr@gmail.com

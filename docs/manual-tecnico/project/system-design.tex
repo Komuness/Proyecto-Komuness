@@ -1,0 +1,207 @@
+\chapter{Arquitectura del sistema}
+\section{Diseño general del sistema}
+
+Komuness sigue una arquitectura cliente-servidor de tipo \textbf{N-capas}, con separación explícita entre presentación, lógica de negocio y persistencia. El backend se implementa en \textbf{Node.js} con el framework \textbf{Express} \cite{expressjs2024} y \textbf{TypeScript}, organizado en las capas \texttt{routes} (define endpoints y aplica middlewares de autenticación/autorización), \texttt{controllers} (lógica de negocio y validación de cada operación), \texttt{models} (esquemas de \textbf{Mongoose} \cite{mongoosejs2024} sobre \textbf{MongoDB}), \texttt{interfaces} (tipos de TypeScript compartidos), \texttt{middlewares} (autenticación JWT, verificación de roles, límites de publicación y carga de archivos con Multer) y \texttt{utils} (conexión a base de datos, envío de correo, JWT, almacenamiento en disco y GridFS, y verificación de archivos). El frontend se implementa como una \textit{Single Page Application} en \textbf{React} \cite{reactjs2024}, con enrutamiento de cliente (\texttt{react-router-dom}), manejo de estado de sesión mediante \textit{React Context} (\texttt{AuthContext}, \texttt{ThemeContext}) y consumo de la API a través de \texttt{fetch} contra la URL configurada en \texttt{REACT\_APP\_BACKEND\_URL}.
+
+La autenticación se basa en tokens JWT \cite{jwt2015} enviados en el encabezado \texttt{Authorization: Bearer}. El middleware \texttt{authMiddleware} valida el token, recupera el usuario real desde la base de datos (nunca confía únicamente en el contenido del token) y aplica automáticamente el \textit{downgrade} de un usuario premium cuya membresía haya vencido. Sobre esa base, el middleware \texttt{verificarRoles} restringe el acceso a operaciones administrativas según el campo \texttt{tipoUsuario} (0 = super-administrador, 1 = administrador, 2 = básico, 3 = premium). El almacenamiento de archivos combina dos estrategias: el \textbf{disco del servidor} (directorio \texttt{UPLOAD\_DIR}, por defecto \texttt{/srv/uploads}) para la biblioteca documental, los archivos de perfil y las imágenes de ``Acerca de'' y la temática, y \textbf{GridFS} de MongoDB para las imágenes de publicaciones y publicidad, servidas por \texttt{/api/files/:id}. El módulo \texttt{utils/digitalOceanSpace.ts} conserva ese nombre por razones históricas, pero hoy solo escribe en disco; las dependencias \texttt{aws-sdk} y \texttt{multer-s3} siguen declaradas en \texttt{package.json} aunque el código ya no las usa. La biblioteca no se publica como directorio estático: sus archivos se descargan por \texttt{GET /api/biblioteca/files/:id}, de modo que los archivos pendientes o rechazados no quedan expuestos. El envío de correos (confirmación de cuenta, recuperación de contraseña, boletines) se realiza con \textbf{Nodemailer}, y los pagos de membresías premium se procesan con el SDK de \textbf{PayPal} \cite{paypaldev2024}, incorporando una capa de reintentos con \textit{backoff} exponencial ante errores transitorios del proveedor.
+
+\subsection{Diseño de la persistencia}
+La persistencia se modela con \textbf{Mongoose} sobre \textbf{MongoDB}, por lo que el modelo de datos es orientado a documentos: la mayoría de las relaciones se expresan como referencias (\texttt{ObjectId} con \texttt{ref}) resueltas mediante \texttt{populate}, y solo los datos que siempre se leen junto a su documento padre (comentarios de una publicación, formación académica de un perfil, miembros del equipo en la sección ``Acerca de'') se embeben como subdocumentos. La Figura \ref{ERNucleo} muestra el modelo conceptual de las entidades centrales del dominio (usuarios, contenido y actividades), y la Figura \ref{ERSoporte} muestra las entidades de soporte administrativo y comercial.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[
+    box/.style={draw, rectangle, rounded corners=2pt, minimum width=2.6cm, minimum height=0.9cm, align=center, font=\small, inner sep=4pt},
+    every path/.style={-{Latex[length=2mm]}},
+    lbl/.style={font=\scriptsize, fill=white, inner sep=1pt}
+  ]
+    \node[box] (usuario) at (0,8) {Usuario};
+    \node[box] (perfil) at (0,4) {Perfil};
+    \node[box] (catpref) at (5.5,8) {CategoriaPreferencia};
+    \node[box] (categoria) at (5.5,12.5) {Categoria};
+    \node[box] (publicacion) at (12,8) {Publicacion \\ \scriptsize(+Comentario embebido)};
+    \node[box] (actividad) at (12,4) {Actividad};
+    \node[box] (notificacion) at (5.5,4) {Notificacion \\ \scriptsize(+eliminadasPor)};
+    \node[box] (cuenta) at (17.5,8) {CuentaRegresiva};
+
+    \draw[-] (usuario) -- (perfil) node[lbl, midway]{1:1};
+    \draw[-] (usuario) -- (catpref) node[lbl, midway]{1:N};
+    \draw[-] (categoria) -- (catpref) node[lbl, midway]{1:N};
+    \draw[-] (categoria) -- (publicacion) node[lbl, midway]{1:N};
+    \draw[-] (usuario) to[bend left=15] node[lbl, midway]{1:N (autor)} (publicacion);
+    \draw[-] (usuario) to[bend right=15] node[lbl, midway]{1:N} (actividad);
+    \draw[-] (usuario) -- (notificacion) node[lbl, midway]{N:M (recipientes)};
+    \draw[-, dashed] (publicacion) -- (notificacion) node[lbl, midway]{1:N (opcional)};
+    \draw[-, dashed] (actividad) to[bend left=10] node[lbl, midway]{genera} (notificacion);
+    \draw[-, dashed] (publicacion) to[loop above] node[lbl, above]{origen (publicación automática)} (publicacion);
+    \draw[-, dashed] (publicacion) -- (cuenta) node[lbl, midway]{0..1 (evento)};
+  \end{tikzpicture}}
+  \caption{\textbf{Modelo conceptual de entidades centrales: usuarios, contenido, actividades y cuentas regresivas}}
+  \label{ERNucleo}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[
+    box/.style={draw, rectangle, rounded corners=2pt, minimum width=2.6cm, minimum height=0.9cm, align=center, font=\small, inner sep=4pt},
+    every path/.style={-{Latex[length=2mm]}},
+    lbl/.style={font=\scriptsize, fill=white, inner sep=1pt}
+  ]
+    \node[box] (usuario) at (0,11) {Usuario};
+    \node[box] (publicacion) at (0,1) {Publicacion};
+    \node[box] (payment) at (6,13) {Payment};
+    \node[box] (boletin) at (6,8.5) {Boletin};
+    \node[box] (publicidad) at (6,4) {Publicidad};
+    \node[box] (archivo) at (12,11) {Archivo};
+    \node[box] (folder) at (12,6.5) {Folder};
+    \node[box] (categoriaarch) at (16.5,11) {Categoria};
+    \node[box] (catalogo) at (12,1) {\begin{tabular}{c} Catálogo institucional \\ \scriptsize Tutorial, ProyectoDestacado, \\ \scriptsize Etiqueta, Configuracion, \\ \scriptsize SeccionAcerca, PaqueteSuscripcion \end{tabular}};
+
+    \draw[-] (usuario) -- (payment) node[lbl, midway]{1:N};
+    \draw[-] (usuario) -- (boletin) node[lbl, midway]{1:N (creadoPor)};
+    \draw[-, dashed] (usuario) to[bend right=25] node[lbl, midway]{N:M (destinatarios)} (boletin);
+    \draw[-] (usuario) -- (publicidad) node[lbl, midway]{1:N (autor)};
+    \draw[-, dashed] (publicacion) -- (publicidad) node[lbl, midway]{1:N (opcional)};
+    \draw[-] (usuario) -- (archivo) node[lbl, midway]{1:N (autor)};
+    \draw[-] (folder) -- (archivo) node[lbl, midway]{1:N};
+    \draw[-] (folder) to[loop left] node[lbl, left]{1:N (padre)} (folder);
+    \draw[-] (categoriaarch) -- (archivo) node[lbl, midway]{1:N};
+  \end{tikzpicture}}
+  \caption{\textbf{Modelo conceptual de soporte administrativo y comercial}}
+  \label{ERSoporte}
+\end{figure}
+
+Las entidades del catálogo institucional (\texttt{Tutorial}, \texttt{ProyectoDestacado}, \texttt{Etiqueta}, \texttt{Configuracion}, \texttt{SeccionAcerca} y \texttt{PaqueteSuscripcion}) son mayormente independientes entre sí: se consultan como catálogos administrados desde el panel de administración y no participan de relaciones de cardinalidad múltiple con el resto del dominio, salvo referencias puntuales de auditoría (por ejemplo, \texttt{Configuracion.actualizadoPor} apunta a \texttt{Usuario}).
+
+\subsection{Diagrama de clases}
+La Figura \ref{DiagramaClases} presenta el diagrama de clases simplificado del núcleo del dominio, con los atributos más relevantes de cada esquema de Mongoose. Se destaca que \texttt{Usuario} es el eje central del modelo: de él dependen el \texttt{Perfil} (relación uno a uno), las \texttt{Publicacion} que autora (uno a muchos) y las \texttt{Actividad} que crea (uno a muchos). En el Sprint 2, \texttt{Publicacion} incorporó una referencia opcional a sí misma (\texttt{publicacionOrigenId}), que enlaza la publicación generada automáticamente con el evento o emprendimiento del que proviene, y \texttt{Perfil} incorpora \texttt{provincia}, \texttt{canton} y \texttt{perfilPublico}, usados por los filtros y la elegibilidad del banco de profesionales. En el Sprint 3 el mismo campo \texttt{publicacionOrigenId} pasa a apuntar también al tutorial, proyecto destacado o archivo de biblioteca de origen (que son otras colecciones, por lo que la referencia \texttt{ref: 'Publicacion'} es solo informativa), y \texttt{categoria} deja de ser obligatoria cuando existe \texttt{publicacionOrigenId}. Además: \texttt{Usuario} incorpora \texttt{puedeCrearCuentaRegresiva}; \texttt{Notificacion} incorpora \texttt{eliminadasPor} (usuarios que la ocultaron para sí mismos); \texttt{Archivo} incorpora \texttt{categoria}; \texttt{Publicidad} incorpora \texttt{titulo}, \texttt{fechaInicioEvento} y \texttt{fechaFinEvento}; y se crea la entidad \texttt{CuentaRegresiva} (\texttt{titulo}, \texttt{fechaObjetivo}, \texttt{publicacion} única y opcional, \texttt{enlace}, \texttt{creadoPor}, \texttt{activo}). \texttt{Categoria} clasifica tanto las publicaciones como las preferencias de los usuarios.
+
+\begin{figure}[H]
+  \centering
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}[
+    every path/.style={-{Latex[length=2mm]}},
+    lbl/.style={font=\scriptsize, fill=white, inner sep=1pt},
+    classbox/.style={
+      rectangle split, rectangle split parts=2, draw, rounded corners=1pt,
+      rectangle split part align={left, left},
+      align=left, font=\scriptsize, text width=3.6cm
+    }
+  ]
+    \node[classbox] (usuario) at (0,7) {
+      \textbf{Usuario}
+      \nodepart{two}
+      nombre, apellido\\ email, password\\ tipoUsuario: 0..3\\ fechaVencimientoPremium\\ emailConfirmado\\ puedeCrearCuentaRegresiva
+    };
+    \node[classbox] (perfil) at (0,1) {
+      \textbf{Perfil}
+      \nodepart{two}
+      usuarioId\\ ocupacionPrincipal\\ provincia, canton\\ formacionAcademica[]\\ habilidades[]\\ enBancoProfesionales\\ perfilPublico
+    };
+    \node[classbox] (categoria) at (7,10) {
+      \textbf{Categoria}
+      \nodepart{two}
+      nombre\\ estado
+    };
+    \node[classbox] (publicacion) at (7,7) {
+      \textbf{Publicacion}
+      \nodepart{two}
+      titulo, contenido\\ autor, categoria\\ tag: publicacion\textbar evento\textbar emprendimiento\\ fecha, fechaEvento\\ precio, comunidad\\ ubicacion (lat, lng, direccion)\\ adjunto[], comentarios[]\\ publicacionOrigenId
+    };
+    \node[classbox] (cuenta) at (14,7) {
+      \textbf{CuentaRegresiva}
+      \nodepart{two}
+      titulo, enlace\\ fechaObjetivo\\ publicacion (0..1, única)\\ creadoPor, activo
+    };
+    \node[classbox] (actividad) at (7,1) {
+      \textbf{Actividad}
+      \nodepart{two}
+      nombre, descripcion\\ fecha, hora\\ ubicacionEscrita\\ ubicacion: GeoJSON Point\\ usuario
+    };
+
+    \draw (usuario) -- (perfil) node[lbl, midway]{1..1};
+    \draw (usuario) -- (publicacion) node[lbl, midway, sloped]{1..*} node[lbl, pos=0.85]{autor};
+    \draw (usuario) -- (actividad) node[lbl, midway, sloped]{1..*};
+    \draw (categoria) -- (publicacion) node[lbl, midway]{1..*};
+    \draw[dashed] (cuenta) -- (publicacion) node[lbl, midway]{0..1};
+    \draw[dashed] (publicacion) to[loop right] node[lbl, right]{origen 0..1} (publicacion);
+  \end{tikzpicture}}
+  \caption{\textbf{Diagrama de clases simplificado del núcleo del dominio}}
+  \label{DiagramaClases}
+\end{figure}
+
+\section{Diseño del frontend}
+El frontend es una \textit{Single Page Application} en React (\texttt{FrontEnd/src}). El componente \texttt{Rutas} declara el enrutamiento de cliente y envuelve todas las pantallas con la barra de navegación (\texttt{Navbar}), el modal de encuesta inicial y el pie de página. La Tabla \ref{tab:rutas} resume las rutas principales.
+
+\begin{table}[H]
+\centering
+\small
+\begin{tabular}{|p{4.6cm}|p{10.2cm}|}
+\hline
+\textbf{Ruta} & \textbf{Pantalla / comportamiento} \\
+\hline
+\texttt{/} & Pantalla de inicio (\texttt{PantallaInicio}): carrusel de la portada (\texttt{CarruselPortada}), cuentas regresivas (\texttt{CuentasRegresivas}), publicidad (\texttt{PublicidadBanner}), contenido principal (\texttt{InicioPrincipal}) y sección ``Quiénes somos'' (\texttt{QuienesSomosSection}, ancla \texttt{\#quienes-somos}), que los administradores editan desde la misma página. \\
+\hline
+\texttt{/eventos}, \texttt{/publicaciones}, \texttt{/emprendimientos} & \texttt{LandingPage} con la etiqueta correspondiente; listado, filtros y, en eventos, el calendario. \\
+\hline
+\texttt{/eventos/:id}, \texttt{/publicaciones/:id}, \texttt{/emprendimientos/:id} & Detalle (\texttt{PublicacionDetalle}); la ruta conserva la sección de origen. \\
+\hline
+\texttt{/calendario}, \texttt{/acerca-de}, \texttt{/admin/acerca-de} & Redirigen a \texttt{/eventos}, a \texttt{/\#quienes-somos} y a \texttt{/}. \\
+\hline
+\texttt{/profesionales}, \texttt{/perfil/:id}, \texttt{/mi-perfil/editar} & Banco de profesionales, perfil público y edición del perfil. \\
+\hline
+\texttt{/biblioteca/:id}, \texttt{/notificaciones}, \texttt{/checkout-premium} & Biblioteca por carpeta, notificaciones en vista móvil y pago de membresía. \\
+\hline
+\texttt{/admin/categorias}, \texttt{/admin/boletines} & Pantallas de administración. \\
+\hline
+\texttt{/cuentas-regresivas} & Gestión de cuentas regresivas (\texttt{AdminCuentasRegresivas}); visible para administradores y usuarios con el permiso. \\
+\hline
+\end{tabular}
+\caption{\textbf{Rutas principales del frontend}}
+\label{tab:rutas}
+\end{table}
+
+Las URL del backend se resuelven en \texttt{src/utils/api.js}: en desarrollo se usa \texttt{REACT\_APP\_BACKEND\_URL} (y no un puerto fijo, para evitar el conflicto del puerto 5000 con AirPlay en macOS). El módulo \texttt{src/utils/secciones.js} centraliza la correspondencia etiqueta--sección (\texttt{evento} $\rightarrow$ \texttt{/eventos}, \texttt{emprendimiento} $\rightarrow$ \texttt{/emprendimientos}, \texttt{publicacion} $\rightarrow$ \texttt{/publicaciones}) mediante \texttt{getRutaDetalle}, que usan las tarjetas, los carruseles, el modal de evento y el buscador. Los filtros de las listas (categoría, fechas, precio, comunidad y búsqueda) viven en los parámetros de la URL, de modo que el botón ``Borrar filtros'' solo debe navegar a la ruta sin parámetros y los controles se resincronizan.
+
+\section{Diseño de los módulos del Sprint 2}
+
+\subsection{Publicación automática al crear un evento o emprendimiento}
+La creación con adjuntos (\texttt{POST /api/publicaciones/v2}, función \texttt{createPublicacionA}) guarda primero el documento solicitado. Si su etiqueta es \texttt{evento} o \texttt{emprendimiento}, genera además una segunda publicación (etiqueta \texttt{publicacion}) con el mismo título, contenido, categoría, comunidad, fecha y estado de publicación. Las decisiones de diseño relevantes son:
+\begin{itemize}
+    \item \textbf{Copia independiente de adjuntos:} cada archivo se vuelve a guardar en GridFS con una clave nueva, porque la eliminación de una publicación borra sus adjuntos y, de compartirlos, rompería las imágenes de la otra.
+    \item \textbf{Sincronización (Sprint 3):} en el Sprint 2 la relación era solo informativa. Desde el Sprint 3 el original y su copia se editan, aprueban y eliminan juntos (ver la sección de publicaciones enlazadas más adelante); los adjuntos siguen siendo independientes.
+    \item \textbf{Tolerancia a fallos:} el paso se ejecuta dentro de un \texttt{try/catch}; si falla, solo se registra una advertencia y el evento o emprendimiento queda creado.
+\end{itemize}
+
+\subsection{Ubicación en mapa}
+La validación de la ubicación se extrajo a \texttt{backend/src/utils/ubicacion.ts} (\texttt{validarUbicacion}) y la comparten la creación, la edición administrativa y la solicitud de edición. Acepta un objeto o un JSON en texto (por \textit{FormData}), valida rangos de latitud y longitud y la dirección, y genera el enlace \texttt{mapLink} a OpenStreetMap. En el cliente, \texttt{MapaUbicacion} (Leaflet) permite elegir el punto y obtener la dirección con el servicio Nominatim; se muestra tanto para eventos como para emprendimientos. Nótese que las publicaciones guardan la ubicación como \texttt{latitude}/\texttt{longitude}, mientras que \texttt{Actividad} usa un punto GeoJSON con índice \texttt{2dsphere}.
+
+\subsection{Elegibilidad del banco de profesionales}
+La regla de qué campos debe tener un perfil para unirse al banco se centralizó en \texttt{backend/src/utils/perfilElegibilidad.ts} (\texttt{obtenerFaltantesBanco}). Se usa en tres lugares: el endpoint de consulta de elegibilidad, el alternado de membresía en el banco y el guardado del perfil cuando se solicita \texttt{enBancoProfesionales}. De esta forma el servidor no depende de la validación del frontend. En los dos últimos casos, un perfil incompleto produce una respuesta con \texttt{success: false} y la lista de campos faltantes en \texttt{data}.
+
+\subsection{Búsqueda de profesionales}
+\texttt{obtenerProfesionales} construye los patrones de búsqueda con \texttt{patronInsensibleAcentos}, que reemplaza cada letra acentuable por una clase de caracteres (por ejemplo, \texttt{[eéèëêEÉÈËÊ]}) y escapa el resto de los caracteres, evitando expresiones regulares inválidas. La paginación (\texttt{page}, \texttt{limit}) la consume el frontend con el botón ``Cargar más'', que acumula las páginas recibidas.
+
+\section{Diseño de los módulos del Sprint 3}
+
+\subsection{Servicio de publicación automática y publicaciones enlazadas}
+La creación de la publicación automática se centralizó en \texttt{services/publicacionAutomatica.service.ts} (\texttt{crearPublicacionAutomatica}), que recibe el título, la descripción, la URL, el autor, el identificador del origen (\texttt{publicacionOrigenId}) y el tipo de origen (\texttt{evento}, \texttt{emprendimiento}, \texttt{tutorial}, \texttt{proyecto-destacado} o \texttt{biblioteca}). Genera una publicación con etiqueta \texttt{publicacion}, un enlace externo cuyo texto depende del origen (``Ver tutorial'', ``Ver proyecto'', ``Ver recurso''), el contenido breve recortado a 180 caracteres y, cuando ya es visible, una notificación general mediante \texttt{notificarPublicacionAutomatica}. La categoría es opcional solo para estas publicaciones: el esquema de \texttt{Publicacion} la exige únicamente si no hay \texttt{publicacionOrigenId}, y los controladores eliminan ese campo de lo que envía el cliente para que nadie pueda saltarse la categoría obligatoria. Eventos y emprendimientos (que sí tienen categoría) crean su copia dentro de \texttt{createPublicacionA}; tutoriales, proyectos destacados y archivos de biblioteca usan el servicio.
+
+Para eventos y emprendimientos, \texttt{utils/publicacionEnlazada.ts} implementa la edición y eliminación enlazadas (BKD67). \texttt{CAMPOS\_ENLAZADOS} lista los campos compartidos; después de guardar un cambio, \texttt{sincronizarPublicacionesEnlazadas} copia al otro documento los campos modificados y recalcula su fecha de expiración, y \texttt{findPublicacionesEnlazadas} permite que \texttt{deletePublicacion} elimine ambos documentos y sus adjuntos. Como \texttt{publicado} es un campo compartido, aprobar uno aprueba el otro; la notificación general se envía una sola vez (BKD68) y, para evitar avisos duplicados, no se envía la notificación a los seguidores de la categoría cuando el origen es un evento o emprendimiento. La tarea de expiración (\texttt{purgeExpiredPublicaciones}) elimina también las copias de los eventos vencidos. Las publicaciones automáticas no cuentan contra el límite de publicaciones del usuario ni aparecen como solicitudes separadas en la lista de pendientes.
+
+\subsection{Biblioteca: categorías y publicación automática}
+\texttt{Archivo} incorpora el campo \texttt{categoria} (referencia a \texttt{Categoria}, obligatoria al subir pero opcional en el esquema para no invalidar archivos antiguos). \texttt{uploadFiles} valida la categoría, acepta nombres personalizados (\texttt{resolveFileName}, que conserva la extensión original) y guarda cada binario en disco con un nombre aleatorio, independiente del nombre visible. La función \texttt{publicarArchivoAutomatico} se invoca cuando un archivo queda aprobado, ya sea al subirlo un administrador o en \texttt{approveFile}; comprueba que no exista una publicación con ese origen y nunca lanza una excepción. \texttt{deleteFileById} elimina la publicación asociada. Los endpoints de listado y búsqueda reciben el parámetro \texttt{categoria} y la interfaz (\texttt{biblioteca.js}) ofrece el selector obligatorio al subir y un filtro de búsqueda.
+
+\subsection{Cuentas regresivas}
+Las cuentas regresivas de la página principal se componen de la entidad \texttt{CuentaRegresiva}, el servicio \texttt{services/cuentaRegresiva.service.ts}, las utilidades \texttt{utils/cuentaRegresiva.ts} y los controladores y rutas homónimos. Todas las fechas se interpretan en hora de Costa Rica (UTC$-6$, sin horario de verano): \texttt{construirFechaObjetivo} convierte la fecha y la hora de un evento en el instante real y rechaza fechas que el motor ``corregiría'' (por ejemplo, 30 de febrero). \texttt{obtenerActivas} devuelve como máximo \texttt{MAX\_CUENTAS\_ACTIVAS} $=4$ contadores. Un contador puede ser libre o seguir a un evento mediante una referencia única y opcional a la publicación; en ese caso \texttt{sincronizarCuentaRegresivaDeEvento} actualiza título y fecha cuando el evento cambia, lo elimina si el evento deja de serlo o pierde su fecha, y se invoca también al aprobar o editar la copia enlazada. La regla de permiso (\texttt{puedeGestionarCuentasRegresivas}) existe de forma idéntica en el backend y en el frontend (\texttt{utils/permisos.js}), pero solo la del backend es la que protege la API.
+
+\subsection{Notificaciones por usuario}
+En lugar de borrar el documento, \texttt{deleteNotificacion} agrega al usuario al arreglo \texttt{eliminadasPor} (\texttt{\$addToSet}) y \texttt{deleteAllNotificaciones} lo hace para todas las notificaciones visibles para él. Las consultas (\texttt{getNotificaciones}, marcar como vista) comparten \texttt{filtroVisibleParaUsuario}, excluyen las eliminadas por el usuario y no devuelven el campo \texttt{eliminadasPor}. Así una notificación general (\texttt{recipientes} vacío) sigue visible para el resto de la comunidad.
+
+\subsection{Seguridad de las cargas de archivos y de la actualización de usuarios}
+\texttt{utils/fileContent.ts} (\texttt{verifyFileContent}) lee los bytes de cada archivo, sin dependencias externas, para comprobar que su tipo real coincide con su extensión y que no contiene ejecutables, scripts ni contenido activo conocido; cada ruta que recibe archivos declara una política (\texttt{images}, \texttt{pdf} y \texttt{library}). \texttt{utils/uploadSecurity.ts} (\texttt{secureUploads}) se coloca justo después de multer: rechaza con 400 si algún archivo no es válido, reemplaza el MIME declarado por el real y borra del disco todos los archivos si la respuesta termina en error o la conexión se corta. El manejador global de errores traduce \texttt{ImageValidationError} a una respuesta 400 con código \texttt{INVALID\_FILE\_TYPE}. Por otra parte, \texttt{updateUsuario} aplica una lista blanca de campos (\texttt{CAMPOS\_EDITABLES\_USUARIO}) y la jerarquía entre roles, de modo que los cambios sensibles solo se hacen por las rutas dedicadas (\texttt{/membresia}, \texttt{/limite}, \texttt{/premium-vencimiento}, \texttt{/cuenta-regresiva}).
+
+\subsection{Portada, publicidad y envío de correo}
+El frontend reemplazó la pantalla separada ``Acerca de'' por la edición dentro de la página de inicio: \texttt{CarruselPortada} muestra y reordena las imágenes del carrusel (el reordenamiento se envía en \texttt{imagenesProyectos} y el servidor solo lo acepta si es una permutación exacta de las imágenes existentes) y \texttt{PublicidadBanner} presenta el título, la descripción y las fechas de la publicidad. El controlador de publicidad exige ahora que \texttt{PUBLIC\_BASE\_URL} esté definida y falla con un error claro en lugar de usar una dirección fija. \texttt{utils/mail.ts} usa la cuenta de Gmail con contraseña de aplicación cuando \texttt{MAIL\_USER} termina en \texttt{@gmail.com} y, en otro caso, el servidor SMTP definido por \texttt{MAIL\_HOST} y \texttt{MAIL\_PORT}.

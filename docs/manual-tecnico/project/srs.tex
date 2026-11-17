@@ -1,0 +1,288 @@
+\chapter{Especificación de funcionalidad}
+\section{Descripción del producto}
+Komuness es una plataforma web de dos componentes: un backend que expone una API REST (Node.js, Express, TypeScript, MongoDB) y un frontend de una sola página (React) que consume dicha API. La funcionalidad se organiza en los módulos descritos a continuación: Usuarios y Autenticación, Publicaciones (publicaciones, eventos y emprendimientos), Actividades comunitarias, Banco de Profesionales, Biblioteca documental, Notificaciones y Boletines, Membresías y Pagos, Cuentas regresivas, Seguridad de archivos, y Administración de contenido institucional (categorías/etiquetas, tutoriales, proyectos destacados, publicidad, sección ``Acerca de'' y configuración general del sitio).
+
+Las historias de usuario se codifican con el prefijo \texttt{RF-} seguido de un identificador de tres letras del módulo y un número consecutivo (por ejemplo, \texttt{RF-PUB-001}). La pila de historias mostrada corresponde al estado funcional del sistema al cierre del Sprint 3 en la rama \texttt{branch-testing-changes}. Las historias marcadas con \textbf{(S2)} se incorporaron o se modificaron durante el Sprint 2 y las marcadas con \textbf{(S3)} durante el Sprint 3; el resto proviene del Sprint 1 y de la base heredada. Las historias de la Biblioteca cubren la clasificación por categoría, pero \textit{no} cubren aún las etiquetas ni el video de la biblioteca, ni la verificación de perfiles ni el estado activo/inactivo del banco de profesionales (ver el capítulo de conclusiones).
+
+\subsection{Historias de usuario}
+
+%% PILA DE PRODUCTO: USUARIOS Y AUTENTICACIÓN %%
+\begin{longtable}{|l||p{7cm}|p{4.5cm}|}
+
+\multicolumn{3}{c}{Usuarios y Autenticación}\\
+\hline\hline
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline
+\endfirsthead
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline\hline
+\endhead
+
+\textbf{RF-USR-001} & \textbf{Registro de cuenta:} Como visitante, quiero registrarme con nombre, apellido, correo y contraseña, para poder acceder a las funcionalidades reservadas a usuarios autenticados. & El sistema crea el usuario con tipo básico (2), genera un token de confirmación y envía un correo de verificación; el usuario no puede iniciar sesión hasta confirmar su cuenta. \textbf{(S2)} El envío del correo no bloquea la respuesta: si el servidor de correo falla, el registro se completa igualmente y el error queda solo en el registro del servidor. \\
+\hline
+\textbf{RF-USR-002} & \textbf{Confirmación de cuenta:} Como usuario recién registrado, quiero confirmar mi cuenta desde el enlace enviado por correo, para poder iniciar sesión. & Al visitar el enlace de confirmación con un token válido y no expirado, el campo \texttt{emailConfirmado} pasa a verdadero; un token inválido o expirado responde con error. \\
+\hline
+\textbf{RF-USR-003} & \textbf{Reenvío de confirmación:} Como usuario que no recibió el correo, quiero solicitar un nuevo correo de confirmación. & Se genera un nuevo token de confirmación y se reenvía el correo al mismo destinatario. \\
+\hline
+\textbf{RF-USR-004} & \textbf{Inicio de sesión:} Como usuario registrado y confirmado, quiero iniciar sesión con correo y contraseña, para obtener un token de acceso. & Con credenciales válidas y cuenta confirmada se retorna un JWT; si el correo no está confirmado se responde 403 con código \texttt{EMAIL\_NOT\_CONFIRMED}. \\
+\hline
+\textbf{RF-USR-005} & \textbf{Recuperación de contraseña:} Como usuario que olvidó su contraseña, quiero solicitar un código de recuperación por correo y definir una nueva contraseña. & Se envía un código al correo registrado; con el código correcto el usuario puede establecer una nueva contraseña cifrada con bcrypt. \\
+\hline
+\textbf{RF-USR-006} & \textbf{Verificación de sesión:} Como usuario autenticado, quiero que la aplicación valide mi sesión activa al cargar, para mantenerme conectado. & El endpoint de verificación valida el token, aplica downgrade automático si un plan premium venció, y retorna los datos actualizados del usuario. \\
+\hline
+\textbf{RF-USR-007} & \textbf{Gestión de usuarios (superadmin):} Como super-administrador, quiero crear, listar, consultar y eliminar usuarios. & Solo el rol 0 (super-admin) puede ejecutar estas operaciones; cualquier otro rol recibe 403. \\
+\hline
+\textbf{RF-USR-008} & \textbf{Actualización de perfil de cuenta:} Como usuario autenticado, quiero actualizar mis datos de cuenta. & El usuario dueño de la cuenta o un administrador puede modificar sus propios datos; se valida el rol permitido (0,1,2,3). \textbf{(S3)} Solo se aceptan los campos \texttt{nombre}, \texttt{apellido}, \texttt{password} y \texttt{encuestaInicio}; el resto (tipo de usuario, límites, vencimiento premium, correo, tokens, permiso de cuenta regresiva) se ignora aunque lo envíe un administrador y debe cambiarse por sus rutas dedicadas. Un usuario básico o premium solo puede editarse a sí mismo (403 en otro caso), un administrador (1) no puede modificar a otro administrador ni al super-administrador, una contraseña vacía responde 400 y un usuario inexistente 404. \\
+\hline
+\textbf{RF-USR-009} & \textbf{Gestión de límites y membresía (admin):} Como administrador, quiero ajustar el límite de publicaciones y la fecha de vencimiento premium de un usuario, o cambiar su tipo de membresía. & Solo roles 0 y 1 pueden ejecutar estas operaciones; el cambio de tipo de usuario a premium calcula automáticamente la fecha de vencimiento. \\
+\hline
+\end{longtable}
+
+%% PILA DE PRODUCTO: PUBLICACIONES, EVENTOS Y EMPRENDIMIENTOS %%
+\begin{longtable}{|l||p{7cm}|p{4.5cm}|}
+
+\multicolumn{3}{c}{Publicaciones, Eventos y Emprendimientos}\\
+\hline\hline
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline
+\endfirsthead
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline\hline
+\endhead
+
+\textbf{RF-PUB-001} & \textbf{Crear publicación:} Como usuario autenticado, quiero crear una publicación (tipo publicación, evento o emprendimiento) con título, contenido, categoría, imágenes/adjuntos y, si aplica, fecha/hora de evento, precio y ubicación. & La publicación respeta el límite de publicaciones vigente para el tipo de usuario (\texttt{validarLimitePublicaciones}); se calcula automáticamente una fecha de expiración. \textbf{(S3)} Las publicaciones automáticas (con \texttt{publicacionOrigenId}) no cuentan contra el límite, ni en la validación ni en el consumo que informa \texttt{GET /configuracion/mis-limites}. \\
+\hline
+\textbf{RF-PUB-002} & \textbf{Listar y filtrar publicaciones:} Como visitante o usuario, quiero listar publicaciones filtradas por etiqueta (\texttt{publicacion}, \texttt{evento}, \texttt{emprendimiento}), categoría, autor, fecha, comunidad o estado de publicado. & Los endpoints públicos de listado, búsqueda y filtrado responden sin autenticación y respetan los parámetros de consulta enviados. \\
+\hline
+\textbf{RF-PUB-003} & \textbf{Buscar publicaciones:} Como visitante, quiero buscar publicaciones por título o de forma avanzada combinando texto, categoría, fecha y comunidad. & La búsqueda por título/contenido/comunidad es insensible a mayúsculas y admite coincidencia parcial. \\
+\hline
+\textbf{RF-PUB-004} & \textbf{Comentar publicaciones:} Como usuario autenticado, quiero comentar una publicación y responder a comentarios existentes. & Solo usuarios con rol 0,1,2 o 3 pueden comentar; cada comentario/respuesta guarda autor, contenido y fecha. \\
+\hline
+\textbf{RF-PUB-005} & \textbf{Solicitar edición de publicación:} Como autor de una publicación, quiero solicitar cambios a mi publicación ya creada. & La solicitud queda almacenada como \texttt{pendingUpdate} hasta ser aprobada o rechazada por un administrador; se respeta un máximo de ediciones (\texttt{maxEdits}) y se mantiene \texttt{editHistory}. \\
+\hline
+\textbf{RF-PUB-006} & \textbf{Aprobar/rechazar edición:} Como administrador, quiero revisar las solicitudes de edición pendientes y aprobarlas o rechazarlas. & Solo roles 0 y 1 acceden a \texttt{admin/pending-updates}; al aprobar se aplican los cambios solicitados y se registra quién aprobó. \\
+\hline
+\textbf{RF-PUB-007} & \textbf{Administrar publicaciones:} Como administrador, quiero actualizar o eliminar cualquier publicación del sistema. & Solo roles 0 y 1 pueden usar los endpoints de actualización y eliminación administrativa. \\
+\hline
+\textbf{RF-PUB-008} & \textbf{Consultar eventos en calendario:} Como usuario, quiero ver los eventos agrupados por fecha para ubicarlos en un calendario. & El endpoint de calendario retorna los eventos agrupados/filtrados por rango de fechas. \\
+\hline
+\textbf{RF-PUB-009} & \textbf{(S2) Calendario integrado en la cartelera:} Como usuario, quiero ver el calendario de eventos dentro de la misma pantalla de la cartelera de eventos (\texttt{/eventos}), sin una pestaña separada. & El componente \texttt{Calendar} se muestra en la cartelera cuando no hay una búsqueda activa; la ruta \texttt{/calendario} redirige a \texttt{/eventos}; al elegir un evento se abre un modal con su información y un botón para ver la publicación completa; los eventos del mes se consultan con \texttt{GET /publicaciones/eventos/calendario}. \\
+\hline
+\textbf{RF-PUB-010} & \textbf{(S2) Filtrar por comunidad/ubicación:} Como visitante, quiero filtrar publicaciones, eventos y emprendimientos por la comunidad o localidad a la que pertenecen. & El parámetro \texttt{comunidad} es independiente del texto de búsqueda, no distingue mayúsculas y admite coincidencia parcial; funciona en el listado por etiqueta, en la búsqueda avanzada, en los carruseles y en el buscador. \\
+\hline
+\textbf{RF-PUB-011} & \textbf{(S2) Borrar filtros:} Como usuario, quiero un botón que elimine todos los filtros aplicados de una sola vez. & El botón aparece solo si hay algún filtro activo (búsqueda, categoría, fechas, precio o comunidad) y deja la URL sin parámetros; los controles de filtro se resincronizan con la URL. \\
+\hline
+\textbf{RF-PUB-012} & \textbf{(S2)(S3) Creación automática de publicaciones:} Como organizador, quiero que al crear un evento o un emprendimiento se genere también una publicación en el feed general. & La publicación copia título, contenido, contenido breve, categoría, comunidad, fecha y hora del evento, teléfono, enlaces externos y ubicación, guarda una copia independiente de los adjuntos y referencia al original en \texttt{publicacionOrigenId}. \textbf{(S3)} Si nace publicada (la creó un administrador) se notifica a todos los usuarios; si nace pendiente, se aprueba y se notifica cuando se aprueba el original, y no aparece como solicitud aparte en la lista de pendientes. Un fallo en este paso no impide crear el evento o emprendimiento. \\
+\hline
+\textbf{RF-PUB-017} & \textbf{(S3) Edición y eliminación enlazadas (BKD67):} Como organizador, quiero que el evento o emprendimiento y su publicación automática se mantengan iguales al editar, aprobar o eliminar cualquiera de los dos. & Al guardar cambios en uno se copian al otro los campos compartidos: título, contenido, contenido breve, categoría, comunidad, fecha y hora, teléfono, enlaces externos, ubicación y estado de publicado; el precio, la etiqueta y los archivos adjuntos son propios de cada documento. Eliminar uno elimina el otro (y sus adjuntos); si un evento vence, su publicación automática se purga con él, pero si vence solo la copia el evento sigue. \\
+\hline
+\textbf{RF-PUB-018} & \textbf{(S3) Publicación automática de tutoriales y proyectos destacados (BKD70):} Como administrador, quiero que al publicar un tutorial o un proyecto destacado aparezca una publicación en el feed general. & La publicación (etiqueta \texttt{publicacion}) toma como título el nombre, como contenido la descripción y como enlace externo la URL (``Ver tutorial'' o ``Ver proyecto''); no tiene categoría porque el origen no la maneja y se publica de inmediato con una notificación general para todos los usuarios. Un fallo en este paso no impide crear el tutorial o el proyecto. \\
+\hline
+\textbf{RF-PUB-013} & \textbf{(S2) Ubicación en mapa de eventos y emprendimientos:} Como autor, quiero marcar en un mapa la ubicación de mi evento o emprendimiento. & El formulario muestra el selector de mapa para ambas etiquetas; el backend valida latitud ($-90$ a $90$), longitud ($-180$ a $180$) y dirección (obligatoria, máximo 500 caracteres) y responde 400 con un mensaje descriptivo si son inválidas. \\
+\hline
+\textbf{RF-PUB-014} & \textbf{(S2) Gestionar fotos de un emprendimiento:} Como autor o administrador, quiero agregar y eliminar fotos de un emprendimiento en cualquier momento, sin pasar por la aprobación de ediciones. & Solo imágenes, máximo 20 por emprendimiento; el emprendimiento debe conservar al menos una foto; solo el autor o un administrador (rol 0 o 1) pueden modificarlas. \\
+\hline
+\textbf{RF-PUB-015} & \textbf{(S2) Conteo por lugar:} Como usuario, quiero saber cuántas publicaciones, eventos o emprendimientos hay en cada comunidad. & El endpoint de conteo agrupa por comunidad sin distinguir mayúsculas ni espacios sobrantes, considera solo publicaciones vigentes y publicadas, e informa cuántas tienen ubicación en mapa. \\
+\hline
+\textbf{RF-PUB-016} & \textbf{(S2) Navegación por sección:} Como usuario, quiero que al abrir el detalle de un evento, emprendimiento o publicación la URL y el botón de regreso me mantengan en la sección correspondiente. & Las rutas \texttt{/eventos/:id}, \texttt{/emprendimientos/:id} y \texttt{/publicaciones/:id} muestran el mismo detalle; las tarjetas, carruseles, el modal de evento y el buscador generan la ruta según la etiqueta. \\
+\hline
+\end{longtable}
+
+%% PILA DE PRODUCTO: ACTIVIDADES COMUNITARIAS %%
+\begin{longtable}{|l||p{7cm}|p{4.5cm}|}
+
+\multicolumn{3}{c}{Actividades Comunitarias}\\
+\hline\hline
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline
+\endfirsthead
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline\hline
+\endhead
+
+\textbf{RF-ACT-001} & \textbf{Crear actividad:} Como usuario autenticado, quiero registrar una actividad comunitaria con nombre, descripción, fecha, hora, ubicación escrita y coordenadas geográficas. & Se validan como obligatorios nombre, descripción, fecha, hora, ubicación escrita y coordenadas (\texttt{[lng, lat]}); la actividad queda asociada al usuario que la creó. \\
+\hline
+\textbf{RF-ACT-002} & \textbf{Consultar actividades:} Como visitante o usuario, quiero listar todas las actividades registradas. & El listado es público y retorna las actividades con los datos básicos (nombre y apellido) de quien las creó. \\
+\hline
+\textbf{RF-ACT-003} & \textbf{Buscar actividades cercanas:} Como usuario, quiero consultar actividades cercanas a una coordenada dada, con un radio de búsqueda configurable. & Se usa una consulta geoespacial (\texttt{\$near} sobre índice \texttt{2dsphere}) con distancia máxima por defecto de 5000 metros. \\
+\hline
+\textbf{RF-ACT-004} & \textbf{Editar actividad propia:} Como creador de una actividad, quiero poder editarla. & Solo el usuario dueño de la actividad o un administrador (rol 0 o 1) puede editarla; cualquier otro usuario recibe 403. \\
+\hline
+\textbf{RF-ACT-005} & \textbf{Eliminar actividad propia:} Como creador de una actividad, quiero poder eliminarla. & Solo el usuario dueño o un administrador puede eliminarla. \\
+\hline
+\textbf{RF-ACT-006} & \textbf{Notificación de nueva actividad:} Como miembro de la comunidad, quiero ser notificado cuando se publica una nueva actividad cercana o relevante. & Al crear exitosamente una actividad se dispara automáticamente una notificación mediante el servicio de notificaciones; un fallo en la notificación no impide la creación de la actividad. \\
+\hline
+\end{longtable}
+
+%% PILA DE PRODUCTO: BANCO DE PROFESIONALES Y PERFIL %%
+\begin{longtable}{|l||p{7cm}|p{4.5cm}|}
+
+\multicolumn{3}{c}{Perfil de Usuario y Banco de Profesionales}\\
+\hline\hline
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline
+\endfirsthead
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline\hline
+\endhead
+
+\textbf{RF-PRO-001} & \textbf{Crear/editar perfil:} Como usuario, quiero completar mi perfil con datos personales, formación académica, experiencia laboral, habilidades, proyectos y redes sociales. & El perfil se crea o actualiza sobre el mismo documento (\texttt{usuarioId} único); admite foto de perfil y CV como archivos adjuntos. \\
+\hline
+\textbf{RF-PRO-002} & \textbf{Unirse al banco de profesionales:} Como usuario elegible, quiero activar mi visibilidad en el banco de profesionales. & Se valida la elegibilidad (nombre, apellidos, teléfono, cantón, provincia, foto, ocupación principal y formación académica) antes de permitir el alta; el estado se alterna con el endpoint \texttt{toggle}. \textbf{(S2)} La validación se repite en el servidor, tanto al alternar como al guardar el perfil con \texttt{enBancoProfesionales} activo; si faltan campos se responde con la lista de faltantes y la interfaz los muestra. Los administradores quedan exentos. Al unirse, el perfil se marca como público. \\
+\hline
+\textbf{RF-PRO-003} & \textbf{Consultar profesionales:} Como visitante, quiero buscar profesionales por nombre o especialidad, paginado. & El listado público admite los parámetros \texttt{search}, \texttt{provincia}, \texttt{canton}, \texttt{page} y \texttt{limit}. \\
+\hline
+\textbf{RF-PRO-004} & \textbf{Retirar profesional del banco (admin):} Como administrador, quiero poder retirar a un profesional del banco cuando incumple políticas. & Solo roles 0 y 1 pueden ejecutar esta acción sobre el perfil indicado. \\
+\hline
+\textbf{RF-PRO-005} & \textbf{Ver perfil público:} Como visitante, quiero ver el perfil público de un profesional. & El endpoint es público y respeta la bandera \texttt{perfilPublico} del perfil consultado. \\
+\hline
+\textbf{RF-PRO-006} & \textbf{(S2) Filtrar profesionales por ubicación:} Como visitante, quiero filtrar el banco por provincia y por cantón/zona. & La provincia se elige de un listado fijo de las 7 provincias y se compara de forma exacta; el cantón es texto libre con coincidencia parcial. Ambos ignoran mayúsculas y acentos. El modelo \texttt{Perfil} no tiene un campo ``zona'' separado: la zona se trata como cantón. \\
+\hline
+\textbf{RF-PRO-007} & \textbf{(S2) Paginación del banco:} Como visitante, quiero cargar los profesionales por páginas. & La interfaz solicita 12 perfiles por página y muestra un botón ``Cargar más'' mientras haya más páginas; al cambiar la búsqueda o un filtro se vuelve a la primera página. \\
+\hline
+\textbf{RF-PRO-008} & \textbf{(S2) Búsqueda insensible a acentos:} Como visitante, quiero que ``jose'' encuentre ``José''. & El texto de búsqueda se convierte en un patrón que ignora mayúsculas y acentos y escapa los caracteres especiales de expresiones regulares. \\
+\hline
+\end{longtable}
+
+%% PILA DE PRODUCTO: BIBLIOTECA DOCUMENTAL %%
+\begin{longtable}{|l||p{7cm}|p{4.5cm}|}
+
+\multicolumn{3}{c}{Biblioteca Documental}\\
+\hline\hline
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline
+\endfirsthead
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline\hline
+\endhead
+
+\textbf{RF-BIB-001} & \textbf{Organizar en carpetas:} Como administrador, quiero crear, mover y eliminar carpetas para organizar los documentos. & Solo roles 0 y 1 gestionan carpetas; una carpeta puede tener un directorio padre. \\
+\hline
+\textbf{RF-BIB-002} & \textbf{Subir archivos:} Como usuario básico, premium o administrador, quiero subir uno o varios archivos a una carpeta. & Los roles 0,1,2 y 3 pueden subir archivos (RF023); los archivos de usuarios no administradores quedan en estado \texttt{pendiente} hasta ser aprobados. \textbf{(S3)} La categoría activa es obligatoria (400 si falta o no existe); opcionalmente se envía un nombre personalizado por archivo, sin caracteres no permitidos, sin punto inicial, de hasta 150 caracteres y conservando siempre la extensión original; el contenido real de cada archivo se verifica antes de aceptarlo (RF-SEG-001). El usuario debe tener perfil público y estar en el banco de profesionales (404 y 403 en otro caso). \\
+\hline
+\textbf{RF-BIB-003} & \textbf{Aprobar/rechazar archivos:} Como administrador, quiero revisar los archivos pendientes de aprobación y aprobarlos o rechazarlos. & Solo roles 0 y 1 acceden al listado de pendientes y a las acciones de aprobación/rechazo. \\
+\hline
+\textbf{RF-BIB-004} & \textbf{Buscar y listar contenido:} Como usuario, quiero listar y filtrar archivos y carpetas. & El listado por carpeta retorna archivos y subcarpetas; la búsqueda admite filtros. \textbf{(S3)} Tanto el listado como la búsqueda aceptan el parámetro \texttt{categoria} (un identificador inválido responde 400) y devuelven el nombre de la categoría de cada archivo; la interfaz ofrece un selector de categoría. \\
+\hline
+\textbf{RF-BIB-005} & \textbf{Descargar y eliminar archivos:} Como usuario con permiso, quiero descargar un archivo o eliminarlo. & La descarga es pública; la eliminación, edición y movimiento entre carpetas están restringidas a roles 0 y 1. \\
+\hline
+\textbf{RF-BIB-006} & \textbf{(S3) Publicación automática de archivos:} Como miembro de la comunidad, quiero que un recurso nuevo de la biblioteca aparezca en el feed general. & Al quedar un archivo aprobado (subido por un administrador o aprobado después) se crea una publicación con el nombre del archivo como título, la categoría del archivo, un enlace ``Ver recurso'' a su descarga y una notificación general; nunca se duplica y un fallo no impide la subida o la aprobación. Al eliminar el archivo se elimina su publicación. No se generan publicaciones para archivos anteriores a este cambio. \\
+\end{longtable}
+
+%% PILA DE PRODUCTO: NOTIFICACIONES Y BOLETINES %%
+\begin{longtable}{|l||p{7cm}|p{4.5cm}|}
+
+\multicolumn{3}{c}{Notificaciones y Boletines}\\
+\hline\hline
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline
+\endfirsthead
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline\hline
+\endhead
+
+\textbf{RF-NOT-001} & \textbf{Recibir notificaciones:} Como usuario autenticado, quiero ver mis notificaciones, incluyendo un indicador de no leídas. & El listado admite filtro \texttt{onlyUnread} y se ordena por fecha de creación. \\
+\hline
+\textbf{RF-NOT-002} & \textbf{Marcar notificación como vista:} Como usuario, quiero marcar una notificación como vista. & El usuario se agrega al arreglo \texttt{vistoPor} de la notificación. \\
+\hline
+\textbf{RF-NOT-003} & \textbf{Crear notificaciones (admin):} Como administrador, quiero crear notificaciones generales, de formulario o de recordatorio dirigidas a todos, a destinatarios específicos o por rol. & Solo roles 0 y 1 crean/editan/eliminan notificaciones; se admite fecha de caducidad. \\
+\hline
+\textbf{RF-NOT-004} & \textbf{(S2)(S3) Eliminar notificaciones propias (UI69):} Como usuario autenticado, quiero eliminar una notificación o todas las de mi bandeja sin afectar a los demás. & En el Sprint 2 solo los administradores podían eliminar; desde el Sprint 3 cualquier usuario autenticado elimina las notificaciones que le corresponden (dirigidas a él, generales o antiguas con \texttt{destinatario}): el sistema agrega su identificador a \texttt{eliminadasPor} y deja de mostrárselas, pero el documento sigue existiendo para los demás destinatarios. Existe además la eliminación de todas las notificaciones propias. Un identificador con formato inválido, una notificación que no le corresponde o ya eliminada responde 404. Crear y editar siguen siendo exclusivos de los roles 0 y 1. \\
+\hline
+\textbf{RF-BOL-001} & \textbf{Redactar boletín:} Como administrador, quiero crear un boletín con título, contenido y destinatarios (todos, seleccionados o por rol). & Solo roles 0 y 1 pueden crear, editar, listar, enviar, cancelar y eliminar boletines. \\
+\hline
+\textbf{RF-BOL-002} & \textbf{Enviar boletín:} Como administrador, quiero enviar un boletín a sus destinatarios. & El envío actualiza el estado a \texttt{enviado}, registra la cantidad de correos enviados y fallidos, y la fecha de envío. \\
+\hline
+\textbf{RF-BOL-003} & \textbf{Cancelar boletín programado:} Como administrador, quiero cancelar un boletín que aún no se ha enviado. & Solo un boletín en estado \texttt{borrador} o \texttt{programado} puede cancelarse. \\
+\hline
+\end{longtable}
+
+%% PILA DE PRODUCTO: MEMBRESÍAS Y PAGOS %%
+\begin{longtable}{|l||p{7cm}|p{4.5cm}|}
+
+\multicolumn{3}{c}{Membresías y Pagos}\\
+\hline\hline
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline
+\endfirsthead
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline\hline
+\endhead
+
+\textbf{RF-PAG-001} & \textbf{Definir paquetes de suscripción (admin):} Como administrador, quiero definir paquetes de suscripción con monto, moneda, duración y beneficios. & Solo roles 0 y 1 crean, editan y eliminan paquetes; el listado público permite a cualquier usuario consultarlos. \\
+\hline
+\textbf{RF-PAG-002} & \textbf{Pagar membresía premium:} Como usuario autenticado, quiero pagar un paquete premium mediante PayPal. & Al capturar la orden de PayPal, el usuario es actualizado a tipo premium (3) con la fecha de vencimiento correspondiente. \\
+\hline
+\textbf{RF-PAG-003} & \textbf{Reintentar ante fallas del proveedor de pago:} Como sistema, quiero reintentar automáticamente la captura del pago ante errores recuperables del proveedor. & Se aplica \textit{backoff} exponencial y un máximo de reintentos; errores no recuperables (fondos insuficientes, tarjeta inválida) fallan de inmediato sin reintentar, y nunca se exponen detalles técnicos al usuario final. \\
+\hline
+\textbf{RF-PAG-004} & \textbf{Webhook de PayPal:} Como sistema, quiero recibir eventos asíncronos de PayPal para conciliar el estado real de los pagos. & El endpoint de webhook no requiere sesión de usuario de la aplicación y registra el evento recibido. \\
+\hline
+\end{longtable}
+
+%% PILA DE PRODUCTO: ADMINISTRACIÓN DE CONTENIDO INSTITUCIONAL %%
+\begin{longtable}{|l||p{7cm}|p{4.5cm}|}
+
+\multicolumn{3}{c}{Administración de Contenido Institucional}\\
+\hline\hline
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline
+\endfirsthead
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline\hline
+\endhead
+
+\textbf{RF-ADM-001} & \textbf{Gestionar categorías y etiquetas:} Como administrador, quiero crear, editar, activar/desactivar y eliminar categorías y etiquetas usadas para clasificar publicaciones. & Las consultas son públicas; la creación, edición y eliminación están restringidas al rol administrador (1). \\
+\hline
+\textbf{RF-ADM-002} & \textbf{Seguir categorías de interés:} Como usuario, quiero marcar categorías de mi interés para personalizar mi experiencia. & Se crea una relación única usuario-categoría; el usuario puede consultar y eliminar su seguimiento. \\
+\hline
+\textbf{RF-ADM-003} & \textbf{Editar sección ``Acerca de'':} Como administrador, quiero editar la información institucional (historia, misión, visión, equipo, información de donaciones y contactos) mostrada en la página pública. & Solo roles 0 y 1 editan el contenido; la consulta y descarga de imágenes es pública. \textbf{(S3)} La edición se hace desde la página de inicio (la ruta \texttt{/admin/acerca-de} redirige a \texttt{/}); el carrusel de la portada admite reordenar las imágenes existentes: el servidor solo acepta una lista que contenga exactamente las mismas imágenes y responde 409 si el carrusel cambió mientras se editaba. \\
+\hline
+\textbf{RF-ADM-004} & \textbf{Gestionar tutoriales:} Como administrador, quiero publicar tutoriales con nombre, URL y descripción para orientar a los usuarios del sitio. & Consulta pública; creación, edición y eliminación restringidas a roles 0 y 1. \textbf{(S3)} Cada tutorial nuevo genera una publicación automática (RF-PUB-018) y la lista tiene un buscador por nombre que ignora mayúsculas y acentos. \\
+\hline
+\textbf{RF-ADM-005} & \textbf{Gestionar proyectos destacados:} Como administrador, quiero publicar proyectos destacados de la comunidad en la página principal. & Consulta pública; creación, edición y eliminación restringidas a roles 0 y 1. \textbf{(S3)} Cada proyecto nuevo genera una publicación automática (RF-PUB-018) y la lista tiene un buscador por nombre. \\
+\hline
+\textbf{RF-ADM-006} & \textbf{Gestionar publicidad:} Como administrador, quiero publicar banners de publicidad con imagen, descripción y fecha de caducidad, opcionalmente vinculados a una publicación. & Consulta pública; creación, edición y eliminación restringidas a roles 0 y 1; la publicidad puede desactivarse automáticamente al caducar. \textbf{(S3)} El título es obligatorio (hasta 80 caracteres) y se pueden indicar las fechas de inicio y fin del evento anunciado (la de fin exige la de inicio y no puede ser anterior); la consulta pública devuelve solo las publicidades activas que no han llegado a su fecha de caducidad, de la más reciente a la más antigua. \\
+\hline
+\textbf{RF-ADM-007} & \textbf{Configurar el sitio:} Como administrador, quiero configurar parámetros generales del sitio: frase de inicio, contenido de bienvenida, temática visual, límites de publicaciones por tipo de usuario y datos de pago. & Cada configuración se identifica por una clave única; las configuraciones sensibles (límites, pagos, temática) requieren rol 0 o 1. \\
+\hline
+\end{longtable}
+
+% PILA DE PRODUCTO: CUENTAS REGRESIVAS (S3) %
+\begin{longtable}{|l||p{7cm}|p{4.5cm}|}
+
+\multicolumn{3}{c}{Cuentas regresivas de la página principal (S3)}\\
+\hline\hline
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline
+\endfirsthead
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline\hline
+\endhead
+
+\textbf{RF-CRG-001} & \textbf{(S3) Ver cuentas regresivas:} Como visitante, quiero ver en la página principal cuánto falta para los próximos eventos destacados. & \texttt{GET /cuentas-regresivas/activas} es público; devuelve como máximo 4 contadores activos, ordenados por fecha, cuyo día objetivo (hora de Costa Rica, UTC$-6$) no ha terminado y, si siguen a un evento, que ese evento exista y esté publicado. \\
+\hline
+\textbf{RF-CRG-002} & \textbf{(S3) Permiso para gestionarlas:} Como administrador, quiero decidir qué usuarios pueden crear cuentas regresivas. & Los roles 0 y 1 siempre pueden; el resto solo si tiene \texttt{puedeCrearCuentaRegresiva} en verdadero, que se asigna con \texttt{PUT /usuario/:id/cuenta-regresiva} (roles 0 y 1). El permiso se evalúa con el usuario leído de la base de datos, no con el token. \\
+\hline
+\textbf{RF-CRG-003} & \textbf{(S3) Crear y editar cuentas libres:} Como usuario con permiso, quiero crear un contador con título, fecha futura y enlace opcional. & Título de 1 a 120 caracteres, fecha válida y futura, enlace \texttt{http} o \texttt{https}; un administrador ve y gestiona todos los contadores y los demás solo los suyos y los de sus propios eventos. \\
+\hline
+\textbf{RF-CRG-004} & \textbf{(S3) Cuenta regresiva de un evento (UI65):} Como autor de un evento, quiero que la página principal cuente los días hasta mi evento. & Se crea desde el formulario (casilla ``mostrar cuenta regresiva'') o con \texttt{POST /cuentas-regresivas/evento/:publicacionId} solo por el autor o un administrador y solo si el evento tiene fecha futura válida; una publicación tiene como máximo un contador. Su título y su fecha se sincronizan al editar el evento (fecha y hora de Costa Rica) y el contador se elimina si el evento se elimina o deja de tener fecha válida. \\
+\hline
+\end{longtable}
+
+% PILA DE PRODUCTO: SEGURIDAD DE ARCHIVOS (S3) %
+\begin{longtable}{|l||p{7cm}|p{4.5cm}|}
+
+\multicolumn{3}{c}{Seguridad de los archivos subidos (S3)}\\
+\hline\hline
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline
+\endfirsthead
+\textbf{Código} & \textbf{Descripción} & \textbf{Criterios de Calidad}\\
+\hline\hline
+\endhead
+
+\textbf{RF-SEG-001} & \textbf{(S3) Verificar el contenido real de los archivos:} Como administrador del sistema, quiero que ningún archivo disfrazado o con contenido activo llegue al servidor. & El middleware \texttt{secureUploads} se ejecuta después de multer y lee los bytes de cada archivo: comprueba que correspondan a su extensión, que no sean ejecutables o scripts, y rechaza contenido activo conocido (macros, JavaScript en PDF, ZIP con ejecutables, \textit{zip-slip} y \textit{zip-bombs}). Responde 400 con código \texttt{INVALID\_FILE\_CONTENT}. \\
+\hline
+\textbf{RF-SEG-002} & \textbf{(S3) No dejar archivos huérfanos:} Como administrador del sistema, quiero que un archivo rechazado no permanezca en el disco. & Si la respuesta termina con un error (4xx o 5xx) o el cliente corta la conexión, los archivos recibidos se borran del disco; solo permanecen si la respuesta fue exitosa. Se aplica a biblioteca, fotos de perfil, CV, imágenes de publicaciones, publicidad, ``Acerca de'' y fondo de temática. La interfaz repite la verificación (\texttt{fileValidation.js}) solo como ayuda de usabilidad. \\
+\hline
+\end{longtable}

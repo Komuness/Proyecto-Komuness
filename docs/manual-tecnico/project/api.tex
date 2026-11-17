@@ -1,0 +1,205 @@
+\chapter{Métodos del API}
+Todos los endpoints están montados bajo el prefijo \texttt{/api} (ver \texttt{backend/src/index.ts}). Salvo que se indique lo contrario, los endpoints protegidos requieren el encabezado \texttt{Authorization: Bearer <token>} y algunos además restringen el acceso según \texttt{tipoUsuario} (0 = super-admin, 1 = admin, 2 = básico, 3 = premium). Los cuerpos de petición/respuesta se envían en formato JSON, salvo las rutas de carga de archivos que usan \texttt{multipart/form-data}. Las marcas \textbf{(S2)} y \textbf{(S3)} indican lo agregado o modificado en los Sprints 2 y 3. \textbf{(S3)} Todas las rutas que reciben archivos verifican su contenido real: un archivo inválido responde 400 con \texttt{errorCode: INVALID\_FILE\_CONTENT} (o \texttt{INVALID\_FILE\_TYPE} para imágenes) y no queda en disco.
+
+\section{Publicaciones (\texttt{/api/publicaciones})}
+El detalle completo de los endpoints de publicaciones (creación, consulta, edición y eliminación, con sus parámetros de cuerpo y consulta) está documentado en \texttt{backend/README.md}. A continuación se listan únicamente los endpoints agregados con posterioridad a esa documentación, correspondientes al flujo de edición controlada y a las búsquedas avanzadas:
+\begin{itemize}
+    \item \texttt{POST /v2} — variante de creación que acepta archivos adjuntos e imágenes vía \texttt{multipart/form-data} (campos \texttt{archivos} e \texttt{imagenes}, hasta 10 cada uno, 20MB por archivo). Requiere autenticación y respeta el límite de publicaciones del usuario. \textbf{(S2)} El campo opcional \texttt{ubicacion} (JSON con \texttt{latitude}, \texttt{longitude} y \texttt{direccion}) se valida: si es inválido se responde 400 con el motivo. Si \texttt{tag} es \texttt{evento} o \texttt{emprendimiento}, el servidor crea además una publicación automática (etiqueta \texttt{publicacion}) con copia independiente de los adjuntos y \texttt{publicacionOrigenId} apuntando al original; si ese paso falla, la creación del original no se revierte. \textbf{(S3)} El cuerpo puede incluir \texttt{mostrarCuentaRegresiva} para crear la cuenta regresiva del evento (solo si el usuario tiene permiso); \texttt{publicacionOrigenId} enviado por el cliente se ignora; la publicación automática copia además hora del evento, teléfono, enlaces y ubicación y, si nace publicada, notifica a todos los usuarios.
+    \item \textbf{(S2)} \texttt{POST /:id/fotos} — agrega imágenes (campos \texttt{imagenes} o \texttt{archivos}, \texttt{multipart/form-data}) a un emprendimiento sin pasar por la aprobación de ediciones. Requiere autenticación; solo el autor o un administrador (roles 0,1). Solo imágenes; máximo 20 fotos por emprendimiento. Responde 400 si no es un emprendimiento, no se envían imágenes o se excede el máximo, y 403 si el usuario no tiene permiso.
+    \item \textbf{(S2)} \texttt{DELETE /:id/fotos/:fotoId} — elimina una foto de un emprendimiento (autor o administrador). Responde 400 si es la única foto restante (el emprendimiento debe conservar al menos una) y 404 si la foto no existe.
+    \item \textbf{(S2)} \texttt{GET /conteo/ubicacion} — público. \textbf{Query:} \texttt{tag} (opcional: \texttt{publicacion}, \texttt{evento} o \texttt{emprendimiento}; otro valor responde 400) y \texttt{comunidad} (opcional, coincidencia parcial). Cuenta las publicaciones vigentes y publicadas agrupadas por comunidad (sin distinguir mayúsculas ni espacios sobrantes). Respuesta: \texttt{total}, \texttt{conUbicacion} y \texttt{porComunidad[]} con \texttt{comunidad}, \texttt{total} y \texttt{conUbicacion}.
+    \item \texttt{POST /:id/comentarios} — agrega un comentario (\texttt{contenido}) a la publicación \texttt{:id}. Requiere autenticación (roles 0,1,2,3).
+    \item \texttt{POST /:id/comentarios/:comentarioId/respuesta} — agrega una respuesta a un comentario existente.
+    \item \texttt{PUT /:id/request-update} — el autor solicita cambios a su publicación (cuerpo con los campos a modificar, admite adjuntos); la solicitud queda en \texttt{pendingUpdate} hasta ser revisada.
+    \item \texttt{DELETE /:id/cancel-update} — el autor cancela su solicitud de edición pendiente.
+    \item \texttt{GET /admin/pending-updates} — lista las solicitudes de edición pendientes (roles 0,1).
+    \item \texttt{PUT /admin/:id/approve-update} / \texttt{PUT /admin/:id/reject-update} — aprueba o rechaza una solicitud de edición (roles 0,1).
+    \item \texttt{GET /eventos/calendario} — retorna eventos agrupados/filtrados por fecha para la vista de calendario; el calendario de la cartelera consulta el mes visible con \texttt{startDate} y \texttt{endDate}.
+    \item \texttt{GET /categoria/:categoriaId} — lista publicaciones de una categoría.
+    \item \texttt{GET /search/quick}, \texttt{GET /search/advanced}, \texttt{GET /search/titulo} — búsqueda rápida por título y búsqueda avanzada combinando texto, categoría, fecha y comunidad. \textbf{(S2)} La búsqueda avanzada acepta \texttt{comunidad} como filtro independiente del texto (coincidencia parcial, sin distinguir mayúsculas); el mismo parámetro se acepta en el listado por etiqueta (\texttt{GET /}, junto con \texttt{tag}, \texttt{categoria}, fechas y precio).
+    \item \textbf{(S2)} \texttt{PUT /:id}, \texttt{PUT /:id/request-update} y la aprobación de ediciones ahora validan y aplican el campo \texttt{ubicacion} con las mismas reglas que la creación (400 si es inválido).
+    \item \textbf{(S3)} \texttt{PUT /:id} (edición administrativa) copia los campos compartidos a la publicación enlazada y viceversa, aprobar un evento o emprendimiento (\texttt{publicado}) aprueba y notifica también a su publicación automática, y \texttt{DELETE /:id} elimina ambos documentos con sus adjuntos y la cuenta regresiva del evento. Editar un evento sincroniza el título y la fecha de su cuenta regresiva. La aprobación de una solicitud de edición (\texttt{PUT /admin/:id/approve-update}) también sincroniza la publicación enlazada y la cuenta regresiva. El listado \texttt{GET /} con \texttt{publicado=false} omite las publicaciones automáticas pendientes, que se aprueban junto con su original.
+\end{itemize}
+
+\section{Actividades (\texttt{/api/actividades})}
+\begin{itemize}
+    \item \texttt{GET /get-actividades} — público. Lista todas las actividades, con el nombre y apellido de quien las creó (\texttt{populate}).
+    \item \texttt{GET /actividades-cerca} — público. \textbf{Query params:} \texttt{lat}, \texttt{lng} (obligatorios), \texttt{maxDistancia} (opcional, metros, por defecto 5000). Retorna actividades dentro del radio indicado usando una consulta geoespacial \texttt{\$near} sobre un índice \texttt{2dsphere}.
+    \item \texttt{POST /create-actividad} — requiere autenticación. \textbf{Body params:} \texttt{nombre}, \texttt{descripcion}, \texttt{fecha}, \texttt{hora}, \texttt{ubicacionEscrita} (todos obligatorios) y \texttt{ubicacion} (\texttt{\{coordinates: [lng, lat]\}}, obligatorio). El usuario autor se toma del token, no del cuerpo. Al crearse exitosamente dispara una notificación automática a la comunidad.
+    \item \texttt{PUT /update-actividad/:id} — requiere autenticación; solo el usuario creador o un administrador (rol 0 o 1) puede editar. Mismos \textbf{body params} que la creación.
+    \item \texttt{DELETE /delete-actividad/:id} — requiere autenticación; solo el creador o un administrador puede eliminar.
+\end{itemize}
+
+\section{Usuarios y Autenticación (\texttt{/api/usuario})}
+\begin{itemize}
+    \item \texttt{POST /login} — público. \textbf{Body:} \texttt{email}, \texttt{password}. Responde 403 con \texttt{EMAIL\_NOT\_CONFIRMED} si la cuenta no ha sido confirmada.
+    \item \texttt{POST /register} — público. \textbf{Body:} \texttt{nombre}, \texttt{apellido}, \texttt{email}, \texttt{password}. Envía correo de confirmación. \textbf{(S2)} El envío es asíncrono: la respuesta (201) no espera al servidor de correo y un fallo del envío solo se registra en el servidor; lo mismo aplica al reenvío cuando la cuenta existe sin confirmar.
+    \item \texttt{GET /confirmar-cuenta} — público. \textbf{Query:} \texttt{token} de confirmación.
+    \item \texttt{POST /reenviar-confirmacion} — público. \textbf{Body:} \texttt{email}.
+    \item \texttt{POST /recuperar-contrasena} — público. \textbf{Body:} \texttt{email}; envía código de recuperación.
+    \item \texttt{GET /check} — requiere autenticación. Valida el token, aplica \textit{downgrade} de premium vencido y retorna el usuario actualizado.
+    \item \texttt{GET /} — roles 0,1,2,3. Lista usuarios.
+    \item \texttt{GET /public} — requiere autenticación. Lista usuarios con datos públicos (\texttt{nombre}, \texttt{apellido} y, desde el Sprint 2, \texttt{email}). Dado que cualquier usuario autenticado puede consultarlo, se recomienda revisar si la exposición del correo es deseada.
+    \item \texttt{POST /} — rol 0 (super-admin). Crea un usuario.
+    \item \texttt{GET /:id} / \texttt{DELETE /:id} — rol 0. Consulta o elimina un usuario por id.
+    \item \texttt{GET /:id/etiquetas} — público. Etiquetas de interés asociadas a un usuario (encuesta inicial).
+    \item \texttt{PUT /:id} — roles 0,1,2,3. Actualiza datos del propio usuario o, si es admin, de otro. \textbf{(S3)} Solo aplica \texttt{nombre}, \texttt{apellido}, \texttt{password} y \texttt{encuestaInicio}; ignora cualquier otro campo. Responde 403 si un usuario básico o premium edita a otro, o si un administrador (1) edita a otro administrador o al super-administrador; 400 si la contraseña es vacía; 404 si el usuario no existe.
+    \item \texttt{PUT /:id/limite} — roles 0,1. \textbf{Body:} nuevo límite de publicaciones.
+    \item \textbf{(S3)} \texttt{PUT /:id/cuenta-regresiva} — roles 0,1. \textbf{Body:} \texttt{puedeCrearCuentaRegresiva} (booleano; 400 si no lo es, 404 si el usuario no existe). Da o quita el permiso de gestionar cuentas regresivas.
+    \item \texttt{PUT /:id/premium-vencimiento} — roles 0,1. \textbf{Body:} nueva fecha de vencimiento premium.
+    \item \texttt{PUT /:id/membresia} — roles 0,1. Cambia el \texttt{tipoUsuario} (1/2/3) y calcula automáticamente el vencimiento si aplica.
+    \item \texttt{PUT /me/premium} — roles 0,1,2,3. Activa la membresía premium para el usuario autenticado.
+\end{itemize}
+
+\section{Perfil (\texttt{/api/perfil})}
+\begin{itemize}
+    \item \texttt{GET /:id} — público. \textbf{Query:} \texttt{modo} (opcional). Perfil público de un usuario.
+    \item \texttt{GET /usuario/me} — requiere autenticación. Perfil del usuario autenticado.
+    \item \texttt{GET /usuario/elegibilidad-banco} — requiere autenticación. Indica si el usuario cumple los requisitos para el banco de profesionales; los campos exigidos son nombre, apellidos, teléfono, cantón, provincia, foto de perfil, ocupación principal y formación académica (\texttt{obtenerFaltantesBanco}).
+    \item \texttt{POST /} — requiere autenticación. \textbf{Body:} datos del perfil (información personal, incluidos \texttt{provincia} y \texttt{canton}; información profesional, formación, experiencia, proyectos, redes sociales) y opcionalmente \texttt{etiquetas}. Crea o actualiza el perfil del usuario autenticado. \textbf{(S2)} Si el cuerpo trae \texttt{enBancoProfesionales: true}, el servidor valida la elegibilidad con el perfil resultante de la mezcla; si faltan campos (y el usuario no es administrador) responde 200 con \texttt{success: false}, \texttt{message} y la lista de faltantes en \texttt{data}, sin guardar. Si es elegible, fuerza \texttt{perfilPublico = true}.
+    \item \texttt{PUT /foto} — requiere autenticación. \texttt{multipart/form-data}, campo \texttt{foto}.
+    \item \texttt{PUT /cv} / \texttt{DELETE /cv} — requiere autenticación. \texttt{multipart/form-data} con campo \texttt{cv} para subir; sin cuerpo para eliminar.
+    \item \texttt{PUT /correo-principal} — requiere autenticación. \textbf{Body:} \texttt{email}.
+\end{itemize}
+
+\section{Banco de Profesionales (\texttt{/api/banco-profesionales})}
+\begin{itemize}
+    \item \texttt{GET /} — público. \textbf{Query:} \texttt{search} (nombre, apellidos, ocupación principal o especialidad), \texttt{provincia} (coincidencia exacta), \texttt{canton} (coincidencia parcial; cubre también la ``zona''), \texttt{page} (def. 1), \texttt{limit} (def. 12). \textbf{(S2)} Todos los filtros de texto ignoran mayúsculas y acentos, y los caracteres especiales se escapan. La respuesta incluye \texttt{data} y \texttt{pagination} (\texttt{page}, \texttt{pages}, \texttt{total}).
+    \item \texttt{GET /es-profesional/:id} — público. Indica si el perfil \texttt{:id} está en el banco.
+    \item \texttt{GET /estado} — requiere autenticación. Estado del usuario autenticado en el banco.
+    \item \texttt{PUT /toggle} — requiere autenticación. Activa/desactiva la visibilidad del usuario en el banco. \textbf{(S2)} Al unirse, valida en el servidor la elegibilidad del perfil (los administradores 0 y 1 quedan exentos): si faltan campos responde 200 con \texttt{success: false} y la lista de faltantes en \texttt{data}; si es elegible, marca \texttt{perfilPublico = true}. La respuesta incluye \texttt{enBancoProfesionales} y \texttt{perfilPublico}.
+    \item \texttt{PUT /:id/quitar} — roles 0,1. Retira a un profesional del banco.
+\end{itemize}
+
+\section{Biblioteca Documental (\texttt{/api/biblioteca})}
+\begin{itemize}
+    \item \texttt{POST /upload} — roles 0,1,2,3. \texttt{multipart/form-data}, campo \texttt{archivos} (múltiple). Los archivos de roles 2 y 3 quedan en estado \texttt{pendiente} hasta aprobación. \textbf{(S3)} Campos adicionales: \texttt{userId}, \texttt{userType} y \texttt{categoriaId} (obligatorios; 400 si la categoría falta o no existe), \texttt{folderId} y \texttt{nombres} (JSON con un nombre personalizado por archivo; se conserva la extensión original). Solo se aceptan PDF, Excel, Word, PowerPoint, TXT, PNG, JPG, WEBP, ZIP y RAR, hasta \texttt{LIBRARY\_MAX\_FILE\_SIZE\_MB} (200 por defecto). Si el archivo queda aprobado se crea su publicación automática; responde 404 si el perfil no existe y 403 si el usuario no está en el banco de profesionales.
+    \item \texttt{PUT /move} — roles 0,1. \textbf{Body:} lista de archivos y carpeta destino.
+    \item \texttt{GET /files/:id} — público. Descarga el binario de un archivo.
+    \item \texttt{DELETE /delete/:id} — roles 0,1. \textbf{(S3)} Elimina también la publicación automática del archivo.
+    \item \texttt{GET /buscar} — público. Filtra archivos por criterios de búsqueda. \textbf{(S3)} Acepta \texttt{categoria} (400 si el identificador es inválido).
+    \item \texttt{GET /list/:id} — lista el contenido (archivos y subcarpetas) de la carpeta \texttt{:id}. \textbf{(S3)} Acepta los filtros \texttt{nombre}, \texttt{categoria}, \texttt{global}, \texttt{publico} y \texttt{orden}, y devuelve el nombre de la categoría de cada archivo.
+    \item \texttt{POST /folder} — roles 0,1. \textbf{Body:} \texttt{nombre}, carpeta padre.
+    \item \texttt{DELETE /folder/:id} — roles 0,1.
+    \item \texttt{PUT /folder/move} — roles 0,1.
+    \item \texttt{PUT /edit/:id} — roles 0,1. Actualiza metadatos de un archivo.
+    \item \texttt{GET /pending} — roles 0,1. Lista archivos pendientes de aprobación (RF023).
+    \item \texttt{PUT /approve/:id} / \texttt{PUT /reject/:id} — roles 0,1. Aprueba o rechaza un archivo pendiente. \textbf{(S3)} Al aprobar se genera la publicación automática del archivo y su notificación general (en lugar de la notificación sobre el identificador del archivo).
+\end{itemize}
+
+\section{Categorías, Etiquetas y Preferencias}
+\textbf{\texttt{/api/elements/:tipo}} (tipo es, por ejemplo, \texttt{categoria} o \texttt{etiqueta}):
+\begin{itemize}
+    \item \texttt{GET /:tipo} — público. Lista elementos del tipo indicado.
+    \item \texttt{GET /:tipo/:id} — público.
+    \item \texttt{POST /:tipo} — rol 1. \textbf{Body:} \texttt{nombre}.
+    \item \texttt{PUT /:tipo/:id} — rol 1. \textbf{Body:} \texttt{nombre}.
+    \item \texttt{DELETE /:tipo/:id} — rol 1.
+    \item \texttt{PUT /:tipo/toggle/:id} — rol 1. Alterna el campo \texttt{estado}.
+\end{itemize}
+\textbf{\texttt{/api/categoria-preferencias}}:
+\begin{itemize}
+    \item \texttt{GET /estado/:categoriaId} — requiere autenticación. Indica si el usuario sigue la categoría.
+    \item \texttt{GET /:categoriaId} — requiere autenticación. Usuarios que siguen la categoría.
+    \item \texttt{POST /} — requiere autenticación. \textbf{Body:} \texttt{categoriaId}.
+    \item \texttt{DELETE /} — requiere autenticación. \textbf{Body:} \texttt{categoriaId}.
+\end{itemize}
+
+\section{Configuración (\texttt{/api/configuracion})}
+\begin{itemize}
+    \item \texttt{GET /frase-inicio} / \texttt{GET /inicio-contenido} / \texttt{GET /tematica} — público. Contenido de bienvenida y temática visual del sitio.
+    \item \texttt{PUT /frase-inicio}, \texttt{PUT /inicio-contenido}, \texttt{PUT /tematica} — roles 0,1. \textbf{Body:} \texttt{frase} (máx. 280 caracteres), \texttt{eslogan}, o configuración de temática, respectivamente.
+    \item \texttt{GET /tematica/admin} — roles 0,1. Configuración completa de temática.
+    \item \texttt{POST /tematica/background} — roles 0,1. \texttt{multipart/form-data}, campo \texttt{image}.
+    \item \texttt{GET /tematica/background/:fileName} — público. Sirve la imagen de fondo.
+    \item \texttt{GET /pagos} — requiere autenticación. \texttt{PUT /pagos} — roles 0,1. Configuración de datos de pago.
+    \item \texttt{GET /mis-limites} — requiere autenticación. Límite de publicaciones del usuario autenticado.
+    \item \texttt{GET /} — roles 0,1. Lista todas las configuraciones (clave/valor).
+    \item \texttt{PUT /limites-publicaciones} — roles 0,1. \textbf{Body:} \texttt{limiteBasico}, \texttt{limitePremium}.
+    \item \texttt{PUT /} — roles 0,1. \textbf{Body:} \texttt{clave}, \texttt{valor}, \texttt{descripcion}.
+    \item \texttt{GET /:clave} — roles 0,1. \texttt{DELETE /:clave} — rol 0.
+\end{itemize}
+
+\section{Notificaciones (\texttt{/api/notificaciones})}
+\begin{itemize}
+    \item \texttt{GET /} — requiere autenticación. \textbf{Query:} \texttt{userId} (opcional), \texttt{onlyUnread} (opcional). \textbf{(S3)} Excluye las notificaciones que el usuario eliminó para sí mismo.
+    \item \texttt{POST /} — roles 0,1. \textbf{Body:} \texttt{nombre}, \texttt{descripcion}, \texttt{destinatario} y/o \texttt{recipientes}, \texttt{publicacionId}, \texttt{fechaCaducidad}, \texttt{tipo} (\texttt{general}\textbar\texttt{formulario}\textbar\texttt{recordatorio}), \texttt{formularioUrl}.
+    \item \texttt{PUT /:id} — roles 0,1. Mismos campos que la creación.
+    \item \texttt{DELETE /:id} — \textbf{(S3)} requiere autenticación (cualquier rol). Oculta la notificación solo para el usuario que la elimina (\texttt{eliminadasPor}); el documento sigue visible para los demás destinatarios. Un identificador inválido, una notificación que no le corresponde o ya eliminada responde 404 (``No se encontró la notificación''). En el Sprint 2 esta ruta estaba restringida a los roles 0 y 1.
+    \item \textbf{(S3)} \texttt{DELETE /} — requiere autenticación. Oculta todas las notificaciones visibles para el usuario; responde \texttt{data.eliminadas} con la cantidad.
+    \item \texttt{PATCH /:id/visto} — requiere autenticación. Marca la notificación como vista por el usuario autenticado.
+\end{itemize}
+
+\section{Boletines (\texttt{/api/boletines}) --- solo roles 0,1}
+\begin{itemize}
+    \item \texttt{POST /} — \textbf{Body:} \texttt{titulo}, \texttt{contenido}, \texttt{descripcion}, \texttt{destinatarios} (\texttt{\{tipo: todos\textbar seleccionados\textbar rol, usuariosIds[], roles[]\}}).
+    \item \texttt{GET /} — lista boletines. \texttt{GET /:id} — detalle.
+    \item \texttt{PUT /:id} — actualiza (mismos campos que la creación).
+    \item \texttt{POST /:id/enviar} — envía el boletín a sus destinatarios y registra enviados/fallidos.
+    \item \texttt{POST /:id/cancelar} — cancela un boletín en borrador o programado.
+    \item \texttt{DELETE /:id} — elimina el boletín.
+\end{itemize}
+
+\section{Membresías y Pagos}
+\textbf{\texttt{/api/paquetes-suscripcion}}:
+\begin{itemize}
+    \item \texttt{GET /get-paquetes} — público.
+    \item \texttt{POST /create-paquete} — roles 0,1. \textbf{Body:} \texttt{nombre}, \texttt{descripcion}, \texttt{monto}, \texttt{moneda} (\texttt{USD}\textbar\texttt{CRC}), \texttt{duracionDias}, \texttt{tipoUsuarioOtorgado}, \texttt{limitePublicaciones}, \texttt{beneficios[]}, \texttt{activo}.
+    \item \texttt{PUT /update-paquete/:id} / \texttt{DELETE /delete-paquete/:id} — roles 0,1.
+\end{itemize}
+\textbf{\texttt{/api/paypal}}:
+\begin{itemize}
+    \item \texttt{POST /capture} — requiere autenticación. \textbf{Body:} \texttt{orderId} (obligatorio). Captura el pago en PayPal, aplica reintentos con \textit{backoff} exponencial ante errores recuperables, y si el pago es exitoso actualiza al usuario a premium.
+    \item \texttt{POST /webhook} — público (llamado por PayPal, sin sesión de la aplicación). Recibe eventos asíncronos de pago.
+\end{itemize}
+
+\section{Publicidad, Tutoriales y Proyectos Destacados}
+\textbf{\texttt{/api/publicidad}}:
+\begin{itemize}
+    \item \texttt{GET /get-publicidades} — público. \textbf{(S3)} Devuelve solo las publicidades activas cuya \texttt{fechaCaducidad} es futura, de la más reciente a la más antigua.
+    \item \texttt{POST /create-publicidad} — roles 0,1. \texttt{multipart/form-data} (\texttt{imagen}) + \textbf{Body:} \textbf{(S3)} \texttt{titulo} (obligatorio, máximo 80 caracteres), \texttt{descripcion}, \texttt{fechaCaducidad}, \texttt{fechaInicioEvento} y \texttt{fechaFinEvento} (opcionales; la de fin exige la de inicio y no puede ser anterior), \texttt{publicacionRelacionada} (opcional). Requiere \texttt{PUBLIC\_BASE\_URL} en el entorno.
+    \item \texttt{PUT /update-publicidad/:id} / \texttt{DELETE /delete-publicidad/:id} — roles 0,1.
+\end{itemize}
+\textbf{\texttt{/api/tutoriales}}:
+\begin{itemize}
+    \item \texttt{GET /get-tutoriales} — público.
+    \item \texttt{POST /create-tutorial} — roles 0,1. \textbf{Body:} \texttt{nombre}, \texttt{url}, \texttt{descripcion}. \textbf{(S3)} Crea además una publicación automática con el autor tomado de la sesión (un fallo solo se registra en el servidor y el tutorial queda creado).
+    \item \texttt{PUT /update-tutorial/:id} / \texttt{DELETE /delete-tutorial/:id} — roles 0,1.
+\end{itemize}
+\textbf{\texttt{/api/proyectos-destacados}}:
+\begin{itemize}
+    \item \texttt{GET /get-proyectos} — público.
+    \item \texttt{POST /create-proyecto} — roles 0,1. \textbf{Body:} \texttt{nombre}, \texttt{url}, \texttt{descripcion}. \textbf{(S3)} Crea además una publicación automática, igual que los tutoriales.
+    \item \texttt{PUT /update-proyecto/:id} / \texttt{DELETE /delete-proyecto/:id} — roles 0,1.
+\end{itemize}
+
+\section{Sección ``Acerca de'' (\texttt{/api/acerca-de})}
+\begin{itemize}
+    \item \texttt{GET /} — público. Contenido institucional (historia, misión, visión, equipo, donaciones, contactos).
+    \item \texttt{GET /files/*} — público. Descarga de imágenes asociadas.
+    \item \texttt{PUT /} — roles 0,1. Crea o actualiza el contenido. \textbf{(S3)} El campo \texttt{imagenesProyectos} solo se acepta como reordenamiento de las imágenes existentes del carrusel; si la lista no contiene exactamente las mismas imágenes responde 409.
+    \item \texttt{POST /upload} / \texttt{POST /upload-miembro} — roles 0,1. \texttt{multipart/form-data} (\texttt{imagen}). Sube imagen institucional o de un miembro del equipo.
+    \item \texttt{DELETE /imagen} / \texttt{DELETE /imagen-miembro} — roles 0,1.
+\end{itemize}
+
+\section{Archivos servidos desde GridFS (\texttt{/api/files/:id})}
+\begin{itemize}
+    \item \texttt{GET /files/:id} — público. Sirve un archivo almacenado directamente en MongoDB mediante \texttt{GridFSBucket}, con encabezados de \textit{cache} de un año y \texttt{Content-Type} inferido del archivo original.
+\end{itemize}
+
+\section{(S3) Cuentas regresivas (\texttt{/api/cuentas-regresivas})}
+Los endpoints protegidos exigen autenticación y que el usuario sea administrador (0,1) o tenga \texttt{puedeCrearCuentaRegresiva}; de lo contrario responden 403.
+\begin{itemize}
+    \item \texttt{GET /activas} — público. Hasta 4 contadores activos para la página principal, ordenados por fecha: \texttt{\_id}, \texttt{titulo}, \texttt{fechaObjetivo}, \texttt{enlace} (opcional) y \texttt{publicacion} (\texttt{\_id} y \texttt{tag}, si sigue a un evento).
+    \item \texttt{GET /} — usuarios con permiso. Los administradores reciben todos los contadores; los demás, los suyos y los de sus propios eventos; primero los próximos y luego los vencidos.
+    \item \texttt{POST /} — \textbf{Body:} \texttt{titulo} (1 a 120 caracteres), \texttt{fechaObjetivo} (fecha válida y futura) y \texttt{enlace} (opcional, \texttt{http} o \texttt{https}). 400 con un mensaje descriptivo si algo es inválido.
+    \item \texttt{POST /evento/:publicacionId} — crea el contador de un evento. Solo el autor del evento o un administrador; 404 si el evento no existe, 400 si no tiene una fecha futura válida.
+    \item \texttt{PUT /:id} — actualiza \texttt{titulo}, \texttt{fechaObjetivo}, \texttt{enlace} o \texttt{activo}. Solo el creador o un administrador (403 en otro caso); la fecha de un contador ligado a un evento se toma del evento y no se puede cambiar (400).
+    \item \texttt{DELETE /:id} — elimina el contador; mismas reglas de propiedad.
+\end{itemize}
+
+\section{Verificación del servicio}
+\begin{itemize}
+    \item \texttt{GET /api/} — público. Prueba mínima de disponibilidad (\textit{smoke test}).
+    \item \texttt{GET /health} y \texttt{GET /api/health} — público. Retorna \texttt{uptimeSeconds} y \texttt{mongoReadyState} (1 = MongoDB conectado); útil para monitoreo en el entorno de producción.
+\end{itemize}

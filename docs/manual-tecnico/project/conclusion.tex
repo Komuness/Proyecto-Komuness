@@ -1,0 +1,95 @@
+\chapter{Conclusiones y trabajo futuro}
+\section{Estado de avance respecto al anteproyecto}
+La Tabla \ref{tab:avance} contrasta los entregables del anteproyecto con lo que existe en el código de la rama \texttt{branch-testing-changes} al cierre del Sprint 3. El estado se determinó por revisión del código y por la ejecución de las pruebas automatizadas; no sustituye la validación funcional con la organización.
+
+\begin{longtable}{|p{2cm}|p{5.5cm}|p{2.6cm}|p{4.7cm}|}
+\caption{\textbf{Avance de los entregables del anteproyecto}}\label{tab:avance}\\
+\hline
+\textbf{MVP} & \textbf{Entregable} & \textbf{Estado} & \textbf{Observaciones} \\
+\hline
+\endfirsthead
+\hline
+\textbf{MVP} & \textbf{Entregable} & \textbf{Estado} & \textbf{Observaciones} \\
+\hline
+\endhead
+MVP 1 & Sección ``Quiénes somos'' en la pantalla de inicio & Implementado & \texttt{QuienesSomosSection}; el contenido se edita desde \texttt{/admin/acerca-de}. \\
+\hline
+MVP 1 & Carrusel dinámico & Implementado & \texttt{CarruselGenerico} y \texttt{CarruselEventos}. \\
+\hline
+MVP 1 & Diseño adaptable (celular y tableta) & Implementado, sin prueba formal & Estilos adaptables y vista móvil de notificaciones; falta un registro de pruebas por dispositivo. \\
+\hline
+MVP 1 & Buscador global & Parcial & Busca publicaciones, eventos y emprendimientos; no incluye profesionales ni recursos de la biblioteca. \\
+\hline
+MVP 1 & Calendario dinámico con detalle del evento & Implementado & Integrado en la cartelera de eventos (Sprint 2); color del calendario ajustado en el Sprint 3. \\
+\hline
+MVP 1 & Cuentas regresivas de eventos en la página principal & Implementado (Sprint 3) & Hasta 4 contadores, libres o ligados a un evento, con permiso por usuario; Agregado durante el Sprint 3 (UI65). \\
+\hline
+MVP 1--2 & Filtros por fecha, categoría, comunidad y ubicación; borrar filtros & Implementado & Filtro de comunidad y botón ``Borrar filtros'' agregados en el Sprint 2. \\
+\hline
+MVP 1 & Notificaciones y recordatorios & Implementado & Notificaciones, boletines y recordatorios de expiración; la creación de actividades notifica a la comunidad; cada usuario puede eliminar sus notificaciones (Sprint 3). \\
+\hline
+MVP 1 & Mapas y geolocalización & Implementado & Selector y visualización con Leaflet; ubicación también en emprendimientos. \\
+\hline
+MVP 1 & Relación comunidad con actividades, emprendimientos, profesionales y recursos & Parcial & Existe el campo \texttt{comunidad} y el conteo por lugar de publicaciones; los profesionales se filtran por provincia y cantón, no por comunidad. \\
+\hline
+MVP 2 & Fichas de emprendimiento con medios de contacto e imágenes múltiples & Implementado & Incluye agregar y quitar fotos en cualquier momento (máximo 20). \\
+\hline
+MVP 2 & Perfiles profesionales y edición por el usuario & Implementado & \texttt{PerfilPublico} y \texttt{EditarPerfil}; se rediseñó la pantalla de edición. \\
+\hline
+MVP 2 & Creación automática de publicaciones & Implementado & Desde el Sprint 3 se sincroniza con el original (edición, aprobación y eliminación) y se extendió a tutoriales, proyectos destacados y archivos de la biblioteca. \\
+\hline
+MVP 2 & Búsqueda por ubicación & Implementado & Por comunidad en publicaciones; por provincia y cantón en profesionales. \\
+\hline
+MVP 3 & Búsqueda de profesionales por profesión, especialidad y ubicación & Parcial & La búsqueda de texto cubre ocupación principal y especialidad; la ubicación ya está filtrada. Falta un filtro específico por profesión. La interfaz del banco se rediseñó en el Sprint 3. \\
+\hline
+MVP 3 & Estado activo/inactivo del profesional & Pendiente & Sigue existiendo solo la pertenencia al banco (\texttt{enBancoProfesionales}), que no equivale a una disponibilidad. \\
+\hline
+MVP 3 & Verificación de perfiles & Pendiente & La insignia de verificado de la interfaz depende de \texttt{perfilPublico}, que cualquier persona puede activar; no hay revisión de un administrador. \\
+\hline
+MVP 3 & Biblioteca: categorías, filtros y publicación en el feed & Implementado & Categoría obligatoria al subir, filtro por categoría, nombre personalizado y publicación automática de cada archivo aprobado. \\
+\hline
+MVP 3 & Biblioteca: etiquetas y videos & Pendiente & No existe un campo de etiquetas en \texttt{Archivo} ni reproducción de video; el listado de tipos permitidos no incluye formatos de video. \\
+\hline
+MVP 3 & Proyectos destacados (buscador y publicación automática) & Implementado & Sigue siendo un módulo separado de la biblioteca: no hay una sección de proyectos destacados dentro de ella. \\
+\hline
+MVP 3 & Seguridad de las cargas de archivos & Implementado & Verificación del contenido real y borrado de archivos rechazados. \\
+\hline
+MVP 3 & Rediseño de portada y publicidad & Implementado & Carrusel reordenable, ``Quiénes somos'' editable desde el inicio y publicidad con título y fechas. \\
+\hline
+\end{longtable}
+
+\section{Conclusiones}
+El desarrollo de Komuness confirmó el valor de separar claramente las capas de rutas, controladores y modelos en el backend: esta organización permitió incorporar los cambios del Sprint 2 (por ejemplo, la validación de ubicación y la elegibilidad del banco) extrayéndolos a utilidades compartidas (\texttt{ubicacion.ts}, \texttt{perfilElegibilidad.ts}) y reutilizándolos en varios controladores, sin duplicar reglas. El uso de un middleware de autenticación que siempre revalida el usuario contra la base de datos, en lugar de confiar en el contenido del token, resultó clave para sostener reglas de negocio dependientes del tiempo, como el vencimiento automático de las membresías premium. Aislar el manejo de errores de pago en utilidades dedicadas permitió cubrir con pruebas unitarias escenarios de falla del proveedor sin depender de PayPal.
+
+En el frontend, mantener los filtros en los parámetros de la URL simplificó funciones como el botón ``Borrar filtros'' y permitió que cada sección (eventos, publicaciones y emprendimientos) conserve su contexto al abrir un detalle. Finalmente, trasladar al servidor la validación de la elegibilidad al banco de profesionales evita depender únicamente de las comprobaciones de la interfaz.
+
+En el Sprint 3 el mismo criterio guió los cambios de seguridad: la verificación del contenido real de los archivos y la lista blanca de campos al actualizar usuarios se aplican en el servidor, y las copias de la interfaz (\texttt{fileValidation.js}, \texttt{permisos.js}) son solo una ayuda de usabilidad. Extraer la creación de publicaciones automáticas a un servicio único permitió extender el comportamiento a tutoriales, proyectos destacados y archivos de la biblioteca con pocas líneas por origen, y la batería de pruebas pasó de 89 a 213 pruebas en el backend, con 59 más en el frontend, que ahora pasan completas.
+
+\section{Problemáticas y limitaciones}
+El sistema presenta las siguientes limitaciones conocidas:
+\begin{itemize}
+    \item El almacenamiento de archivos usa dos mecanismos distintos (disco del servidor y GridFS de MongoDB) según el módulo, lo cual exige mantener rutas separadas, respaldar el directorio \texttt{UPLOAD\_DIR} y añade complejidad al desplegar en un entorno serverless sin disco persistente. Además, el módulo \texttt{digitalOceanSpace.ts} y las dependencias \texttt{aws-sdk} y \texttt{multer-s3} ya no corresponden a un servicio en la nube y podrían retirarse.
+    \item El historial de despliegue muestra configuraciones para múltiples proveedores (Vercel, Railway, un VPS propio con Nginx); mantener actualizada la lista de orígenes CORS en \texttt{backend/src/index.ts} para cada entorno activo es una tarea manual propensa a quedar desactualizada.
+    \item Los enlaces de los adjuntos de publicaciones, de la biblioteca y de las imágenes de ``Acerca de'' se construyen con \texttt{PUBLIC\_BASE\_URL} y, si no está definida, con una dirección fija en el código (una IP, \texttt{komuness.duckdns.org} o \texttt{https://localhost:5000}, según el módulo); un entorno sin esa variable generaría enlaces hacia un servidor equivocado. Solo la publicidad y las solicitudes de edición de publicaciones exigen la variable y fallan con un error claro.
+    \item La publicación automática de eventos y emprendimientos duplica los adjuntos (el doble de almacenamiento) y estos no se sincronizan entre ambos documentos; el precio y la etiqueta tampoco. Las publicaciones automáticas de tutoriales, proyectos destacados y archivos de la biblioteca no se sincronizan con su origen: editar el tutorial, el proyecto o el archivo no actualiza la publicación, aunque eliminar el archivo sí la elimina. Los archivos de la biblioteca anteriores al Sprint 3 no tienen publicación. Si el original queda pendiente de aprobación, la copia también, pero el aviso a administradores se genera solo por el original. El frontend solo usa \texttt{publicacionOrigenId} para decidir si se ofrece la cuenta regresiva de un evento, por lo que el feed no distingue visualmente una publicación automática de una manual.
+    \item Las coordenadas de actividades y publicaciones dependen de que la persona usuaria las ingrese correctamente; el backend valida el rango y el formato, pero no que correspondan a una dirección real.
+    \item La insignia de ``verificado'' del perfil público equivale a \texttt{perfilPublico}, y unirse al banco de profesionales activa automáticamente esa bandera; no hay verificación administrativa real.
+    \item \texttt{GET /usuario/public} devuelve ahora el correo electrónico de todos los usuarios a cualquier persona autenticada.
+    \item La aprobación de archivos y de solicitudes de edición es manual, lo que puede convertirse en un cuello de botella con alto volumen de contenido.
+    \item Las pruebas automatizadas pasan completas (213 en el backend y 59 en el frontend), pero no cubren varias funcionalidades del Sprint 2 (elegibilidad del banco, fotos de emprendimientos, filtros por provincia y cantón) ni los flujos de la biblioteca más allá de la publicación automática; el frontend solo tiene pruebas de formularios, buscadores y validación de archivos, y no hay pruebas de extremo a extremo.
+    \item La regla de permiso de las cuentas regresivas y la verificación de archivos están duplicadas en el frontend y el backend; si una cambia sin la otra, la interfaz mostraría u ocultaría acciones que el servidor trata de otra forma. Solo el servidor protege los datos.
+    \item Eliminar una notificación solo la oculta (\texttt{eliminadasPor}); el documento no se borra de la base de datos ni siquiera cuando todos sus destinatarios la eliminaron, por lo que la colección sigue creciendo.
+\end{itemize}
+
+\section{Trabajo futuro}
+Con el cierre del Sprint 3 (27/10/26 al 23/11/26) quedan las siguientes líneas, alineadas con el anteproyecto y con las limitaciones anteriores:
+\begin{itemize}
+    \item \textbf{Banco de profesionales:} filtro por profesión, estado activo/inactivo de disponibilidad y un flujo real de verificación de perfiles revisado por administradores (nuevo campo en el modelo \texttt{Perfil}, separado de \texttt{perfilPublico}).
+    \item \textbf{Biblioteca:} etiquetas, subida y reproducción de videos comunitarios y educativos, e integrar los proyectos destacados dentro de la biblioteca; decidir si se generan publicaciones para los archivos aprobados antes del Sprint 3.
+    \item \textbf{Despliegue general:} integración de los cinco módulos y configuración de las variables de entorno de producción (\texttt{PUBLIC\_BASE\_URL}, CORS, correo, PayPal \textit{live}, \texttt{UPLOAD\_DIR} con respaldo).
+    \item \textbf{Calidad:} agregar pruebas para la elegibilidad del banco, las fotos de emprendimientos y los filtros por provincia y cantón, y evaluar pruebas de extremo a extremo del frontend.
+    \item \textbf{Publicación automática:} decidir si las publicaciones de tutoriales, proyectos y archivos deben sincronizarse con su origen, si los adjuntos deben compartirse en lugar de copiarse, y marcarlas en la interfaz.
+    \item Unificar el almacenamiento de archivos, retirar las dependencias \texttt{aws-sdk} y \texttt{multer-s3} y automatizar la lista de orígenes CORS por ambiente.
+    \item Revisar la exposición del correo electrónico en \texttt{GET /usuario/public}.
+    \item Extender el módulo de Actividades con confirmación de asistencia y recordatorios.
+\end{itemize}

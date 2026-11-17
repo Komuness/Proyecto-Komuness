@@ -1,0 +1,99 @@
+\chapter{Instrucciones de Instalación}
+
+\section{Entorno de Desarrollo}
+
+\subsection{Dependencias}
+El entorno de desarrollo requiere las siguientes dependencias, instaladas en este orden:
+\begin{itemize}
+    \item \textbf{Node.js (v18 o superior) y npm:} motor de ejecución de JavaScript y gestor de paquetes utilizado tanto por el backend como por el frontend.
+    \item \textbf{MongoDB:} puede usarse un clúster gestionado (por ejemplo MongoDB Atlas) o una instancia local. El proyecto no incluye archivos de aprovisionamiento; en macOS puede instalarse con Homebrew (\texttt{brew tap mongodb/brew \&\& brew install mongodb-community}) e iniciarse con \texttt{brew services start mongodb-community}. Una instancia local es necesaria para ejecutar las pruebas automatizadas.
+    \item \textbf{Git:} para clonar el repositorio y gestionar ramas.
+    \item \textbf{Cuenta de desarrollador de PayPal (sandbox):} necesaria únicamente si se van a probar los flujos de membresía premium (\texttt{backend/src/routes/paypal.routes.ts}).
+    \item \textbf{Directorio de archivos subidos:} la biblioteca y los archivos de perfil se guardan en el disco del servidor, en \texttt{UPLOAD\_DIR} (por defecto \texttt{/srv/uploads}; la biblioteca usa \texttt{LIBRARY\_DIR}, por defecto \texttt{UPLOAD\_DIR/biblioteca}). En un equipo de desarrollo donde \texttt{/srv} no existe o no es escribible, defina \texttt{UPLOAD\_DIR} (por ejemplo, una carpeta dentro del proyecto) antes de probar la subida de archivos.
+    \item \textbf{Cuenta de correo (opcional en desarrollo):} \texttt{MAIL\_USER} y \texttt{MAIL\_PASS} permiten enviar los correos de confirmación y recuperación. Con una cuenta de Gmail, \texttt{MAIL\_PASS} debe ser una contraseña de aplicación de 16 caracteres.
+\end{itemize}
+
+\subsection{Código fuente}
+\begin{enumerate}
+    \item Clonar el repositorio y ubicarse en la rama de trabajo:
+\begin{verbatim}
+git clone https://github.com/Komuness/Proyecto-Komuness.git
+cd Proyecto-Komuness
+git checkout branch-testing-changes
+\end{verbatim}
+    \item Instalar las dependencias del backend:
+\begin{verbatim}
+cd backend
+npm install
+\end{verbatim}
+    \item Crear el archivo \texttt{backend/.env} con las siguientes variables (los nombres son obligatorios; los valores dependen del entorno de cada desarrollador):
+\begin{verbatim}
+BD_URL=<cadena de conexion a MongoDB>
+PORT=<puerto del servidor, por ejemplo 5050>
+JWT_SECRET=<clave secreta para firmar los tokens JWT>
+NODE_ENV=development
+\end{verbatim}
+    Para una instancia local de MongoDB, \texttt{BD\_URL} puede ser \texttt{mongodb://127.0.0.1:27017/komuness-local-test}. \textbf{Nota (macOS):} el puerto 5000 suele estar ocupado por el receptor AirPlay y responde 403, por lo que se recomienda usar otro puerto (por ejemplo 5050). Otras variables opcionales que lee el backend son: \texttt{PUBLIC\_BASE\_URL} (URL pública usada para construir los enlaces de los archivos adjuntos y de la biblioteca; \textbf{(S3)} es obligatoria para crear y editar publicidades), \texttt{CORS\_ORIGINS}, \texttt{FRONTEND\_URL}, \texttt{MAIL\_HOST}, \texttt{MAIL\_PORT} (solo si \texttt{MAIL\_USER} no es de Gmail), \texttt{MAIL\_USER}, \texttt{MAIL\_PASS} (correo), \texttt{PAYPAL\_CLIENTID}, \texttt{PAYPAL\_SECRET}, \texttt{PAYPAL\_BASEURL}, \texttt{PAYPAL\_WEBHOOK\_ID} (pagos), \texttt{DEFAULT\_CATEGORIA\_ID} (categoría por omisión al crear publicaciones), \texttt{UPLOAD\_DIR}, \texttt{LIBRARY\_DIR}, \texttt{LIBRARY\_MAX\_FILE\_SIZE\_MB} y \texttt{UPLOAD\_MAX\_FILE\_SIZE\_SLACK\_BYTES} (archivos), y \texttt{RECORDATORIO\_DIAS\_ANTES} y \texttt{PUBLICACION\_EXPIRATION\_JOB\_MS} (tarea de expiración de publicaciones). \textbf{Atención:} si \texttt{PUBLIC\_BASE\_URL} no está definida, los enlaces de adjuntos de publicaciones usan una dirección IP fija de respaldo definida en el código, los de la biblioteca usan \texttt{https://localhost:5000} y las publicidades no se pueden guardar; debe configurarse en cada entorno.
+    \item Instalar las dependencias del frontend:
+\begin{verbatim}
+cd ../FrontEnd
+npm install
+\end{verbatim}
+    \item Crear el archivo \texttt{FrontEnd/.env} con las siguientes variables:
+\begin{verbatim}
+REACT_APP_BACKEND_URL=<URL del backend, por ejemplo http://localhost:5050>
+PORT=<puerto del servidor de desarrollo de React, por ejemplo 3000>
+\end{verbatim}
+\end{enumerate}
+
+Para ejecutar ambos servidores en modo de desarrollo:
+\begin{verbatim}
+# En backend/, con recarga automática:
+npm run start:dev
+# (alternativa sin recarga automática: npm run dev)
+
+# En FrontEnd/, en otra terminal:
+npm start
+\end{verbatim}
+El backend queda disponible en \texttt{http://localhost:<PORT>/api} (por ejemplo \texttt{http://localhost:5050/api}) y el frontend en \texttt{http://localhost:3000}, tal como lo espera la lista de orígenes permitidos por CORS definida en \texttt{backend/src/index.ts}. En desarrollo, el frontend toma la URL del backend de \texttt{REACT\_APP\_BACKEND\_URL}.
+
+\subsection{Despliegue en entorno de pruebas}
+El backend incluye una batería de pruebas automatizadas con \textbf{Jest} y \textbf{Supertest} (\texttt{backend/src/test/}) y el frontend, pruebas con \textbf{Jest} y \textbf{React Testing Library} (\texttt{FrontEnd/src/\_\_tests\_\_/} y \texttt{FrontEnd/src/utils/*.test.js}). Las del backend cubren: registro, confirmación de cuenta, inicio de sesión y recuperación de contraseña (\texttt{usuarioAuth.test.ts}); permisos de actualización de usuarios (\texttt{usuarioUpdatePermisos.test.ts}); creación, consulta, actualización y eliminación de publicaciones, con categoría y comentarios (\texttt{publicacion.test.ts}, \texttt{publicacionCategoria.test.ts}, \texttt{comentarios.test.ts}); la publicación automática y su edición y eliminación enlazadas (\texttt{publicacionAutomatica.test.ts}), la de tutoriales y proyectos destacados (\texttt{publicacionAutomaticaTutorialProyecto.test.ts}) y la de archivos de la biblioteca (\texttt{publicacionAutomaticaBiblioteca.test.ts}); las cuentas regresivas (\texttt{cuentaRegresivaApi.test.ts}, \texttt{cuentaRegresivaEvento.test.ts}, \texttt{cuentaRegresivaFecha.test.ts}, \texttt{cuentaRegresivaPermiso.test.ts}); la eliminación de notificaciones por usuario (\texttt{notificacionesEliminarPorUsuario.test.ts}); la verificación del contenido de archivos (\texttt{fileContent.test.ts}, \texttt{uploadSecurity.test.ts}); la configuración del sitio (\texttt{configuracion.test.ts}); la sección ``Acerca de'' (\texttt{seccionAcerca.test.ts}); y el manejo de errores y reintentos de pagos con PayPal (\texttt{paymentErrorHandler.test.ts}, \texttt{paymentRetry.test.ts}, \texttt{paypalController.test.ts}).
+
+\textbf{Estado de las pruebas.} En la ejecución realizada para esta versión (17 de noviembre de 2026, rama \texttt{branch-testing-changes}, con MongoDB local activo) pasan las 21 suites y las 213 pruebas del backend, y las 7 suites y 59 pruebas del frontend. Las fallas del reporte del 29 de septiembre (9 pruebas desactualizadas) quedaron corregidas durante el Sprint 3. Sin una base de datos accesible, la mayoría de las pruebas del backend fallan con \texttt{ECONNREFUSED}. Siguen sin pruebas automatizadas varias funcionalidades del Sprint 2 (validación de la ubicación en mapa, elegibilidad del banco de profesionales, fotos de emprendimientos y filtros por provincia y cantón), cuya validación depende de pruebas manuales.
+
+Para ejecutar las pruebas antes de desplegar a un entorno de pruebas o producción:
+\begin{verbatim}
+cd backend
+npm test
+\end{verbatim}
+Para compilar el backend a JavaScript (verificación de tipos incluida) y generar un \textit{build} de producción del frontend:
+\begin{verbatim}
+cd backend && npm run build   # genera backend/dist
+cd ../FrontEnd && npm run build  # genera FrontEnd/build (estático)
+\end{verbatim}
+
+\section{Entorno de Producción}
+
+\subsection{Dependencias}
+El entorno de producción no requiere las herramientas de desarrollo (\texttt{ts-node}, \texttt{ts-node-dev}, \texttt{react-scripts} en modo servidor, etc.), únicamente:
+\begin{itemize}
+    \item \textbf{Node.js} para ejecutar el backend ya compilado (\texttt{backend/dist/index.js}).
+    \item \textbf{MongoDB Atlas} (o equivalente gestionado) accesible desde el servidor de producción.
+    \item \textbf{Un servidor web / reverse proxy} (por ejemplo Nginx) que sirva el \textit{build} estático del frontend (\texttt{FrontEnd/build}) y enrute las peticiones \texttt{/api} hacia el proceso de Node del backend. El propio backend expone alias estáticos (\texttt{/uploads}, \texttt{/biblioteca}, \texttt{/acercade}, \texttt{/perfil}, \texttt{/csv}) que reemplazan configuraciones equivalentes de Nginx cuando el almacenamiento de archivos es local al servidor (variable \texttt{UPLOAD\_DIR}, por defecto \texttt{/srv/uploads}).
+    \item \textbf{Credenciales de producción} de DigitalOcean Spaces, PayPal (\textit{live}, no \textit{sandbox}) y de la cuenta de correo usada por Nodemailer.
+\end{itemize}
+
+El proyecto contempla más de un esquema de despliegue, evidenciados por la lista de orígenes permitidos en CORS y por el archivo \texttt{backend/vercel.json}: el backend puede desplegarse como función serverless en \textbf{Vercel}, en \textbf{Railway}, o como proceso persistente en un servidor propio (VPS) detrás de Nginx, referenciado mediante el dominio dinámico \texttt{komuness.duckdns.org}; el frontend puede desplegarse como sitio estático en \textbf{Vercel} o \textbf{Netlify}. Cualquiera sea el destino elegido, el frontend debe configurarse con \texttt{REACT\_APP\_BACKEND\_URL} apuntando a la URL pública del backend, y dicha URL (o el dominio del frontend) debe agregarse a la lista de orígenes permitidos en \texttt{backend/src/index.ts} o a la variable de entorno \texttt{CORS\_ORIGINS} (lista separada por comas).
+
+\subsection{Instrucciones de instalación}
+Instalación en un servidor propio (VPS) con Nginx, esquema recomendado para mantener persistencia de archivos subidos a la biblioteca:
+\begin{enumerate}
+    \item Clonar el repositorio en el servidor y configurar \texttt{backend/.env} con los valores de producción (\texttt{BD\_URL}, \texttt{PORT}, \texttt{JWT\_SECRET}, \texttt{NODE\_ENV=production}, credenciales de DigitalOcean Spaces, PayPal y correo, y \texttt{UPLOAD\_DIR} si se usa almacenamiento local).
+    \item Instalar dependencias y compilar el backend: \texttt{cd backend \&\& npm install \&\& npm run build}.
+    \item Iniciar el proceso de producción con un gestor de procesos persistente (por ejemplo PM2): \texttt{pm2 start dist/index.js --name komuness-backend}. El \texttt{healthcheck} en \texttt{GET /health} permite verificar que el proceso levantó y que la conexión a MongoDB está activa (\texttt{mongoReadyState: 1}).
+    \item Compilar el frontend con la URL de producción del backend: \texttt{cd FrontEnd \&\& npm install \&\& npm run build}, y publicar el contenido de \texttt{FrontEnd/build} en el servidor web o en el proveedor de hosting estático elegido.
+    \item Configurar Nginx (o el proxy equivalente) para servir el \textit{build} del frontend y redirigir las rutas \texttt{/api}, \texttt{/uploads}, \texttt{/biblioteca}, \texttt{/acercade}, \texttt{/perfil} y \texttt{/csv} hacia el proceso del backend.
+    \item Verificar que las variables de entorno de producción nunca incluyan las credenciales de \textit{sandbox} de PayPal y que la base de datos de producción sea distinta a la usada por las pruebas automatizadas.
+\end{enumerate}
+Para el esquema serverless (Vercel), basta con conectar el repositorio, seleccionar el directorio \texttt{backend} como raíz del proyecto (usa la configuración de \texttt{vercel.json}) y definir las mismas variables de entorno en el panel de Vercel; en ese esquema no se dispone de almacenamiento de archivos persistente en disco, por lo que la biblioteca documental y los archivos de perfil deben apoyarse en DigitalOcean Spaces o en GridFS.

@@ -1,0 +1,12 @@
+\begin{center}
+\thispagestyle{empty}
+\vspace{2cm}
+\LARGE{\textbf{RESUMEN}}\\[1.0cm]
+\end{center}
+\thispagestyle{empty}
+Komuness CR es una organización comunitaria derivada de Coopesinergia R.L., ubicada en el barrio de Tejarcillos de Alajuelita, Costa Rica. Su plataforma digital busca reducir la brecha social y tecnológica de la comunidad, ofreciendo a jóvenes y vecinos un espacio donde visibilizar sus talentos, productos, servicios y actividades culturales. Dado que el desarrollo inicial de la plataforma fue parcial, el proyecto se enfoca en refactorizar los módulos que ya se encuentran en producción: corregir los fallos heredados, reorganizar la interfaz e incorporar nuevas funcionalidades.
+
+El sistema permite publicar y consultar publicaciones, eventos y emprendimientos, con ubicación en mapa, filtros por categoría, fecha y comunidad, y un calendario integrado en la cartelera de eventos; mostrar cuentas regresivas de eventos en la página principal; participar en un banco de profesionales con perfiles públicos y filtros por provincia y cantón; acceder a una biblioteca de documentos organizada en carpetas y clasificada por categorías; recibir notificaciones (que cada persona puede eliminar de su propia bandeja) y boletines informativos; y adquirir membresías premium mediante pagos procesados con PayPal. Los eventos, emprendimientos, tutoriales, proyectos destacados y archivos de la biblioteca generan automáticamente una publicación en el feed general.
+
+El presente Manual Técnico es la \textbf{versión 3}, entregable del \textbf{Sprint 3 (tercer MVP)}, y es acumulativo respecto a los Sprints 1 y 2. Documenta la arquitectura, el modelo de persistencia, los métodos expuestos por la API REST y el procedimiento de instalación y despliegue del sistema, según el estado de la rama \texttt{branch-testing-changes} del repositorio del equipo. La solución sigue una arquitectura cliente-servidor de tres capas (N-capas), con un backend en Node.js, Express y TypeScript sobre una base de datos MongoDB administrada con Mongoose, y un frontend construido en React. El almacenamiento de archivos se apoya en el disco del servidor (directorio configurado con \texttt{UPLOAD\_DIR}) y en GridFS de MongoDB, y la mensajería por correo se gestiona mediante Nodemailer.\\
+\textbf{Palabras clave: }Komuness CR, plataforma comunitaria, refactorización, arquitectura N-capas, React, Node.js, MongoDB, API REST
