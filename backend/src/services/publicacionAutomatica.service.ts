@@ -12,7 +12,8 @@ export type OrigenPublicacionAutomatica =
   | "evento"
   | "emprendimiento"
   | "tutorial"
-  | "proyecto-destacado";
+  | "proyecto-destacado"
+  | "biblioteca";
 
 export interface CrearPublicacionAutomaticaInput {
   titulo: string;
@@ -39,6 +40,7 @@ const NOMBRE_ENLACE: Record<OrigenPublicacionAutomatica, string> = {
   emprendimiento: "Ver emprendimiento",
   tutorial: "Ver tutorial",
   "proyecto-destacado": "Ver proyecto",
+  biblioteca: "Ver recurso",
 };
 
 function recortar(texto: string, max: number): string {

@@ -4,7 +4,8 @@ import { Folder } from "../models/folder.model";
 import { modelPerfil } from "../models/perfil.model";
 import { modelCategoria } from "../models/categoria.model";
 import { IArchivo } from "../interfaces/archivo.interface";
-import { notificarPublicacionAutomatica } from "../services/notificacion.service";
+import { crearPublicacionAutomatica } from "../services/publicacionAutomatica.service";
+import { modelPublicacion } from "../models/publicacion.model";
 import mongoose from "mongoose";
 
 import path from "path";
@@ -124,6 +125,37 @@ const libraryFileFilter: multer.Options["fileFilter"] = (_req, file, cb) => {
     );
   }
 };
+
+/**
+ * Genera la publicación automática de un archivo de la biblioteca en el feed
+ * general (igual que eventos, emprendimientos y tutoriales). Solo se llama
+ * cuando el archivo ya está aprobado, y no duplica si ya existe una.
+ * Nunca lanza: un fallo aquí no debe romper la subida/aprobación.
+ */
+export async function publicarArchivoAutomatico(archivo: IArchivo & { _id: any }) {
+  try {
+    const existente = await modelPublicacion.exists({
+      publicacionOrigenId: archivo._id,
+    });
+    if (existente) return null;
+
+    return await crearPublicacionAutomatica({
+      titulo: archivo.nombre,
+      descripcion: "Nuevo recurso disponible en la biblioteca.",
+      url: archivo.url,
+      autorId: archivo.autor,
+      publicacionOrigenId: archivo._id,
+      tagOrigen: "biblioteca",
+      categoriaId: archivo.categoria,
+    });
+  } catch (error) {
+    console.warn(
+      "No se pudo crear la publicación automática del archivo de biblioteca:",
+      error,
+    );
+    return null;
+  }
+}
 
 export const uploadLibrary = (req: Request, res: Response, next: Function) => {
   multer({
@@ -293,18 +325,7 @@ class BibliotecaController {
             await archivo.save();
 
             if (estadoArchivo === "aprobado") {
-              try {
-                await notificarPublicacionAutomatica({
-                  publicacionId: String(archivo._id),
-                  titulo: archivo.nombre,
-                  tagOrigen: "biblioteca",
-                });
-              } catch (notiError) {
-                console.warn(
-                  "No se pudo notificar la subida del archivo de biblioteca:",
-                  notiError,
-                );
-              }
+              await publicarArchivoAutomatico(archivo);
             }
 
             return {
@@ -658,6 +679,13 @@ class BibliotecaController {
 
       await Archivo.findByIdAndDelete(id);
 
+      // La publicación automática no tiene sentido sin su archivo
+      await modelPublicacion
+        .deleteMany({ publicacionOrigenId: archivo._id, tag: "publicacion" })
+        .catch((e) =>
+          console.warn("No se pudo eliminar la publicación automática del archivo:", e),
+        );
+
       return true;
     } catch (error) {
       console.error(
@@ -934,18 +962,7 @@ class BibliotecaController {
       archivo.esPublico = true;
       await archivo.save();
 
-      try {
-        await notificarPublicacionAutomatica({
-          publicacionId: String(archivo._id),
-          titulo: archivo.nombre,
-          tagOrigen: "biblioteca",
-        });
-      } catch (notiError) {
-        console.warn(
-          "No se pudo notificar la aprobación del archivo de biblioteca:",
-          notiError,
-        );
-      }
+      await publicarArchivoAutomatico(archivo);
 
       return res.status(200).json({
         success: true,
