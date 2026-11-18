@@ -7,6 +7,7 @@ import {
 } from "../utils/onboardingSurvey";
 import { useAuth } from "./context/AuthContext";
 import EncuestaInicioFields from "./EncuestaInicioFields";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 
 const shouldShowEncuestaInicio = (user) => {
   if (!user?._id) return false;
@@ -47,7 +48,7 @@ const EncuestaInicioModal = () => {
   }, [visible, user]);
 
   const handleSubmit = async (event) => {
-    event.preventDefault();
+    event?.preventDefault?.();
 
     if (!user?._id || saving) return;
 
@@ -90,6 +91,11 @@ const EncuestaInicioModal = () => {
       setSaving(false);
     }
   };
+
+  useFormShortcuts({
+    isOpen: visible,
+    onSave: saving ? undefined : handleSubmit,
+  });
 
   if (!visible) return null;
 

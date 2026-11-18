@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { API_URL } from '../utils/api';
+import { useFormShortcuts } from '../hooks/useFormShortcuts';
 
 export const RecuperarContra = () => {
   const [email, setEmail] = useState('');
@@ -9,7 +10,7 @@ export const RecuperarContra = () => {
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     setMensaje('');
     setError('');
 
@@ -41,6 +42,8 @@ export const RecuperarContra = () => {
       setError('Error al conectar con el servidor.');
     }
   };
+
+  useFormShortcuts({ onSave: handleSubmit });
 
   return (
     <div className="min-h-screen flex items-start justify-center bg-gray-800/80 px-4 sm:px-6 py-8 sm:py-12 pt-20 sm:pt-24">

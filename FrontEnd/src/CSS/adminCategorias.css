@@ -239,7 +239,8 @@
 .admin-categorias-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
 
 .admin-categorias-edit-btn,
-.admin-categorias-delete-btn {
+.admin-categorias-delete-btn,
+.admin-categorias-remove-btn {
   padding: 0.4rem 0.9rem;
   font-size: 0.8rem;
   font-weight: 700;
@@ -260,6 +261,14 @@
   border: 1px solid var(--kw-danger);
 }
 .admin-categorias-delete-btn:hover { background: rgba(248, 113, 113, 0.12); }
+/* Borrado definitivo (UI60) */
+.admin-categorias-remove-btn {
+  color: #fff;
+  background: var(--kw-danger);
+  border: 1px solid var(--kw-danger);
+}
+.admin-categorias-remove-btn:hover:not(:disabled) { filter: brightness(1.08); }
+.admin-categorias-remove-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 
 .admin-categorias-empty { padding: 2rem; text-align: center; color: var(--kw-muted); }
 
@@ -300,5 +309,7 @@
   .admin-categorias-th,
   .admin-categorias-td { padding: 0.75rem; }
   .admin-categorias-edit-btn,
-  .admin-categorias-delete-btn { width: 100%; }
+  .admin-categorias-delete-btn,
+  .admin-categorias-remove-btn { width: 100%; }
 }
+

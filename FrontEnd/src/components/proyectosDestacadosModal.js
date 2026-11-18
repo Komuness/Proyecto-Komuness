@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "react-hot-toast";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 
 const ProyectosDestacadosModal = ({
   onClose,
@@ -23,6 +24,8 @@ const ProyectosDestacadosModal = ({
       descripcion: descripcion.trim(),
     });
   };
+
+  useFormShortcuts({ onSave: handleSubmit, onClose });
 
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">

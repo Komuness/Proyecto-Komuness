@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { FaTimes } from "react-icons/fa";
+import { IoMdAlert } from "react-icons/io";
 import { toast } from "react-hot-toast";
 import "../CSS/publicaciones.css";
 
@@ -22,6 +23,7 @@ import ComunidadFilter from "./generic/comunidadFilter";
 import CarruselGenerico from "./CarruselGenerico";
 import CalendarView from "./Calendar";
 import PublicidadBanner from "./PublicidadBanner";
+import ConfirmDialog from "./ConfirmDialog";
 
 // Base de API robusta (evita /api/api)
 const RAW = process.env.REACT_APP_BACKEND_URL || window.location.origin;
@@ -86,6 +88,8 @@ export const Publicaciones = ({ tag: propTag }) => {
   const [mostrarModalPublicidad, setMostrarModalPublicidad] = useState(false);
   const [publicidadEditando, setPublicidadEditando] = useState(null); // null = crear desde cero, objeto = editar publicidad
   const [publicidad, setPublicidad] = useState([]);
+  const [deletePublicidadTarget, setDeletePublicidadTarget] = useState(null);
+  const [eliminandoPublicidadId, setEliminandoPublicidadId] = useState(null);
 
   //Variables de Usuario
   const UserType = {
@@ -323,13 +327,26 @@ export const Publicaciones = ({ tag: propTag }) => {
     }
   };
 
-  const handleDeletePublicidad = async (pub) => {
-    if (!window.confirm("¿Está seguro de que quiere eliminar esta publicidad?"))
-      return;
+  const handleDeletePublicidad = (pub) => {
+    setDeletePublicidadTarget({
+      id: pub._id,
+      nombre: pub.titulo || pub.descripcion || "esta publicidad",
+    });
+  };
+
+  const cancelarEliminacionPublicidad = () => {
+    if (eliminandoPublicidadId) return;
+    setDeletePublicidadTarget(null);
+  };
+
+  const confirmarEliminacionPublicidad = async () => {
+    if (!deletePublicidadTarget || eliminandoPublicidadId) return;
+    const { id, nombre } = deletePublicidadTarget;
 
     try {
+      setEliminandoPublicidadId(id);
       const response = await fetch(
-        `${API_URL}/publicidad/delete-publicidad/${pub._id}`,
+        `${API_URL}/publicidad/delete-publicidad/${id}`,
         {
           method: "DELETE",
           headers: {
@@ -338,15 +355,18 @@ export const Publicaciones = ({ tag: propTag }) => {
         },
       );
       if (response.ok) {
-        toast.success("Publicidad eliminada");
+        toast.success(`Publicidad "${nombre}" eliminada`);
+        setDeletePublicidadTarget(null);
         fetchPublicidad();
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         toast.error(errorData.message || "Error al eliminar la publicidad");
       }
     } catch (e) {
       toast.error("Error al eliminar la publicidad");
       console.error(e);
+    } finally {
+      setEliminandoPublicidadId(null);
     }
   };
 
@@ -643,6 +663,27 @@ export const Publicaciones = ({ tag: propTag }) => {
       <AlertaLimitePublicaciones
         show={showLimitAlert}
         onClose={() => setShowLimitAlert(false)}
+      />
+
+      <ConfirmDialog
+        dialog={{
+          isOpen: !!deletePublicidadTarget,
+          title: "Borrado definitivo",
+          message: (
+            <>
+              ¿Estás seguro de eliminar la publicidad{" "}
+              <strong>{deletePublicidadTarget?.nombre}</strong>?
+            </>
+          ),
+          hint: "Esta acción es permanente y no se puede deshacer.",
+          confirmText: eliminandoPublicidadId ? "Eliminando..." : "Eliminar",
+          cancelText: "Cancelar",
+          tone: "danger",
+          icon: <IoMdAlert size={26} />,
+          loading: !!eliminandoPublicidadId,
+        }}
+        onConfirm={confirmarEliminacionPublicidad}
+        onCancel={cancelarEliminacionPublicidad}
       />
 
       <FormularioPublicacion

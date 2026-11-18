@@ -3,6 +3,8 @@ import { useAuth } from "../components/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { API_URL } from "../utils/api";
 import TutorialModal from "../components/tutorialModal";
+import ConfirmDialog from "./ConfirmDialog";
+import { IoMdAlert } from "react-icons/io";
 import ReactMarkdown from "react-markdown";
 
 // Minúsculas y sin tildes, para que "como crear" encuentre "Cómo crear"
@@ -15,36 +17,49 @@ export const Tutoriales = () => {
   const [tutoriales, setTutoriales] = useState([]);
   const [tutorialEditando, setTutorialEditando] = useState(null); // null = crear desde cero, objeto = editar tutorial
   const [busqueda, setBusqueda] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [eliminandoId, setEliminandoId] = useState(null);
 
   useEffect(() => {
     fetchTutoriales();
   }, []);
 
   ///////////////////// CRUD
-  const handleDeleteTutorial = async (tutorial) => {
-    if (!window.confirm("¿Está seguro de que quiere eliminar este tutorial?"))
-      return;
+  const handleDeleteTutorial = (tutorial) => {
+    setDeleteTarget({ id: tutorial._id, nombre: tutorial.nombre });
+  };
+
+  const cancelarEliminacion = () => {
+    if (eliminandoId) return;
+    setDeleteTarget(null);
+  };
+
+  const confirmarEliminacion = async () => {
+    if (!deleteTarget || eliminandoId) return;
+    const { id, nombre } = deleteTarget;
 
     try {
-      const response = await fetch(
-        `${API_URL}/tutoriales/delete-tutorial/${tutorial._id}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
+      setEliminandoId(id);
+      const response = await fetch(`${API_URL}/tutoriales/delete-tutorial/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
-      );
+      });
+
       if (response.ok) {
-        toast.success("Tutorial eliminado");
+        toast.success(`Tutorial "${nombre}" eliminado`);
+        setDeleteTarget(null);
         fetchTutoriales();
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         toast.error(errorData.message || "Error al eliminar el tutorial");
       }
     } catch (e) {
       toast.error("Error al eliminar el tutorial");
       console.error(e);
+    } finally {
+      setEliminandoId(null);
     }
   };
 
@@ -264,14 +279,36 @@ export const Tutoriales = () => {
               </button>
               <button
                 onClick={() => handleDeleteTutorial(tutorial)}
-                className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow"
+                disabled={eliminandoId === tutorial._id}
+                className="bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-medium px-4 py-2 rounded-lg shadow"
               >
-                − Eliminar
+                {eliminandoId === tutorial._id ? "Eliminando..." : "− Eliminar"}
               </button>
             </div>
           )}
         </div>
       ))}
+
+      <ConfirmDialog
+        dialog={{
+          isOpen: !!deleteTarget,
+          title: "Borrado definitivo",
+          message: (
+            <>
+              ¿Estás seguro de eliminar el tutorial{" "}
+              <strong>{deleteTarget?.nombre}</strong>?
+            </>
+          ),
+          hint: "Esta acción es permanente y no se puede deshacer.",
+          confirmText: eliminandoId ? "Eliminando..." : "Eliminar",
+          cancelText: "Cancelar",
+          tone: "danger",
+          icon: <IoMdAlert size={26} />,
+          loading: !!eliminandoId,
+        }}
+        onConfirm={confirmarEliminacion}
+        onCancel={cancelarEliminacion}
+      />
     </div>
   );
 };

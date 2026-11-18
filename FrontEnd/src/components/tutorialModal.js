@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { toast } from "react-hot-toast"
+import { toast } from "react-hot-toast";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 
 const TutorialModal = ({
     onClose,
@@ -19,6 +20,8 @@ const TutorialModal = ({
         }
         onSubmit({nombre: nombre.trim(), url: url.trim(), descripcion: descripcion.trim()});
     };
+
+    useFormShortcuts({ onSave: handleSubmit, onClose });
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">

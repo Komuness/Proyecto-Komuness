@@ -11,6 +11,7 @@ import {
   FiX,
 } from "react-icons/fi";
 import { API_URL } from "../utils/api";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 import { DEFAULT_THEME, useTheme } from "./context/ThemeContext";
 import "../CSS/adminModales.css";
 
@@ -390,6 +391,12 @@ const ModalConfiguracionTematica = ({ isOpen, onClose }) => {
     }
     onClose();
   };
+
+  useFormShortcuts({
+    isOpen,
+    onSave: handleSaveAll,
+    onClose: handleCancel,
+  });
 
   if (!isOpen) return null;
 

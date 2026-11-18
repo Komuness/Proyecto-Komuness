@@ -2,6 +2,7 @@ import { verifySingleFile, acceptAttr } from '../utils/fileValidation';
 import { useState } from "react";
 import { toast } from "react-hot-toast"
 import { useAuth } from './context/AuthContext';
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 import { TiraPublicidad } from "./PublicidadBanner";
 
 const TITULO_MAX = 80;
@@ -96,6 +97,8 @@ const PublicidadModal = ({
             publicacionRelacionada,
         });
     };
+
+    useFormShortcuts({ onSave: handleSubmit, onClose });
 
     return (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 p-4">

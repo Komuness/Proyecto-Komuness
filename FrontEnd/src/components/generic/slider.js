@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useFormShortcuts } from '../../hooks/useFormShortcuts';
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Pagination } from "swiper/modules";
 import 'swiper/css'
@@ -11,6 +12,8 @@ export const Slider = ({ publicacion }) => {
 
   const abrirZoom = (img) => setZoomedImg(img);
   const cerrarZoom = () => setZoomedImg(null);
+
+  useFormShortcuts({ isOpen: !!zoomedImg, onClose: cerrarZoom });
 
   if (imagenes.length === 0) {
     return (

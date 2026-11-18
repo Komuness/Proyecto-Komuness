@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { API_URL } from '../utils/api';
 import { useAuth } from './context/AuthContext';
+import { useFormShortcuts } from '../hooks/useFormShortcuts';
 
 export const NuevaContra = () => {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ export const NuevaContra = () => {
   const [cargando, setCargando] = useState(false);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
 
     if (!user || !user._id) {
       toast.error('Debes iniciar sesión para cambiar tu contraseña');
@@ -62,6 +63,8 @@ export const NuevaContra = () => {
       setCargando(false);
     }
   };
+
+  useFormShortcuts({ onSave: handleSubmit });
 
   return (
     <div className="min-h-screen flex items-start justify-center bg-gray-800/80 px-4 sm:px-6 py-8 sm:py-12 pt-20 sm:pt-24">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import { API_URL } from '../utils/api';
 import { FiUsers, FiStar, FiX, FiCheck } from 'react-icons/fi';
+import { useFormShortcuts } from '../hooks/useFormShortcuts';
 import '../CSS/adminModales.css';
 
 const ModalLimitesPublicaciones = ({ isOpen, onClose }) => {
@@ -121,6 +122,12 @@ const ModalLimitesPublicaciones = ({ isOpen, onClose }) => {
   const cambiosRealizados = 
     limites.limiteBasico !== limitesOriginales.limiteBasico || 
     limites.limitePremium !== limitesOriginales.limitePremium;
+
+  useFormShortcuts({
+    isOpen,
+    onSave: handleGuardar,
+    onClose: handleCancelar,
+  });
 
   if (!isOpen) return null;
 

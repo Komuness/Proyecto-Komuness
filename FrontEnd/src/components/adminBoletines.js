@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 import "../CSS/adminBoletines.css";
 import { IoMdArrowRoundBack, IoMdCreate, IoMdTrash } from "react-icons/io";
 import { MdSend } from "react-icons/md";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 
 export const AdminBoletines = () => {
     const navigate = useNavigate();
@@ -141,7 +142,7 @@ export const AdminBoletines = () => {
     };
 
     const handleSubmit = async (e) => {
-        e.preventDefault();
+        e?.preventDefault?.();
 
         if (!formData.titulo.trim() || !formData.contenido.trim()) {
             toast.error("Título y contenido son obligatorios");
@@ -197,6 +198,12 @@ export const AdminBoletines = () => {
             setActionLoading(false);
         }
     };
+
+    useFormShortcuts({
+        isOpen: showForm,
+        onSave: handleSubmit,
+        onClose: () => setShowForm(false),
+    });
 
     const handleEdit = (boletin) => {
         setEditingId(boletin._id);

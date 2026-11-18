@@ -24,6 +24,7 @@ import {
   writeSessionDraft,
 } from "../utils/sessionDraftStorage";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 import { SiHyperskill } from "react-icons/si";
 
 const PROFILE_DRAFT_PREFIX = "komuness:editar-perfil";
@@ -602,6 +603,12 @@ const EditarPerfil = () => {
 
     resolveCancel();
   };
+
+  useFormShortcuts({
+    enabled: !dialog.isOpen,
+    onSave: handleGuardarCambios,
+    onClose: handleCancelar,
+  });
 
   if (loading) {
     return (

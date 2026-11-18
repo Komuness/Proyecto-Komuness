@@ -1,6 +1,9 @@
 import '../CSS/profileErrorModal.css';
+import { useFormShortcuts } from '../hooks/useFormShortcuts';
 
 const ProfileErrorModal = ({ isOpen, onClose, type = 'private' }) => {
+  useFormShortcuts({ isOpen, onClose });
+
   if (!isOpen) return null;
 
   const config = {

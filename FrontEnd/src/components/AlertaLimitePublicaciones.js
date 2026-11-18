@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiAlertCircle, FiStar, FiCheck, FiX, FiClock } from 'react-icons/fi';
 import { API_URL } from '../utils/api';
+import { useFormShortcuts } from '../hooks/useFormShortcuts';
 
 const AlertaLimitePublicaciones = ({ show, onClose }) => {
   const navigate = useNavigate();
@@ -38,6 +39,8 @@ const AlertaLimitePublicaciones = ({ show, onClose }) => {
     onClose();
     navigate('/checkout-premium');
   };
+
+  useFormShortcuts({ isOpen: show, onClose });
 
   if (!show) return null;
 

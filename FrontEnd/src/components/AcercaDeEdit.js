@@ -2,6 +2,7 @@ import { verifySingleFile, acceptAttr } from '../utils/fileValidation';
 import { useState, useCallback, useMemo } from 'react';
 import { API_URL } from '../utils/api';
 import { toast } from 'react-hot-toast';
+import { useFormShortcuts } from '../hooks/useFormShortcuts';
 import {
   FaArrowLeft,
   FaArrowRight,
@@ -141,6 +142,8 @@ const AcercaDeEdit = ({ data, onUpdate, onCancel }) => {
       setLoading(false);
     }
   };
+
+  useFormShortcuts({ onSave: handleSave, onClose: onCancel });
 
   // Funciones para manejar el equipo optimizadas
   const handleAddMember = useCallback(() => {

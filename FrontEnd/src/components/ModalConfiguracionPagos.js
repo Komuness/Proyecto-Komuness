@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
 import { API_URL } from '../utils/api';
+import { useFormShortcuts } from '../hooks/useFormShortcuts';
 import {
   FiSmartphone,
   FiUser,
@@ -445,6 +446,12 @@ const ModalConfiguracionPagos = ({ isOpen, onClose }) => {
     configuracion.sinpeNumero !== configOriginal.sinpeNumero ||
     configuracion.sinpeNombre !== configOriginal.sinpeNombre ||
     configuracion.whatsappNumero !== configOriginal.whatsappNumero;
+
+  useFormShortcuts({
+    isOpen,
+    onSave: handleGuardar,
+    onClose: handleCancelar,
+  });
 
   if (!isOpen) return null;
 

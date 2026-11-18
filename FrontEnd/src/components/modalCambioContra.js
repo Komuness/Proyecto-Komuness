@@ -1,6 +1,7 @@
 // components/ModalCambioContrasena.jsx
 import { useState } from "react";
 import { toast } from "react-hot-toast";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 
 export default function ModalCambioContrasena({ userId, onClose, API_URL }) {
   const [nuevaContrasena, setNuevaContrasena] = useState("");
@@ -31,6 +32,8 @@ export default function ModalCambioContrasena({ userId, onClose, API_URL }) {
       console.error(error);
     }
   };
+
+  useFormShortcuts({ onSave: manejarCambioContrasena, onClose });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">

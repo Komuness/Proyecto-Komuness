@@ -7,6 +7,7 @@ import CategoriaSelector from "./generic/categoriaSelector";
 import { CuentaRegresivaEventoToggle } from "./CuentaRegresivaEventoToggle";
 import "../CSS/formularioPublicacion.css";
 import { useLockBodyScroll } from "../hooks/useLockBodyScroll";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 import {
   readSessionDraft,
   removeSessionDraft,
@@ -255,7 +256,7 @@ export const EditarPublicacionModal = ({
   );
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
 
     const requiereFoto = publicacion.tag === "evento" || publicacion.tag === "emprendimiento";
       if (requiereFoto && imagenesMantenidas.length + nuevasImagenes.length === 0) {
@@ -395,6 +396,12 @@ export const EditarPublicacionModal = ({
       setCargando(false);
     }
   };
+
+  useFormShortcuts({
+    isOpen,
+    onSave: cargando || haAlcanzadoLimite ? undefined : handleSubmit,
+    onClose,
+  });
 
   if (!isOpen) return null;
 

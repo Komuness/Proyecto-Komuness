@@ -5,7 +5,9 @@ import { API_URL } from "../utils/api";
 import { useAuth } from "./context/AuthContext";
 import { toast } from "react-hot-toast";
 import "../CSS/adminCategorias.css"; // Importamos el CSS separado
-import { IoMdArrowRoundBack } from "react-icons/io";
+import { IoMdAlert, IoMdArrowRoundBack } from "react-icons/io";
+import ConfirmDialog from "./ConfirmDialog";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 
 export const AdminCategorias = () => {
   const TYPES = {
@@ -37,6 +39,8 @@ export const AdminCategorias = () => {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [eliminandoId, setEliminandoId] = useState(null);
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const [formData, setFormData] = useState({ nombre: "" });
   const { user, cargando } = useAuth();
   const navigate = useNavigate();
@@ -78,7 +82,7 @@ export const AdminCategorias = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     setActionLoading(true);
 
     if (!formData.nombre.trim()) {
@@ -127,18 +131,24 @@ export const AdminCategorias = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (
-      !window.confirm(
-        `¿Estás seguro de que quieres eliminar esta ${currentType.label.toLowerCase()}?`,
-      )
-    ) {
-      return;
-    }
+  const handleDelete = (element) => {
+    setDeleteTarget({ id: element._id, nombre: element.nombre });
+  };
+
+  const cancelarEliminacion = () => {
+    if (eliminandoId) return;
+    setDeleteTarget(null);
+  };
+
+  const confirmarEliminacion = async () => {
+    if (!deleteTarget || eliminandoId) return;
+
+    const { id } = deleteTarget;
 
     try {
+      setEliminandoId(id);
       const response = await fetch(
-        `${API_URL}/elements/${optionActive}/${id}`,
+        `${API_URL}/elements/${optionActive}/${id}/eliminar`,
         {
           method: "DELETE",
           headers: {
@@ -146,21 +156,28 @@ export const AdminCategorias = () => {
           },
         },
       );
+      const data = await response.json().catch(() => ({}));
 
-      if (response.ok) {
-        toast.success(`${currentType.label} eliminada`);
-        fetchElements();
-      } else {
-        const errorData = await response.json();
+      if (!response.ok) {
         toast.error(
-          errorData.message ||
+          data.message ||
             `Error al eliminar la ${currentType.label.toLowerCase()}`,
         );
+        return;
       }
+
+      toast.success(
+        data.message || `${currentType.label} eliminada correctamente`,
+      );
+      setDeleteTarget(null);
+      fetchElements();
     } catch (error) {
       toast.error(`Error al eliminar la ${currentType.label.toLowerCase()}`);
+    } finally {
+      setEliminandoId(null);
     }
   };
+
   const handleToggle = async (id) => {
     try {
       const response = await fetch(
@@ -187,6 +204,12 @@ export const AdminCategorias = () => {
   const handleGoBack = () => {
     navigate("/perfilUsuario"); // Vuelve al dashboard administrativo
   };
+
+  useFormShortcuts({
+    enabled: !deleteTarget,
+    onSave: handleSubmit,
+    onClose: handleGoBack,
+  });
 
   if (loading) {
     return (
@@ -328,6 +351,17 @@ export const AdminCategorias = () => {
                         >
                           {element.estado ? "Desactivar" : "Activar"}
                         </button>
+                        {user?.tipoUsuario === 1 && (
+                          <button
+                            onClick={() => handleDelete(element)}
+                            disabled={eliminandoId === element._id}
+                            className="admin-categorias-remove-btn"
+                          >
+                            {eliminandoId === element._id
+                              ? "Eliminando..."
+                              : "Eliminar"}
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -343,6 +377,27 @@ export const AdminCategorias = () => {
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        dialog={{
+          isOpen: !!deleteTarget,
+          title: "Borrado definitivo",
+          message: (
+            <>
+              ¿Estás seguro de eliminar la {currentType.label.toLowerCase()}{" "}
+              <strong>{deleteTarget?.nombre}</strong>?
+            </>
+          ),
+          hint: "Esta acción es permanente y no se puede deshacer.",
+          confirmText: eliminandoId ? "Eliminando..." : "Eliminar",
+          cancelText: "Cancelar",
+          tone: "danger",
+          icon: <IoMdAlert size={26} />,
+          loading: !!eliminandoId,
+        }}
+        onConfirm={confirmarEliminacion}
+        onCancel={cancelarEliminacion}
+      />
     </div>
   );
 };

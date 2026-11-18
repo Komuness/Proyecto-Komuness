@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react'
+import { useFormShortcuts } from '../hooks/useFormShortcuts'
 import DocumentCard from './documentCard'
 import DocumentModal from './documentModal'
 import { useParams, useNavigate, useLocation } from "react-router-dom"
@@ -603,7 +604,13 @@ export const Biblioteca = () => {
 
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isMoveActive, setIsMoveActive] = useState(false);
-  
+
+  useFormShortcuts({
+    isOpen: mostrarModal,
+    onSave: handleCrearCarpeta,
+    onClose: () => setMostrarModal(false),
+  });
+
   const toggleFileSelection = (doc) =>{
     setSelectedFiles(prev => {
 	    const exists = prev.some(f => f.id === doc.id);

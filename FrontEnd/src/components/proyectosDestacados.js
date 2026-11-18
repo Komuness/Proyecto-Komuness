@@ -3,6 +3,8 @@ import { useAuth } from "../components/context/AuthContext";
 import { toast } from "react-hot-toast";
 import { API_URL } from "../utils/api";
 import ProyectosDestacadosModal from "../components/proyectosDestacadosModal";
+import ConfirmDialog from "./ConfirmDialog";
+import { IoMdAlert } from "react-icons/io";
 import ReactMarkdown from "react-markdown";
 
 // Minúsculas y sin tildes, para que "orquesta comunitaria" encuentre "Orquesta Comunitaria"
@@ -13,21 +15,33 @@ export const ProyectosDestacados = () => {
   const { user } = useAuth();
   const [mostrarModal, setMostrarModal] = useState(false);
   const [proyectos, setProyectos] = useState([]);
-  const [proyectoEditando, setProyectoEditando] = useState(null); // null = crear desde cero, objeto = editar tutorial
+  const [proyectoEditando, setProyectoEditando] = useState(null); // null = crear desde cero, objeto = editar proyecto
   const [busqueda, setBusqueda] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [eliminandoId, setEliminandoId] = useState(null);
 
   useEffect(() => {
     fetchProyectos();
   }, []);
 
   ///////////////////// CRUD
-  const handleDeleteProyecto = async (proyecto) => {
-    if (!window.confirm("¿Está seguro de que quiere eliminar este proyecto?"))
-      return;
+  const handleDeleteProyecto = (proyecto) => {
+    setDeleteTarget({ id: proyecto._id, nombre: proyecto.nombre });
+  };
+
+  const cancelarEliminacion = () => {
+    if (eliminandoId) return;
+    setDeleteTarget(null);
+  };
+
+  const confirmarEliminacion = async () => {
+    if (!deleteTarget || eliminandoId) return;
+    const { id, nombre } = deleteTarget;
 
     try {
+      setEliminandoId(id);
       const response = await fetch(
-        `${API_URL}/proyectos-destacados/delete-proyecto/${proyecto._id}`,
+        `${API_URL}/proyectos-destacados/delete-proyecto/${id}`,
         {
           method: "DELETE",
           headers: {
@@ -35,16 +49,20 @@ export const ProyectosDestacados = () => {
           },
         },
       );
+
       if (response.ok) {
-        toast.success("Proyecto eliminado");
+        toast.success(`Proyecto "${nombre}" eliminado`);
+        setDeleteTarget(null);
         fetchProyectos();
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         toast.error(errorData.message || "Error al eliminar el proyecto");
       }
     } catch (e) {
       toast.error("Error al eliminar el proyecto");
       console.error(e);
+    } finally {
+      setEliminandoId(null);
     }
   };
 
@@ -266,14 +284,36 @@ export const ProyectosDestacados = () => {
               </button>
               <button
                 onClick={() => handleDeleteProyecto(proyecto)}
-                className="bg-red-600 hover:bg-red-700 text-white text-sm font-medium px-4 py-2 rounded-lg shadow"
+                disabled={eliminandoId === proyecto._id}
+                className="bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white text-sm font-medium px-4 py-2 rounded-lg shadow"
               >
-                − Eliminar
+                {eliminandoId === proyecto._id ? "Eliminando..." : "− Eliminar"}
               </button>
             </div>
           )}
         </div>
       ))}
+
+      <ConfirmDialog
+        dialog={{
+          isOpen: !!deleteTarget,
+          title: "Borrado definitivo",
+          message: (
+            <>
+              ¿Estás seguro de eliminar el proyecto destacado{" "}
+              <strong>{deleteTarget?.nombre}</strong>?
+            </>
+          ),
+          hint: "Esta acción es permanente y no se puede deshacer.",
+          confirmText: eliminandoId ? "Eliminando..." : "Eliminar",
+          cancelText: "Cancelar",
+          tone: "danger",
+          icon: <IoMdAlert size={26} />,
+          loading: !!eliminandoId,
+        }}
+        onConfirm={confirmarEliminacion}
+        onCancel={cancelarEliminacion}
+      />
     </div>
   );
 };

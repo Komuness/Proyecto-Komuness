@@ -10,6 +10,7 @@ import { puedeGestionarCuentasRegresivas } from "../utils/permisos";
 import { formatearFechaCR, fechaHoraCRaISO, isoAFechaHoraCR } from "../utils/cuentaRegresiva";
 import ConfirmDialog from "./ConfirmDialog";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 import "../CSS/adminCuentasRegresivas.css";
 
 const TITULO_MAX = 120;
@@ -64,12 +65,6 @@ export const AdminCuentasRegresivas = () => {
     if (!cargando && permitido) cargar();
   }, [cargando, permitido, cargar]);
 
-  if (cargando) {
-    return <div className="acr-cargando">Cargando…</div>;
-  }
-  if (!user) return <Navigate to="/iniciarSesion" replace />;
-  if (!permitido) return <Navigate to="/" replace />;
-
   const reiniciar = () => {
     setEditando(null);
     setForm(FORM_VACIO);
@@ -85,7 +80,7 @@ export const AdminCuentasRegresivas = () => {
   const alCambiar = (e) => setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
 
   const alEnviar = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     const titulo = form.titulo.trim();
     if (!titulo) {
       toast.error("Escribe un título");
@@ -154,6 +149,18 @@ export const AdminCuentasRegresivas = () => {
       toast.error(error.message);
     }
   };
+
+  useFormShortcuts({
+    enabled: !dialog.isOpen && !cargando && permitido,
+    onSave: alEnviar,
+    onClose: reiniciar,
+  });
+
+  if (cargando) {
+    return <div className="acr-cargando">Cargando…</div>;
+  }
+  if (!user) return <Navigate to="/iniciarSesion" replace />;
+  if (!permitido) return <Navigate to="/" replace />;
 
   return (
     <div className="acr-container">

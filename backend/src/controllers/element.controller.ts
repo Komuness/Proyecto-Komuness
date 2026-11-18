@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { modelCategoria } from "../models/categoria.model";
 import { modelEtiqueta } from "../models/etiqueta.model";
+import { modelPublicacion } from "../models/publicacion.model";
+import { Archivo } from "../models/archivo.model";
+import { modelCategoriaPreferencia } from "../models/categoriaPreferencia.model";
 
 export type TipoElemento = "categoria" | "etiqueta";
 
@@ -214,6 +217,63 @@ export const deleteElement = async (
     await elemento.save();
 
     res.json({ message: "Elemento desactivado correctamente" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error al eliminar el elemento" });
+  }
+};
+
+/**
+ * Eliminar definitivamente una categoría o etiqueta (UI60).
+ * Las categorías no se pueden borrar si alguna publicación las está usando.
+ */
+export const deleteElementDefinitivo = async (
+  req: Request,
+  res: Response,
+): Promise<void> => {
+  try {
+    const { tipo, id } = req.params;
+
+    if (!isTipoElemento(tipo)) {
+      res.status(400).json({
+        message: "El tipo debe ser 'categoria' o 'etiqueta'",
+      });
+      return;
+    }
+
+    const modelo = models[tipo];
+    const elemento = await modelo.findById(id);
+    if (!elemento) {
+      res.status(404).json({ message: "Elemento no encontrado" });
+      return;
+    }
+
+    if (tipo === "categoria") {
+      // Se revisan publicaciones vigentes y ediciones pendientes.
+      const publicaciones = await modelPublicacion.countDocuments({
+        $or: [{ categoria: id }, { "pendingUpdate.categoria": id }],
+      });
+
+      if (publicaciones > 0) {
+        res.status(400).json({
+          message: `No se puede eliminar la categoría "${elemento.nombre}" porque está asociada a ${publicaciones} publicación(es). Reasigna o elimina esas publicaciones primero.`,
+          publicaciones,
+        });
+        return;
+      }
+
+      // Limpieza de referencias en otras secciones.
+      await Promise.all([
+        Archivo.updateMany({ categoria: id }, { $set: { categoria: null } }),
+        modelCategoriaPreferencia.deleteMany({ categoriaId: id }),
+      ]);
+    }
+
+    await modelo.deleteOne({ _id: id });
+
+    res.json({
+      message: `${tipo === "categoria" ? "Categoría" : "Etiqueta"} "${elemento.nombre}" eliminada correctamente`,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Error al eliminar el elemento" });

@@ -1,9 +1,15 @@
 import { API_URL } from '../utils/api';
 import { useState } from 'react';
+import { IoMdAlert } from 'react-icons/io';
+import ConfirmDialog from './ConfirmDialog';
+import { useFormShortcuts } from '../hooks/useFormShortcuts';
 
-export const PublicacionModal = ({ name, date, tag, id, isOpen, onClose }) => {
+export const PublicacionModal = ({ name, id, isOpen, onClose }) => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // El diálogo de confirmación maneja sus propios atajos mientras está abierto.
+  useFormShortcuts({ isOpen: showSuccess, onClose });
 
   if (!isOpen && !showSuccess) return null;
 
@@ -99,54 +105,28 @@ export const PublicacionModal = ({ name, date, tag, id, isOpen, onClose }) => {
     }, 4000);
   };
 
-  // Modal de confirmación
+  // Modal de confirmación (componente genérico, mismo estilo que el resto)
   if (!showSuccess) {
     return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-[#2A2A35] text-white p-6 rounded-lg shadow-[0_4px_20px_rgba(0,0,0,1)] w-[90%] max-w-md text-center">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-2">
-              <svg className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </div>
-            
-            <h2 className="text-xl font-semibold">¿Está seguro/a de borrar la publicación?</h2>
-            <p className="text-sm text-gray-300">{name}</p>
-            <p className="text-sm text-gray-300">{date}</p>
-            
-            <p className="text-xs text-gray-400 mt-2">Esta acción no se puede deshacer</p>
-
-            {/* Botones */}
-            <div className="flex justify-center gap-4 mt-6">
-              <button
-                onClick={eliminarPublicacion}
-                disabled={isDeleting}
-                className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 px-6 py-2 rounded-lg text-white transition-colors duration-200 flex items-center gap-2 min-w-[100px] justify-center"
-              >
-                {isDeleting ? (
-                  <>
-                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="m4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Eliminando...
-                  </>
-                ) : (
-                  'Eliminar'
-                )}
-              </button>
-              <button
-                onClick={onClose}
-                disabled={isDeleting}
-                className="bg-gray-600 hover:bg-gray-700 disabled:bg-gray-500 px-6 py-2 rounded-lg text-white transition-colors duration-200"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ConfirmDialog
+        dialog={{
+          isOpen,
+          title: "Borrado definitivo",
+          message: (
+            <>
+              ¿Estás seguro de eliminar la publicación <strong>{name}</strong>?
+            </>
+          ),
+          hint: "Esta acción es permanente y no se puede deshacer.",
+          confirmText: isDeleting ? "Eliminando..." : "Eliminar",
+          cancelText: "Cancelar",
+          tone: "danger",
+          icon: <IoMdAlert size={26} />,
+          loading: isDeleting,
+        }}
+        onConfirm={eliminarPublicacion}
+        onCancel={onClose}
+      />
     );
   }
 

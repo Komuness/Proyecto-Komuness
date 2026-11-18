@@ -1,9 +1,12 @@
 import React from 'react'
 import { useAuth } from "../components/context/AuthContext";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 
 export const DocumentModal = ({ isOpen, onClose, onDownload, onRedirect, onDelete, name, size, tag, icon, author }) => {
     const { user } = useAuth();
-    
+
+    useFormShortcuts({ isOpen, onClose });
+
     if (!isOpen) return null;
     return (
     

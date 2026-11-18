@@ -14,6 +14,7 @@ import TextAreaComponent from '../components/TextAreaComponent';
 import ConfirmDialog from "../components/ConfirmDialog";
 import { useLockBodyScroll } from "../hooks/useLockBodyScroll";
 import { useConfirmDialog } from "../hooks/useConfirmDialog";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 import {
   readSessionDraft,
   removeSessionDraft,
@@ -315,7 +316,7 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
 
     const errorValidacion = validarFormulario();
     if (errorValidacion) {
@@ -383,6 +384,13 @@ export const FormularioPublicacion = ({ isOpen, onClose, openTag }) => {
       // Para otros errores, el toast.promise ya los manejó
     }
   };
+
+  useFormShortcuts({
+    isOpen,
+    enabled: !dialog.isOpen && !mostrarAlerta,
+    onSave: handleSubmit,
+    onClose: handleClose,
+  });
 
   const enviarPublicacion = async (data) => {
     // Primero hacemos la petición sin toast para poder manejar el 403 de manera especial

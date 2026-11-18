@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import '../CSS/fuenteKomuness.css';
 import { useAuth } from '../components/context/AuthContext';
 import { API_URL } from '../utils/api';
+import { useFormShortcuts } from '../hooks/useFormShortcuts';
 
 export const InitForm = () => {
   const { login } = useAuth();
@@ -38,7 +39,7 @@ export const InitForm = () => {
   }, [location.search]);
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
     setErrorMensaje('');
     setReenvioMensaje('');
     setMostrarReenviarConfirmacion(false);
@@ -76,6 +77,8 @@ export const InitForm = () => {
       setErrorMensaje('Ocurrió un error al conectar con el servidor');
     }
   };
+
+  useFormShortcuts({ onSave: handleSubmit });
 
   const handleReenviarConfirmacion = async () => {
     const emailLimpio = String(email || '').trim().toLowerCase();

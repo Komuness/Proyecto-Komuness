@@ -3,6 +3,7 @@ import { AiOutlineClose } from "react-icons/ai";
 import { AiOutlineClockCircle } from "react-icons/ai";
 import { useNavigate } from "react-router-dom";
 import { API_URL } from "../../utils/api";
+import { useFormShortcuts } from "../../hooks/useFormShortcuts";
 
 const Notificaciones = ({
   open = true,
@@ -249,7 +250,7 @@ const Notificaciones = ({
   };
 
   const handleEnviarNotificacion = async (event) => {
-    event.preventDefault();
+    event?.preventDefault?.();
     if (!token || !esAdmin) {
       setError("No tienes permisos para enviar notificaciones.");
       return;
@@ -309,6 +310,12 @@ const Notificaciones = ({
   const closePanel = () => {
     setOpen(false);
   };
+
+  useFormShortcuts({
+    isOpen: open,
+    onSave: esAdmin ? handleEnviarNotificacion : undefined,
+    onClose: closePanel,
+  });
 
   if (!standalone && !open) return null;
 

@@ -5,6 +5,7 @@ import {
   getElementById,
   updateElement,
   deleteElement,
+  deleteElementDefinitivo,
   toggleElementEstado,
 } from "../controllers/element.controller";
 
@@ -20,6 +21,13 @@ router.get("/:tipo/:id", getElementById);
 // Crear, actualizar y eliminar → solo admin (tipoUsuario = 1)
 router.post("/:tipo", authMiddleware, verificarRoles([1]), createElement);
 router.put("/:tipo/:id", authMiddleware, verificarRoles([1]), updateElement);
+// Borrado definitivo (categorías y etiquetas) → solo admin (tipoUsuario = 1)
+router.delete(
+  "/:tipo/:id/eliminar",
+  authMiddleware,
+  verificarRoles([1]),
+  deleteElementDefinitivo,
+);
 router.delete("/:tipo/:id", authMiddleware, verificarRoles([1]), deleteElement);
 router.put(
   "/:tipo/toggle/:id",

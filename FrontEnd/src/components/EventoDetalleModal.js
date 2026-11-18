@@ -4,6 +4,7 @@ import moment from "moment";
 import "moment/locale/es";
 import { BASE_URL } from "../utils/api";
 import { getRutaDetalle } from "../utils/secciones";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 
 moment.locale("es");
 
@@ -31,6 +32,8 @@ const getCategoriaNombre = (categoria) => {
 
 export const EventoDetalleModal = ({ evento, isOpen, onClose }) => {
   const navigate = useNavigate();
+
+  useFormShortcuts({ isOpen, onClose });
 
   if (!isOpen || !evento) return null;
 

@@ -7,6 +7,7 @@ import {
   createEmptySurvey,
   normalizeSurveyPayload,
 } from "../utils/onboardingSurvey";
+import { useFormShortcuts } from "../hooks/useFormShortcuts";
 
 export const CrearUsuario = () => {
   const navigate = useNavigate();
@@ -29,7 +30,7 @@ export const CrearUsuario = () => {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    e?.preventDefault?.();
 
     const { nombre, apellido, email, password, confirmarContraseña } = formData;
 
@@ -80,6 +81,8 @@ export const CrearUsuario = () => {
       toast.error("Error de red o conexión con el servidor");
     }
   };
+
+  useFormShortcuts({ onSave: handleSubmit });
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-800/80 px-4 sm:px-6 py-16 sm:py-20">
