@@ -24,7 +24,7 @@ import paqueteSuscripcionRoutes from "./routes/paqueteSuscripcion.routes";
 import publicidadRoutes from "./routes/publicidad.routes";
 import proyectosDestacadosRoutes from "./routes/proyectosDestacados.routes";
 import actividadesRoutes from "./routes/actividades.routes";
-import { uploadErrorHandler, ImageValidationError } from "./utils/imageUpload";
+import { ImageValidationError } from "./utils/imageUpload";
 
 // Rutas de PayPal
 import paypalRoutes from "./routes/paypal.routes";
@@ -50,7 +50,7 @@ const defaultCorsOrigins = [
   "http://159.54.148.238",
   "https://komuness.duckdns.org",
   "https://proyecto-komuness-production.up.railway.app",
-  "https://frontend-production-0b7e.up.railway.app", // sin "/" final
+  "https://frontend-production-0b7e.up.railway.app",
 ];
 
 const extraCorsOrigins = (process.env.CORS_ORIGINS || "")
@@ -78,9 +78,6 @@ const PROFILE_DIR =
   process.env.PROFILE_LIB || path.join(UPLOADS_ROOT, "perfil");
 const CSV_DIR = process.env.CSV_LIB || path.join(UPLOADS_ROOT, "csv");
 
-// NOTA: se quitaron "/uploads" y "/biblioteca" porque exponían la biblioteca
-// completa (incluidos archivos pendientes/rechazados) sin autenticación.
-// La biblioteca se descarga por /api/biblioteca/files/:id
 app.use("/acercade", express.static(ACERCADE_DIR));
 app.use("/perfil", express.static(PROFILE_DIR));
 app.use("/csv", express.static(CSV_DIR));
@@ -116,12 +113,21 @@ app.get(["/health", "/api/health"], (_req: Request, res: Response) => {
   res.json({
     ok: true,
     uptimeSeconds: Math.round(process.uptime()),
-    mongoReadyState: mongoose.connection.readyState, // 1 = connected
+    mongoReadyState: mongoose.connection.readyState,
   });
 });
 
 // Middleware global de errores
 const globalErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+  if (err && err.code === "LIMIT_UNEXPECTED_FILE") {
+    res.status(400).json({
+      success: false,
+      message: "Campo de archivo inesperado.",
+      errorCode: "UNEXPECTED_FILE",
+    });
+    return;
+  }
+
   if (
     err &&
     (err.code === "LIMIT_FILE_SIZE" ||
@@ -154,8 +160,12 @@ const globalErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     return;
   }
 
-  if (err && err.name === "ImageValidationError" || err instanceof ImageValidationError) {
-    res.status(400).json({ success: false, message: err.message, errorCode: "INVALID_FILE_TYPE" });
+  if (err && (err.name === "ImageValidationError" || err instanceof ImageValidationError)) {
+    res.status(400).json({
+      success: false,
+      message: err.message,
+      errorCode: "INVALID_FILE_TYPE",
+    });
     return;
   }
 
@@ -181,12 +191,10 @@ const globalErrorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
   }
 };
 
-// Primero el de imágenes (400 con mensajes claros), después el global
 app.use(globalErrorHandler);
 
 const port = process.env.PORT || 5000;
 
-// Conexión a MongoDB
 (async () => {
   await connectBD(process.env.BD_URL!);
   startPublicationExpirationJob();
